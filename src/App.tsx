@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { TaskListPage } from './pages/TaskListPage';
+import { MyTasksPage } from './pages/MyTasksPage';
 import { LogBookPage } from './pages/LogBookPage';
 import { MyLogPage } from './pages/MyLogPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -31,6 +32,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<TaskListPage />} />
+      <Route path="/my-tasks" element={<MyTasksPage />} />
       <Route path="/tasks/:taskId" element={<LogBookPage />} />
       <Route path="/my-log" element={<MyLogPage />} />
       <Route path="/settings" element={profile?.role === 'admin' ? <SettingsPage /> : <Navigate to="/" replace />} />
