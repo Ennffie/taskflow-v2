@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, Plus, Search, ChevronDown, Filter, X, SlidersHorizontal, CheckCircle2, Clock, AlertCircle, Circle, LayoutGrid } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, LayoutGrid } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
-import { PRIORITY_META, STATUS_META, type TaskItem } from '../types';
+import { STATUS_CONFIG, type TaskItem } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
-import { STATUS_CONFIG, PRIORITY_CONFIG } from '../types';
-import type { TaskStatus, TaskPriority } from '../types';
+import type { TaskStatus } from '../types';
+
+export const panelStyle = {
+  background: '#fff',
+  borderRadius: '12px',
+  border: '1px solid #e2e8f0',
+  padding: '20px',
+};
 
 function isDueSoon(dueDate: string | null): boolean {
   if (!dueDate) return false;
@@ -27,9 +33,7 @@ function isOverdue(dueDate: string | null): boolean {
   return due < today;
 }
 
-// ClickUp-style status icon
 function StatusIcon({ status }: { status: TaskStatus }) {
-  const config = STATUS_CONFIG[status];
   const iconStyle = { width: '16px', height: '16px', borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center' };
   
   switch (status) {
@@ -50,9 +54,8 @@ export function TaskListPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
-  const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
   const [showModal, setShowModal] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<'status' | 'priority' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -70,11 +73,9 @@ export function TaskListPage() {
   const filtered = useMemo(() => tasks.filter((task) => {
     const matchesQuery = `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
-    return matchesQuery && matchesStatus && matchesPriority;
-  }), [tasks, query, statusFilter, priorityFilter]);
+    return matchesQuery && matchesStatus;
+  }), [tasks, query, statusFilter]);
 
-  // Group tasks by status for ClickUp-style list
   const groupedTasks = useMemo(() => {
     const groups: Record<string, TaskItem[]> = {
       'Today': filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done'),
@@ -87,7 +88,6 @@ export function TaskListPage() {
   return (
     <AppShell>
       <div style={{ maxWidth: '1200px' }}>
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>My Tasks</h1>
           <button onClick={() => setShowModal(true)} style={{ borderRadius: '8px', border: 'none', background: '#7c3aed', color: '#fff', padding: '10px 18px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
@@ -142,7 +142,6 @@ export function TaskListPage() {
           />
         </div>
 
-        {/* Search & Filters */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
@@ -182,7 +181,6 @@ export function TaskListPage() {
           </div>
         </div>
 
-        {/* ClickUp Style Task List */}
         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
           {loading ? (
             <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Loading tasks...</div>
@@ -195,14 +193,12 @@ export function TaskListPage() {
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => (
               groupTasks.length > 0 && (
                 <div key={groupName}>
-                  {/* Group Header */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <ChevronDown size={16} color="#64748b" />
                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{groupName}</span>
                     <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
                   </div>
                   
-                  {/* Task Items */}
                   {groupTasks.map((task) => (
                     <div 
                       key={task.id}
@@ -228,7 +224,6 @@ export function TaskListPage() {
                         )}
                       </div>
 
-                      {/* Assignees */}
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         {task.assignees.length > 0 ? (
                           <div style={{ display: 'flex', marginLeft: '-6px' }}>
@@ -279,7 +274,6 @@ export function TaskListPage() {
                         )}
                       </div>
 
-                      {/* Due Date */}
                       <div style={{ minWidth: '100px', textAlign: 'right' }}>
                         <span style={{ 
                           fontSize: '12px', 
@@ -310,7 +304,6 @@ interface SummaryCardProps {
   row2Data: { label: string; value: string; color?: string }[];
   accentColor: string;
 }
-// v2 - Updated layout
 
 function SummaryCard({ icon, title, value, row2Data, accentColor }: SummaryCardProps) {
   return (
@@ -321,7 +314,6 @@ function SummaryCard({ icon, title, value, row2Data, accentColor }: SummaryCardP
       padding: '16px 20px',
       cursor: 'pointer',
     }}>
-      {/* Row 1: Icon + Title + Big Value */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ 
@@ -340,7 +332,6 @@ function SummaryCard({ icon, title, value, row2Data, accentColor }: SummaryCardP
         <span style={{ fontSize: '28px', fontWeight: 700, color: accentColor }}>{value}</span>
       </div>
       
-      {/* Row 2: Three columns of data */}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
         {row2Data.map((item, i) => (
           <div key={i} style={{ textAlign: i === 1 ? 'center' : i === 2 ? 'right' : 'left', flex: 1 }}>

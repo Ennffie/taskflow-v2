@@ -53,3 +53,7 @@ export const PRIORITY_META: Record<TaskPriority, { label: string; color: string;
   high: { label: 'High', color: '#b45309', bg: '#fed7aa' },
   urgent: { label: 'Urgent', color: '#b91c1c', bg: '#fee2e2' },
 };
+
+// Aliases for compatibility
+export const STATUS_CONFIG = STATUS_META;
+export const PRIORITY_CONFIG = PRIORITY_META;
