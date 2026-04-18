@@ -46,7 +46,7 @@ export function LogFormModal({ taskId, onClose, onCreated }: { taskId: string; o
           {/* Row 4: Time spent + Next status */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <Field label="Time spent"><input value={timeSpent} onChange={(e) => setTimeSpent(e.target.value)} style={inputStyle} placeholder="e.g. 1.5h" /></Field>
-            <Field label="Next status"><select value={nextStatus} onChange={(e) => setNextStatus(e.target.value as TaskStatus | '')} style={inputStyle}><option value="">No change</option><option value="todo">Todo</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
+            <Field label="Status"><select value={nextStatus} onChange={(e) => setNextStatus(e.target.value as TaskStatus | '')} style={inputStyle}><option value="">No change</option><option value="todo">Todo</option><option value="focus">Focus</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
