@@ -1,66 +1,101 @@
-import { CheckSquare, ScrollText, Settings, Home, LogOut } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { CheckSquare, ScrollText, Settings, Home, LogOut, Plus } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  onAddTask?: () => void;
+}
+
+export function AppShell({ children, onAddTask }: AppShellProps) {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '90px' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '100px' }}>
       {/* Main Content */}
       <main style={{ padding: '24px' }}>{children}</main>
 
-      {/* Bottom Menu Bar */}
-      <nav 
+      {/* Bottom Menu Bar Container */}
+      <div
         style={{ 
           position: 'fixed', 
           bottom: '16px', 
           left: '50%', 
           transform: 'translateX(-50%)',
-          display: 'flex', 
+          display: 'flex',
           alignItems: 'center',
-          gap: '4px',
-          background: '#fff', 
-          borderRadius: '50px', 
-          padding: '8px 12px',
-          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04)',
+          gap: '12px',
           zIndex: 100,
         }}
       >
-        <BottomNavLink to="/" icon={<Home size={22} />} label="All" />
-        <BottomNavLink to="/my-tasks" icon={<CheckSquare size={22} />} label="My Tasks" />
-        <BottomNavLink to="/my-log" icon={<ScrollText size={22} />} label="My Log" />
-        
-        {profile?.role === 'admin' && (
-          <BottomNavLink to="/settings" icon={<Settings size={22} />} label="Settings" />
-        )}
-        
-        {/* Divider */}
-        <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 4px' }} />
-        
-        {/* Logout */}
-        <button 
-          onClick={signOut}
+        {/* Main Menu */}
+        <nav 
           style={{ 
             display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'center', 
+            alignItems: 'center',
             gap: '4px',
-            padding: '10px 16px',
-            borderRadius: '40px',
-            border: 'none',
-            background: '#f1f5f9',
-            color: '#64748b',
-            fontSize: '11px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            minWidth: '60px',
+            background: '#fff', 
+            borderRadius: '50px', 
+            padding: '8px 12px',
+            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04)',
           }}
         >
-          <LogOut size={20} />
-          <span>Logout</span>
+          <BottomNavLink to="/" icon={<Home size={20} />} label="All" />
+          <BottomNavLink to="/my-tasks" icon={<CheckSquare size={20} />} label="My Tasks" />
+          <BottomNavLink to="/my-log" icon={<ScrollText size={20} />} label="My Log" />
+          
+          {profile?.role === 'admin' && (
+            <BottomNavLink to="/settings" icon={<Settings size={20} />} label="Settings" />
+          )}
+          
+          {/* Divider */}
+          <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 4px' }} />
+          
+          {/* Logout */}
+          <button 
+            onClick={signOut}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: 'center', 
+              gap: '4px',
+              padding: '10px 16px',
+              borderRadius: '40px',
+              border: 'none',
+              background: '#f1f5f9',
+              color: '#64748b',
+              fontSize: '11px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              minWidth: '60px',
+            }}
+          >
+            <LogOut size={18} />
+            <span>Logout</span>
+          </button>
+        </nav>
+
+        {/* Add Task Button */}
+        <button
+          onClick={onAddTask}
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: '#7c3aed',
+            border: 'none',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(124, 58, 237, 0.4)',
+          }}
+        >
+          <Plus size={28} strokeWidth={2.5} />
         </button>
-      </nav>
+      </div>
     </div>
   );
 }
