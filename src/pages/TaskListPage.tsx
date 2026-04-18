@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, LayoutGrid, User, AlertTriangle, Calendar, Inbox } from 'lucide-react';
+import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, LayoutGrid, User, AlertTriangle, Inbox } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { STATUS_CONFIG, type TaskItem } from '../types';

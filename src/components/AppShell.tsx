@@ -1,5 +1,5 @@
 import { CheckSquare, ScrollText, Settings, Home, LogOut, Plus } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 interface AppShellProps {
@@ -9,7 +9,6 @@ interface AppShellProps {
 
 export function AppShell({ children, onAddTask }: AppShellProps) {
   const { profile, signOut } = useAuth();
-  const navigate = useNavigate();
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '100px' }}>
