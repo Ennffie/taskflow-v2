@@ -44,6 +44,8 @@ function StatusIcon({ status }: { status: TaskStatus }) {
       return <div style={{ ...iconStyle, borderColor: '#f59e0b', background: '#fef3c7' }}><Clock size={12} color="#f59e0b" /></div>;
     case 'review':
       return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={12} color="#7c3aed" /></div>;
+    case 'focus':
+      return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#7c3aed' }}><AlertCircle size={12} color="#fff" /></div>;
     default:
       return <div style={{ ...iconStyle, borderColor: '#94a3b8', background: 'transparent' }}><Circle size={12} color="#94a3b8" /></div>;
   }
@@ -80,7 +82,8 @@ export function TaskListPage() {
 
   const groupedTasks = useMemo(() => {
     const groups: Record<string, TaskItem[]> = {
-      'Today': filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done'),
+      "Today's Focus": filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus'),
+      'Focus': filtered.filter(t => t.status === 'focus'),
       'Overdue': filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done'),
       'Done': filtered.filter(t => t.status === 'done'),
     };
@@ -88,7 +91,7 @@ export function TaskListPage() {
   }, [filtered]);
 
   // Stats for compact cards
-  const allTasksCount = tasks.length;
+  const focusCount = tasks.filter(t => t.status === 'focus').length;
   const myTasksCount = tasks.filter(t => t.assignees.some(a => a.id === profile?.id)).length;
   const urgentCount = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
   const overdueCount = tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done').length;
@@ -113,9 +116,9 @@ export function TaskListPage() {
         }}>
           <CompactCard 
             icon={<LayoutGrid size={20} color="#7c3aed" />}
-            label="All Tasks" 
-            count={allTasksCount}
-            subLabel={`${overdueCount} overdue`}
+            label="Focus" 
+            count={focusCount}
+            subLabel="priority"
             bgColor="#f5f3ff"
             iconBgColor="#ede9fe"
             active
@@ -169,7 +172,7 @@ export function TaskListPage() {
             </button>
             {openDropdown === 'status' && (
               <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', minWidth: '180px', zIndex: 20, padding: '8px' }}>
-                {(['all', 'todo', 'in_progress', 'review', 'done', 'cancelled'] as const).map((s) => (
+                {(['all', 'todo', 'in_progress', 'review', 'done', 'cancelled', 'focus'] as const).map((s) => (
                   <button 
                     key={s} 
                     onClick={() => { setStatusFilter(s); setOpenDropdown(null); }}

@@ -1,5 +1,5 @@
 export type Role = 'admin' | 'member' | 'viewer';
-export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled';
+export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled' | 'focus';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'development' | 'other';
 
@@ -45,6 +45,7 @@ export const STATUS_META: Record<TaskStatus, { label: string; color: string; bg:
   review: { label: 'Review', color: '#1d4ed8', bg: '#dbeafe' },
   done: { label: 'Done', color: '#047857', bg: '#d1fae5' },
   cancelled: { label: 'Cancelled', color: '#b91c1c', bg: '#fee2e2' },
+  focus: { label: 'Focus', color: '#7c3aed', bg: '#ede9fe' },
 };
 
 export const PRIORITY_META: Record<TaskPriority, { label: string; color: string; bg: string }> = {
