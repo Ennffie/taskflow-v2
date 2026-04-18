@@ -95,34 +95,49 @@ export function TaskListPage() {
           </button>
         </div>
 
-        {/* Summary Cards - Two Row Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
           <SummaryCard 
-            icon={<LayoutGrid size={20} color="#7c3aed" />}
+            icon={<LayoutGrid size={18} color="#7c3aed" />}
             title="All Tasks" 
             value={tasks.length} 
-            subValue={`${tasks.filter(t => t.status === 'todo').length} todo`}
+            row2Data={[
+              { label: 'Todo', value: String(tasks.filter(t => t.status === 'todo').length) },
+              { label: 'In Progress', value: String(tasks.filter(t => t.status === 'in_progress').length) },
+              { label: 'Done', value: String(tasks.filter(t => t.status === 'done').length) },
+            ]}
             accentColor="#7c3aed"
           />
           <SummaryCard 
-            icon={<Clock size={20} color="#f59e0b" />}
+            icon={<Clock size={18} color="#f59e0b" />}
             title="In Progress" 
             value={tasks.filter(t => t.status === 'in_progress').length} 
-            subValue="active now"
+            row2Data={[
+              { label: 'High Priority', value: String(tasks.filter(t => t.status === 'in_progress' && t.priority === 'high').length), color: '#ef4444' },
+              { label: 'Medium', value: String(tasks.filter(t => t.status === 'in_progress' && t.priority === 'medium').length) },
+              { label: 'With Logs', value: String(tasks.filter(t => t.status === 'in_progress' && t.log_count > 0).length) },
+            ]}
             accentColor="#f59e0b"
           />
           <SummaryCard 
-            icon={<CheckCircle2 size={20} color="#10b981" />}
+            icon={<CheckCircle2 size={18} color="#10b981" />}
             title="Completed" 
             value={tasks.filter(t => t.status === 'done').length} 
-            subValue="this week"
+            row2Data={[
+              { label: 'This Week', value: String(tasks.filter(t => t.status === 'done' && t.updated_at && new Date(t.updated_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length) },
+              { label: 'This Month', value: String(tasks.filter(t => t.status === 'done').length) },
+              { label: 'Total Logs', value: String(tasks.reduce((acc, t) => acc + t.log_count, 0)) },
+            ]}
             accentColor="#10b981"
           />
           <SummaryCard 
-            icon={<AlertCircle size={20} color="#ef4444" />}
+            icon={<AlertCircle size={18} color="#ef4444" />}
             title="Overdue" 
             value={tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done').length} 
-            subValue="needs attention"
+            row2Data={[
+              { label: 'Urgent', value: String(tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.priority === 'urgent').length), color: '#ef4444' },
+              { label: 'High', value: String(tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.priority === 'high').length) },
+              { label: 'No Logs', value: String(tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.log_count === 0).length) },
+            ]}
             accentColor="#ef4444"
           />
         </div>
@@ -292,44 +307,46 @@ interface SummaryCardProps {
   icon: React.ReactNode;
   title: string;
   value: number;
-  subValue: string;
+  row2Data: { label: string; value: string; color?: string }[];
   accentColor: string;
 }
 
-function SummaryCard({ icon, title, value, subValue, accentColor }: SummaryCardProps) {
+function SummaryCard({ icon, title, value, row2Data, accentColor }: SummaryCardProps) {
   return (
     <div style={{ 
       background: '#fff', 
       borderRadius: '16px', 
       border: '1px solid #e2e8f0',
-      padding: '16px',
+      padding: '16px 20px',
       cursor: 'pointer',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     }}>
-      {/* Row 1: Icon + Title + Main Value */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-        <div style={{ 
-          width: '40px', 
-          height: '40px', 
-          borderRadius: '12px', 
-          background: `${accentColor}15`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          {icon}
+      {/* Row 1: Icon + Title + Big Value */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ 
+            width: '36px', 
+            height: '36px', 
+            borderRadius: '10px', 
+            background: `${accentColor}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {icon}
+          </div>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: '#374151' }}>{title}</span>
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{title}</div>
-        </div>
-        <div style={{ fontSize: '24px', fontWeight: 700, color: accentColor }}>
-          {value}
-        </div>
+        <span style={{ fontSize: '28px', fontWeight: 700, color: accentColor }}>{value}</span>
       </div>
       
-      {/* Row 2: Sub info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
-        <span style={{ fontSize: '12px', color: '#9ca3af' }}>{subValue}</span>
+      {/* Row 2: Three columns of data */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+        {row2Data.map((item, i) => (
+          <div key={i} style={{ textAlign: i === 1 ? 'center' : i === 2 ? 'right' : 'left', flex: 1 }}>
+            <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '2px' }}>{item.label}</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: item.color || '#374151' }}>{item.value}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
