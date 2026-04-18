@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, Calendar, Inbox } from 'lucide-react';
+import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, LayoutGrid, User, AlertTriangle, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { STATUS_CONFIG, type TaskItem } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
+import { useAuth } from '../contexts/AuthContext';
 import type { TaskStatus } from '../types';
 
 export const panelStyle = {
@@ -50,6 +51,7 @@ function StatusIcon({ status }: { status: TaskStatus }) {
 
 export function TaskListPage() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -85,11 +87,11 @@ export function TaskListPage() {
     return groups;
   }, [filtered]);
 
-  // Stats for compact cards
-  const todayCount = tasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done').length;
+  // Stats for square cards
+  const allTasksCount = tasks.length;
+  const myTasksCount = tasks.filter(t => t.assignees.some(a => a.id === profile?.id)).length;
+  const urgentCount = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
   const overdueCount = tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done').length;
-  const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
-  const doneCount = tasks.filter(t => t.status === 'done').length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -99,28 +101,43 @@ export function TaskListPage() {
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>All Tasks</h1>
         </div>
 
-        {/* Compact Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-          <CompactCard 
-            icon={<Calendar size={20} color="#7c3aed" />}
-            label="Today" 
-            count={todayCount}
-            subLabel={`${overdueCount} overdue`}
+        {/* Horizontal Scrollable Square Cards */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '12px', 
+          overflowX: 'auto', 
+          paddingBottom: '12px',
+          marginBottom: '24px',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}>
+          <SquareCard 
+            icon={<LayoutGrid size={24} color="#7c3aed" />}
+            label="All Tasks" 
+            count={allTasksCount}
             bgColor="#f5f3ff"
+            iconBgColor="#ede9fe"
           />
-          <CompactCard 
-            icon={<Inbox size={20} color="#3b82f6" />}
-            label="Assigned" 
-            count={inProgressCount}
-            subLabel="in progress"
+          <SquareCard 
+            icon={<User size={24} color="#3b82f6" />}
+            label="My Tasks" 
+            count={myTasksCount}
             bgColor="#eff6ff"
+            iconBgColor="#dbeafe"
           />
-          <CompactCard 
-            icon={<CheckCircle2 size={20} color="#10b981" />}
-            label="Done" 
-            count={doneCount}
-            subLabel="completed"
-            bgColor="#ecfdf5"
+          <SquareCard 
+            icon={<AlertTriangle size={24} color="#ef4444" />}
+            label="Urgent" 
+            count={urgentCount}
+            bgColor="#fef2f2"
+            iconBgColor="#fee2e2"
+          />
+          <SquareCard 
+            icon={<Calendar size={24} color="#f59e0b" />}
+            label="Overdue" 
+            count={overdueCount}
+            bgColor="#fffbeb"
+            iconBgColor="#fef3c7"
           />
         </div>
 
@@ -281,31 +298,48 @@ export function TaskListPage() {
   );
 }
 
-// Compact Card Component - like the reference image
-interface CompactCardProps {
+// Square Card Component - like the reference image
+interface SquareCardProps {
   icon: React.ReactNode;
   label: string;
   count: number;
-  subLabel: string;
   bgColor: string;
+  iconBgColor: string;
 }
 
-function CompactCard({ icon, label, count, subLabel, bgColor }: CompactCardProps) {
+function SquareCard({ icon, label, count, bgColor, iconBgColor }: SquareCardProps) {
   return (
     <div style={{ 
       background: bgColor,
       borderRadius: '16px',
       padding: '16px',
       minWidth: '120px',
+      width: '120px',
+      height: '120px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      cursor: 'pointer',
+      flexShrink: 0,
     }}>
-      <div style={{ marginBottom: '8px' }}>
+      <div style={{ 
+        width: '40px', 
+        height: '40px', 
+        borderRadius: '10px', 
+        background: iconBgColor,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
         {icon}
       </div>
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>
-        {label} <span style={{ fontWeight: 700 }}>{count}</span>
-      </div>
-      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-        {subLabel}
+      <div>
+        <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+          {label}
+        </div>
+        <div style={{ fontSize: '24px', fontWeight: 700, color: '#111827', marginTop: '4px' }}>
+          {count}
+        </div>
       </div>
     </div>
   );
