@@ -8,9 +8,31 @@ interface AppShellProps {
   onAddTask?: () => void;
 }
 
+// Global modal counter for blur effect
+let modalCount = 0;
+const listeners = new Set<(count: number) => void>();
+
+export function notifyModalOpen() {
+  modalCount++;
+  listeners.forEach(cb => cb(modalCount));
+}
+
+export function notifyModalClose() {
+  modalCount = Math.max(0, modalCount - 1);
+  listeners.forEach(cb => cb(modalCount));
+}
+
 export function AppShell({ children, onAddTask }: AppShellProps) {
   const { profile } = useAuth();
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    // Listen for modal open/close
+    const handleModalChange = (count: number) => setIsModalOpen(count > 0);
+    listeners.add(handleModalChange);
+    return () => { listeners.delete(handleModalChange); };
+  }, []);
 
   useEffect(() => {
     // Detect keyboard open/close using visual viewport API
@@ -56,7 +78,7 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
       {/* Main Content */}
       <main style={{ padding: '24px' }}>{children}</main>
 
-      {/* Bottom Menu Bar Container - hidden when keyboard is open */}
+      {/* Bottom Menu Bar Container - hidden when keyboard is open, blurred when modal is open */}
       {!isKeyboardOpen && (
         <div
           style={{ 
@@ -68,6 +90,10 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
             alignItems: 'center',
             gap: '12px',
             zIndex: 100,
+            filter: isModalOpen ? 'blur(4px)' : 'none',
+            opacity: isModalOpen ? 0.6 : 1,
+            transition: 'filter 0.3s ease, opacity 0.3s ease',
+            pointerEvents: isModalOpen ? 'none' : 'auto',
           }}
         >
           {/* Main Menu */}

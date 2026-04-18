@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { createTask, fetchProfiles } from '../lib/api';
 import type { Profile, TaskPriority, TaskStatus } from '../types';
+import { notifyModalOpen, notifyModalClose } from './AppShell';
 
 export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => Promise<void> | void }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -16,6 +17,8 @@ export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onC
 
   useEffect(() => {
     fetchProfiles().then(setProfiles).catch(console.error);
+    notifyModalOpen();
+    return () => notifyModalClose();
   }, []);
 
   const toggleAssignee = (id: string) => {
@@ -111,7 +114,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ModalFrame({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: '24px', zIndex: 50 }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: '24px', zIndex: 200 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '90vh', overflow: 'auto', background: '#fff', borderRadius: '28px', padding: '28px', boxShadow: '0 28px 80px rgba(15,23,42,0.22)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
