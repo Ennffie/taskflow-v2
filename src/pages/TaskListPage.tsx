@@ -310,6 +310,7 @@ interface SummaryCardProps {
   row2Data: { label: string; value: string; color?: string }[];
   accentColor: string;
 }
+// v2 - Updated layout
 
 function SummaryCard({ icon, title, value, row2Data, accentColor }: SummaryCardProps) {
   return (
