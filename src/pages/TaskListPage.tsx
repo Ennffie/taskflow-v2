@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, LayoutGrid, AlertTriangle, Inbox, Calendar } from 'lucide-react';
+import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { STATUS_CONFIG, type TaskItem } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
-import { useAuth } from '../contexts/AuthContext';
 import type { TaskStatus } from '../types';
 
 export const panelStyle = {
@@ -61,7 +60,6 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 
 export function TaskListPage() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
