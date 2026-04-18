@@ -31,17 +31,25 @@ export function LogFormModal({ taskId, onClose, onCreated }: { taskId: string; o
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(680px, 100%)', maxHeight: '85vh', overflow: 'auto', background: '#fff', borderRadius: '28px', padding: '28px', zIndex: 301, marginBottom: '80px' }}>
         <div style={{ fontSize: '24px', fontWeight: 800, color: '#111827', marginBottom: '24px' }}>Add log entry</div>
         <div style={{ display: 'grid', gap: '18px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }} className="form-grid-2">
+          {/* Row 1: Date + Category */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <Field label="Date"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} /></Field>
             <Field label="Category"><select value={category} onChange={(e) => setCategory(e.target.value as LogCategory)} style={inputStyle}><option value="design">Design</option><option value="research">Research</option><option value="meeting">Meeting</option><option value="review">Review</option><option value="development">Development</option><option value="other">Other</option></select></Field>
           </div>
-          <Field label="Update"><textarea value={event} onChange={(e) => setEvent(e.target.value)} style={{ ...inputStyle, minHeight: '130px', resize: 'vertical' }} placeholder="What changed, what was decided, and what happens next" /></Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }} className="form-grid-3">
+          
+          {/* Row 2: Update */}
+          <Field label="Update"><textarea value={event} onChange={(e) => setEvent(e.target.value)} style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} placeholder="What changed, what was decided, and what happens next" /></Field>
+          
+          {/* Row 3: File name (full width) */}
+          <Field label="File name"><input value={fileName} onChange={(e) => setFileName(e.target.value)} style={inputStyle} placeholder="Optional" /></Field>
+          
+          {/* Row 4: Time spent + Next status */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <Field label="Time spent"><input value={timeSpent} onChange={(e) => setTimeSpent(e.target.value)} style={inputStyle} placeholder="e.g. 1.5h" /></Field>
-            <Field label="File name"><input value={fileName} onChange={(e) => setFileName(e.target.value)} style={inputStyle} placeholder="Optional" /></Field>
             <Field label="Next status"><select value={nextStatus} onChange={(e) => setNextStatus(e.target.value as TaskStatus | '')} style={inputStyle}><option value="">No change</option><option value="todo">Todo</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
             <button onClick={onClose} style={ghostButton}>Cancel</button>
             <button onClick={handleSubmit} disabled={saving} style={primaryButton}>{saving ? 'Saving...' : 'Save log'}</button>
           </div>
