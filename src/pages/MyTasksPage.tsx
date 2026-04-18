@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle } from 'lucide-react';
+import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
+import { formatDate } from '../lib/date';
 import { STATUS_CONFIG, type TaskItem } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
@@ -37,14 +38,24 @@ function StatusIcon({ status }: { status: TaskStatus }) {
       return <div style={{ ...iconStyle, borderColor: '#f59e0b', background: '#fef3c7' }}><Clock size={12} color="#f59e0b" /></div>;
     case 'review':
       return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={12} color="#7c3aed" /></div>;
+    case 'focus':
+      return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#7c3aed' }}><AlertCircle size={12} color="#fff" /></div>;
     default:
       return <div style={{ ...iconStyle, borderColor: '#94a3b8', background: 'transparent' }}><Circle size={12} color="#94a3b8" /></div>;
   }
 }
 
+// Sort by due date (nulls last, then by date)
+function sortByDueDate(a: TaskItem, b: TaskItem): number {
+  if (!a.due_date && !b.due_date) return 0;
+  if (!a.due_date) return 1;
+  if (!b.due_date) return -1;
+  return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+}
+
 export function MyTasksPage() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -56,9 +67,9 @@ export function MyTasksPage() {
     setLoading(true);
     try {
       const allTasks = await fetchTasks();
-      // Filter tasks assigned to current user
-      const myTasks = allTasks.filter(task => 
-        task.assignees.some(a => a.id === profile?.id)
+      // Filter to only show tasks assigned to current user
+      const myTasks = allTasks.filter(t => 
+        t.assignees.some(a => a.id === user?.id)
       );
       setTasks(myTasks);
     } catch (error: any) {
@@ -68,7 +79,9 @@ export function MyTasksPage() {
     }
   };
 
-  useEffect(() => { void loadTasks(); }, []);
+  useEffect(() => { 
+    if (user) void loadTasks(); 
+  }, [user]);
 
   const filtered = useMemo(() => tasks.filter((task) => {
     const matchesQuery = `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());
@@ -77,59 +90,67 @@ export function MyTasksPage() {
   }), [tasks, query, statusFilter]);
 
   const groupedTasks = useMemo(() => {
-    const groups: Record<string, TaskItem[]> = {
-      'Today': filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done'),
-      'Overdue': filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done'),
-      'Done': filtered.filter(t => t.status === 'done'),
-    };
+    const focusTasks = filtered.filter(t => t.status === 'focus').sort(sortByDueDate);
+    const overdueTasks = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
+    const otherTasks = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
+    const doneTasks = filtered.filter(t => t.status === 'done').sort(sortByDueDate);
+    
+    const groups: Record<string, TaskItem[]> = {};
+    if (focusTasks.length > 0) groups["Today's Focus"] = focusTasks;
+    if (overdueTasks.length > 0) groups['Overdue'] = overdueTasks;
+    if (otherTasks.length > 0) groups['Other'] = otherTasks;
+    if (doneTasks.length > 0) groups['Done'] = doneTasks;
+    
     return groups;
   }, [filtered]);
 
+  // Stats for compact cards
+  const focusCount = filtered.filter(t => t.status === 'focus').length;
+  const overdueCount = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+  const otherCount = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+
   return (
-    <AppShell>
+    <AppShell onAddTask={() => setShowModal(true)}>
       <div style={{ maxWidth: '1200px' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>My Tasks</h1>
-          <button onClick={() => setShowModal(true)} style={{ borderRadius: '8px', border: 'none', background: '#7c3aed', color: '#fff', padding: '10px 18px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={18} /> New task
-          </button>
         </div>
 
-        {/* Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-          <SummaryCard 
-            icon={<CheckCircle2 size={18} color="#7c3aed" />}
-            title="My Tasks" 
-            value={tasks.length} 
-            row2Data={[
-              { label: 'Todo', value: String(tasks.filter(t => t.status === 'todo').length) },
-              { label: 'In Progress', value: String(tasks.filter(t => t.status === 'in_progress').length) },
-              { label: 'Done', value: String(tasks.filter(t => t.status === 'done').length) },
-            ]}
-            accentColor="#7c3aed"
+        {/* Horizontal Scrollable Compact Cards - 3 cards */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '12px', 
+          overflowX: 'auto', 
+          paddingBottom: '12px',
+          marginBottom: '24px',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}>
+          <CompactCard 
+            icon={<AlertTriangle size={20} color="#7c3aed" />}
+            label="Today's Focus" 
+            count={focusCount}
+            subLabel="priority"
+            bgColor="#ede9fe"
+            iconBgColor="#ddd6fe"
+            active
           />
-          <SummaryCard 
-            icon={<Clock size={18} color="#f59e0b" />}
-            title="In Progress" 
-            value={tasks.filter(t => t.status === 'in_progress').length} 
-            row2Data={[
-              { label: 'High', value: String(tasks.filter(t => t.status === 'in_progress' && t.priority === 'high').length), color: '#ef4444' },
-              { label: 'Medium', value: String(tasks.filter(t => t.status === 'in_progress' && t.priority === 'medium').length) },
-              { label: 'Low', value: String(tasks.filter(t => t.status === 'in_progress' && t.priority === 'low').length) },
-            ]}
-            accentColor="#f59e0b"
+          <CompactCard 
+            icon={<AlertTriangle size={20} color="#ef4444" />}
+            label="Overdue" 
+            count={overdueCount}
+            subLabel="needs attention"
+            bgColor="#fef2f2"
+            iconBgColor="#fee2e2"
           />
-          <SummaryCard 
-            icon={<AlertCircle size={18} color="#ef4444" />}
-            title="Overdue" 
-            value={tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done').length} 
-            row2Data={[
-              { label: 'Urgent', value: String(tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.priority === 'urgent').length), color: '#ef4444' },
-              { label: 'High', value: String(tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.priority === 'high').length) },
-              { label: 'With Logs', value: String(tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.log_count > 0).length) },
-            ]}
-            accentColor="#ef4444"
+          <CompactCard 
+            icon={<Inbox size={20} color="#3b82f6" />}
+            label="Other" 
+            count={otherCount}
+            subLabel="remaining"
+            bgColor="#eff6ff"
+            iconBgColor="#dbeafe"
           />
         </div>
 
@@ -156,7 +177,7 @@ export function MyTasksPage() {
             </button>
             {openDropdown === 'status' && (
               <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', minWidth: '180px', zIndex: 20, padding: '8px' }}>
-                {(['all', 'todo', 'in_progress', 'review', 'done', 'cancelled'] as const).map((s) => (
+                {(['all', 'todo', 'in_progress', 'review', 'done', 'cancelled', 'focus'] as const).map((s) => (
                   <button 
                     key={s} 
                     onClick={() => { setStatusFilter(s); setOpenDropdown(null); }}
@@ -184,52 +205,73 @@ export function MyTasksPage() {
             </div>
           ) : (
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => (
-              groupTasks.length > 0 && (
-                <div key={groupName}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <ChevronDown size={16} color="#64748b" />
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{groupName}</span>
-                    <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
-                  </div>
-                  
-                  {groupTasks.map((task) => (
-                    <div 
-                      key={task.id}
-                      onClick={() => navigate(`/tasks/${task.id}`)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <StatusIcon status={task.status} />
-                      
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '14px', fontWeight: 500, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {task.title}
-                        </p>
-                        {task.tags.length > 0 && (
-                          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                            {task.tags.slice(0, 3).map((tag) => (
-                              <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ minWidth: '100px', textAlign: 'right' }}>
-                        <span style={{ 
-                          fontSize: '12px', 
-                          fontWeight: 500,
-                          color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
-                        }}>
-                          {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No date'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+              <div key={groupName}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <ChevronDown size={16} color="#64748b" />
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{groupName}</span>
+                  <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
                 </div>
-              )
+                
+                {groupTasks.map((task) => (
+                  <div 
+                    key={task.id}
+                    onClick={() => navigate(`/tasks/${task.id}`)}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 20px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ marginTop: '2px' }}>
+                      <StatusIcon status={task.status} />
+                    </div>
+                    
+                    {/* Middle: Title + Tags */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Task Title - 2 lines */}
+                      <p style={{ 
+                        fontSize: '14px', 
+                        fontWeight: 500, 
+                        color: '#111827', 
+                        margin: 0, 
+                        lineHeight: 1.4,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}>
+                        {task.title}
+                      </p>
+                      
+                      {/* Tags - below title, left aligned */}
+                      {task.tags.length > 0 && (
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                          {task.tags.slice(0, 3).map((tag) => (
+                            <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                              {tag}
+                            </span>
+                          ))}
+                          {task.tags.length > 3 && (
+                            <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                              +{task.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right side: Due Date only (no assignees since these are my tasks) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '80px' }}>
+                      {/* Due Date */}
+                      <span style={{ 
+                        fontSize: '12px', 
+                        fontWeight: 500,
+                        color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
+                      }}>
+                        {formatDate(task.due_date)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ))
           )}
         </div>
@@ -240,48 +282,52 @@ export function MyTasksPage() {
   );
 }
 
-interface SummaryCardProps {
+// Compact Card Component - like the reference image
+interface CompactCardProps {
   icon: React.ReactNode;
-  title: string;
-  value: number;
-  row2Data: { label: string; value: string; color?: string }[];
-  accentColor: string;
+  label: string;
+  count: number;
+  subLabel: string;
+  bgColor: string;
+  iconBgColor: string;
+  active?: boolean;
 }
 
-function SummaryCard({ icon, title, value, row2Data, accentColor }: SummaryCardProps) {
+function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, active }: CompactCardProps) {
   return (
     <div style={{ 
-      background: '#fff', 
-      borderRadius: '16px', 
-      border: '1px solid #e2e8f0',
-      padding: '16px 20px',
+      background: active ? bgColor : '#f8fafc',
+      borderRadius: '16px',
+      padding: '16px',
+      minWidth: '140px',
+      width: '140px',
+      height: '100px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
       cursor: 'pointer',
+      flexShrink: 0,
+      border: active ? '2px solid #7c3aed' : '2px solid transparent',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ 
-            width: '36px', 
-            height: '36px', 
-            borderRadius: '10px', 
-            background: `${accentColor}15`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            {icon}
-          </div>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: '#374151' }}>{title}</span>
-        </div>
-        <span style={{ fontSize: '28px', fontWeight: 700, color: accentColor }}>{value}</span>
+      <div style={{ 
+        width: '32px', 
+        height: '32px', 
+        borderRadius: '8px', 
+        background: iconBgColor,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        {icon}
       </div>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-        {row2Data.map((item, i) => (
-          <div key={i} style={{ textAlign: i === 1 ? 'center' : i === 2 ? 'right' : 'left', flex: 1 }}>
-            <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '2px' }}>{item.label}</div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: item.color || '#374151' }}>{item.value}</div>
-          </div>
-        ))}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{label}</span>
+          <span style={{ fontSize: '20px', fontWeight: 700, color: active ? '#7c3aed' : '#111827' }}>{count}</span>
+        </div>
+        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+          {subLabel}
+        </div>
       </div>
     </div>
   );
