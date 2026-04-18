@@ -1,4 +1,4 @@
-import { CheckSquare, ScrollText, Settings, Home, User } from 'lucide-react';
+import { CheckSquare, ScrollText, Settings, Home, LogOut } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -6,42 +6,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '90px' }}>
       {/* Main Content */}
-      <main style={{ padding: '24px 32px' }}>{children}</main>
+      <main style={{ padding: '24px' }}>{children}</main>
 
       {/* Bottom Menu Bar */}
       <nav 
         style={{ 
           position: 'fixed', 
-          bottom: '20px', 
+          bottom: '16px', 
           left: '50%', 
           transform: 'translateX(-50%)',
           display: 'flex', 
           alignItems: 'center',
-          gap: '8px',
-          background: 'rgba(255, 255, 255, 0.95)', 
-          backdropFilter: 'blur(10px)',
+          gap: '4px',
+          background: '#fff', 
           borderRadius: '50px', 
-          padding: '8px 16px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+          padding: '8px 12px',
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04)',
           zIndex: 100,
         }}
       >
-        <BottomNavLink to="/" icon={<Home size={20} />} label="Home" />
-        <BottomNavLink to="/tasks" icon={<CheckSquare size={20} />} label="Tasks" />
-        <BottomNavLink to="/my-log" icon={<ScrollText size={20} />} label="My Log" />
+        <BottomNavLink to="/" icon={<Home size={22} />} label="All" />
+        <BottomNavLink to="/my-tasks" icon={<CheckSquare size={22} />} label="My Tasks" />
+        <BottomNavLink to="/my-log" icon={<ScrollText size={22} />} label="My Log" />
+        
         {profile?.role === 'admin' && (
-          <BottomNavLink to="/settings" icon={<Settings size={20} />} label="Settings" />
+          <BottomNavLink to="/settings" icon={<Settings size={22} />} label="Settings" />
         )}
-        <div 
-          style={{ 
-            width: '1px', 
-            height: '24px', 
-            background: '#e2e8f0', 
-            margin: '0 4px' 
-          }} 
-        />
+        
+        {/* Divider */}
+        <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 4px' }} />
+        
+        {/* Logout */}
         <button 
           onClick={signOut}
           style={{ 
@@ -49,7 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             flexDirection: 'column',
             alignItems: 'center', 
             gap: '4px',
-            padding: '8px 12px',
+            padding: '10px 16px',
             borderRadius: '40px',
             border: 'none',
             background: '#f1f5f9',
@@ -57,9 +54,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             fontSize: '11px',
             fontWeight: 500,
             cursor: 'pointer',
+            minWidth: '60px',
           }}
         >
-          <User size={20} />
+          <LogOut size={20} />
           <span>Logout</span>
         </button>
       </nav>
@@ -76,15 +74,17 @@ function BottomNavLink({ to, icon, label }: { to: string; icon: React.ReactNode;
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: '4px',
-        padding: '8px 16px',
+        padding: '10px 16px',
         borderRadius: '40px',
         textDecoration: 'none',
-        background: isActive ? '#111827' : 'transparent',
+        background: isActive ? '#1e293b' : 'transparent',
         color: isActive ? '#fff' : '#64748b',
-        fontWeight: 500,
+        fontWeight: isActive ? 600 : 500,
         fontSize: '11px',
         transition: 'all 0.2s ease',
+        minWidth: '64px',
       })}
     >
       {icon}
