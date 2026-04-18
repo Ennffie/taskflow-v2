@@ -299,7 +299,7 @@ export function TaskListPage() {
                             )}
                           </div>
                         ) : (
-                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>Unassigned</span>
+                          <div style={{ height: '28px' }} />
                         )}
 
                         {/* Due Date */}
@@ -308,7 +308,7 @@ export function TaskListPage() {
                           fontWeight: 500,
                           color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
                         }}>
-                          {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No date'}
+                          {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
                         </span>
                       </div>
                     </div>
