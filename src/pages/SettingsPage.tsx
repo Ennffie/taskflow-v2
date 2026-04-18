@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { fetchProfiles } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import type { Profile, Role } from '../types';
 import { panelStyle } from './TaskListPage';
 
 export function SettingsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const { signOut } = useAuth();
 
   const loadProfiles = async () => {
     setLoading(true);
@@ -53,6 +55,27 @@ export function SettingsPage() {
               </select>
             </div>
           ))}
+        </section>
+        
+        {/* Logout Section */}
+        <section style={{ ...panelStyle, padding: '20px', textAlign: 'center' }}>
+          <button 
+            onClick={signOut}
+            style={{ 
+              padding: '12px 24px',
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              background: '#fff',
+              color: '#ef4444',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+          >
+            Logout
+          </button>
         </section>
       </div>
     </AppShell>

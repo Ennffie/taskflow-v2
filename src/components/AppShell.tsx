@@ -1,4 +1,4 @@
-import { CheckSquare, ScrollText, Settings, Home, LogOut, Plus } from 'lucide-react';
+import { CheckSquare, ScrollText, Settings, Home, Plus } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -8,7 +8,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, onAddTask }: AppShellProps) {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '100px' }}>
@@ -47,32 +47,6 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
           {profile?.role === 'admin' && (
             <BottomNavLink to="/settings" icon={<Settings size={20} />} label="Settings" />
           )}
-          
-          {/* Divider */}
-          <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 4px' }} />
-          
-          {/* Logout */}
-          <button 
-            onClick={signOut}
-            style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              alignItems: 'center', 
-              gap: '4px',
-              padding: '10px 16px',
-              borderRadius: '40px',
-              border: 'none',
-              background: '#f1f5f9',
-              color: '#64748b',
-              fontSize: '11px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              minWidth: '60px',
-            }}
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
         </nav>
 
         {/* Add Task Button */}
