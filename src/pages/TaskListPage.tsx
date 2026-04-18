@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, Plus, Search, ChevronDown, Filter, X, SlidersHorizontal } from 'lucide-react';
+import { Calendar, Plus, Search, ChevronDown, Filter, X, SlidersHorizontal, CheckCircle2, Clock, AlertCircle, Circle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { fetchTasks, fetchProfiles } from '../lib/api';
+import { fetchTasks } from '../lib/api';
 import { PRIORITY_META, STATUS_META, type TaskItem } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
@@ -25,6 +25,23 @@ function isOverdue(dueDate: string | null): boolean {
   const due = new Date(dueDate);
   due.setHours(0, 0, 0, 0);
   return due < today;
+}
+
+// ClickUp-style status icon
+function StatusIcon({ status }: { status: TaskStatus }) {
+  const config = STATUS_CONFIG[status];
+  const iconStyle = { width: '16px', height: '16px', borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  
+  switch (status) {
+    case 'done':
+      return <div style={{ ...iconStyle, borderColor: '#10b981', background: '#10b981' }}><CheckCircle2 size={12} color="#fff" /></div>;
+    case 'in_progress':
+      return <div style={{ ...iconStyle, borderColor: '#f59e0b', background: '#fef3c7' }}><Clock size={12} color="#f59e0b" /></div>;
+    case 'review':
+      return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={12} color="#7c3aed" /></div>;
+    default:
+      return <div style={{ ...iconStyle, borderColor: '#94a3b8', background: 'transparent' }}><Circle size={12} color="#94a3b8" /></div>;
+  }
 }
 
 export function TaskListPage() {
@@ -57,205 +74,239 @@ export function TaskListPage() {
     return matchesQuery && matchesStatus && matchesPriority;
   }), [tasks, query, statusFilter, priorityFilter]);
 
+  // Group tasks by status for ClickUp-style list
+  const groupedTasks = useMemo(() => {
+    const groups: Record<string, TaskItem[]> = {
+      'Today': filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done'),
+      'Overdue': filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done'),
+      'Done': filtered.filter(t => t.status === 'done'),
+    };
+    return groups;
+  }, [filtered]);
+
   return (
     <AppShell>
       <div style={{ maxWidth: '1200px' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#111827', margin: 0 }}>Tasks</h1>
-            <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0' }}>{filtered.length} task{filtered.length !== 1 ? 's' : ''}</p>
-          </div>
-          <button onClick={() => setShowModal(true)} style={{ borderRadius: '8px', border: 'none', background: '#111827', color: '#fff', padding: '10px 16px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={16} /> New task
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>My Tasks</h1>
+          <button onClick={() => setShowModal(true)} style={{ borderRadius: '8px', border: 'none', background: '#7c3aed', color: '#fff', padding: '10px 18px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={18} /> New task
           </button>
         </div>
 
-        {/* Filters Bar */}
+        {/* ClickUp Style Summary Cards */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+          <SummaryCard 
+            icon="📋"
+            label="All Tasks" 
+            value={tasks.length} 
+            color="#7c3aed"
+            subtext={`${tasks.filter(t => t.status === 'todo').length} todo`}
+          />
+          <SummaryCard 
+            icon="🟡"
+            label="In Progress" 
+            value={tasks.filter(t => t.status === 'in_progress').length} 
+            color="#f59e0b"
+            subtext="active"
+          />
+          <SummaryCard 
+            icon="🟢"
+            label="Completed" 
+            value={tasks.filter(t => t.status === 'done').length} 
+            color="#10b981"
+            subtext="this week"
+          />
+          <SummaryCard 
+            icon="🔴"
+            label="Overdue" 
+            value={tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done').length} 
+            color="#ef4444"
+            subtext="urgent"
+          />
+        </div>
+
+        {/* Search & Filters */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
               value={query} 
               onChange={(e) => setQuery(e.target.value)} 
-              placeholder="Search tasks..." 
-              style={{ width: '100%', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '10px 12px 10px 40px', fontSize: '14px', outline: 'none' }} 
+              placeholder="Search tasks by name..." 
+              style={{ width: '100%', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '12px 14px 12px 42px', fontSize: '14px', outline: 'none', background: '#fff' }} 
             />
           </div>
 
-          {/* Status Dropdown */}
           <div style={{ position: 'relative' }}>
             <button 
               onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
             >
-              <Filter size={14} />
-              <span>{statusFilter === 'all' ? 'Status' : STATUS_CONFIG[statusFilter].label}</span>
+              <Filter size={16} />
+              <span>{statusFilter === 'all' ? 'All Status' : STATUS_CONFIG[statusFilter].label}</span>
               <ChevronDown size={14} />
             </button>
             {openDropdown === 'status' && (
-              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '4px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: '160px', zIndex: 20, padding: '6px' }}>
+              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', minWidth: '180px', zIndex: 20, padding: '8px' }}>
                 {(['all', 'todo', 'in_progress', 'review', 'done', 'cancelled'] as const).map((s) => (
                   <button 
                     key={s} 
                     onClick={() => { setStatusFilter(s); setOpenDropdown(null); }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', border: 'none', background: 'transparent', fontSize: '14px', color: '#475569', cursor: 'pointer', fontWeight: 500 }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', border: 'none', background: 'transparent', fontSize: '14px', color: '#475569', cursor: 'pointer', fontWeight: 500 }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
+                    {s !== 'all' && <StatusIcon status={s} />}
                     <span>{s === 'all' ? 'All Statuses' : STATUS_CONFIG[s].label}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
-
-          {/* Priority Dropdown */}
-          <div style={{ position: 'relative' }}>
-            <button 
-              onClick={() => setOpenDropdown(openDropdown === 'priority' ? null : 'priority')}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
-            >
-              <SlidersHorizontal size={14} />
-              <span>{priorityFilter === 'all' ? 'Priority' : PRIORITY_CONFIG[priorityFilter].label}</span>
-              <ChevronDown size={14} />
-            </button>
-            {openDropdown === 'priority' && (
-              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '4px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: '160px', zIndex: 20, padding: '6px' }}>
-                {(['all', 'urgent', 'high', 'medium', 'low'] as const).map((p) => (
-                  <button 
-                    key={p} 
-                    onClick={() => { setPriorityFilter(p); setOpenDropdown(null); }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '6px', border: 'none', background: 'transparent', fontSize: '14px', color: '#475569', cursor: 'pointer', fontWeight: 500 }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    {p !== 'all' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: PRIORITY_CONFIG[p].dot.replace('bg-', '') === 'red' ? '#ef4444' : PRIORITY_CONFIG[p].dot.replace('bg-', '') === 'orange' ? '#f97316' : PRIORITY_CONFIG[p].dot.replace('bg-', '') === 'yellow' ? '#eab308' : '#22c55e' }} />}
-                    <span>{p === 'all' ? 'All Priorities' : PRIORITY_CONFIG[p].label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <button onClick={loadTasks} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: '#475569', fontWeight: 500, cursor: 'pointer' }}>Refresh</button>
         </div>
 
-        {/* Active Filter Tags */}
-        {(statusFilter !== 'all' || priorityFilter !== 'all') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Filters:</span>
-            {statusFilter !== 'all' && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 500, background: STATUS_CONFIG[statusFilter].bg, color: STATUS_CONFIG[statusFilter].color }}>
-                {STATUS_CONFIG[statusFilter].label}
-                <button onClick={() => setStatusFilter('all')} style={{ display: 'flex', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}><X size={12} /></button>
-              </span>
-            )}
-            {priorityFilter !== 'all' && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 500, background: 'rgba(123,104,238,0.1)', color: '#7c3aed' }}>
-                {PRIORITY_CONFIG[priorityFilter].label}
-                <button onClick={() => setPriorityFilter('all')} style={{ display: 'flex', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}><X size={12} /></button>
-              </span>
-            )}
-            <button onClick={() => { setStatusFilter('all'); setPriorityFilter('all'); }} style={{ fontSize: '13px', color: '#64748b', border: 'none', background: 'transparent', cursor: 'pointer', fontWeight: 500 }}>Clear all</button>
-          </div>
-        )}
+        {/* ClickUp Style Task List */}
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          {loading ? (
+            <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Loading tasks...</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+              <p style={{ fontSize: '16px', marginBottom: '8px' }}>No tasks found</p>
+              <p style={{ fontSize: '14px', color: '#94a3b8' }}>Create your first task to get started</p>
+            </div>
+          ) : (
+            Object.entries(groupedTasks).map(([groupName, groupTasks]) => (
+              groupTasks.length > 0 && (
+                <div key={groupName}>
+                  {/* Group Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <ChevronDown size={16} color="#64748b" />
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{groupName}</span>
+                    <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
+                  </div>
+                  
+                  {/* Task Items */}
+                  {groupTasks.map((task) => (
+                    <div 
+                      key={task.id}
+                      onClick={() => navigate(`/tasks/${task.id}`)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <StatusIcon status={task.status} />
+                      
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '14px', fontWeight: 500, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {task.title}
+                        </p>
+                        {task.tags.length > 0 && (
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                            {task.tags.slice(0, 3).map((tag) => (
+                              <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
-        {/* Task Table */}
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                {['Task', 'Assignee', 'Status', 'Priority', 'Due Date', 'Logs'].map((h) => (
-                  <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Loading tasks...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No tasks yet. Create the first one.</td></tr>
-              ) : filtered.map((task) => {
-                const sc = STATUS_CONFIG[task.status];
-                const pc = PRIORITY_META[task.priority];
-                return (
-                  <tr 
-                    key={task.id}
-                    onClick={() => navigate(`/tasks/${task.id}`)}
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '14px 16px' }}>
-                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>{task.title}</p>
-                      <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                        {task.tags.slice(0, 3).map((tag) => (
-                          <span key={tag} style={{ fontSize: '10px', fontWeight: 500, padding: '2px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                            {tag}
-                          </span>
-                        ))}
-                        {task.tags.length > 3 && (
-                          <span style={{ fontSize: '10px', fontWeight: 500, padding: '2px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>+{task.tags.length - 3}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {/* Assignees */}
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
                         {task.assignees.length > 0 ? (
-                          <>
-                            <div style={{ display: 'flex', gap: '-4px' }}>
-                              {task.assignees.slice(0, 2).map((a) => (
-                                <div key={a.id} style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#111827', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 600, marginLeft: '-4px', border: '2px solid #fff' }}>
-                                  {a.name.split(' ').map(n => n[0]).join('')}
-                                </div>
-                              ))}
-                            </div>
-                            {task.assignees.length === 1 && (
-                              <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>{task.assignees[0].name.split(' ')[0]}</span>
+                          <div style={{ display: 'flex', marginLeft: '-6px' }}>
+                            {task.assignees.slice(0, 3).map((a, i) => (
+                              <div 
+                                key={a.id} 
+                                style={{ 
+                                  width: '28px', 
+                                  height: '28px', 
+                                  borderRadius: '50%', 
+                                  background: ['#7c3aed', '#ec4899', '#f59e0b', '#10b981'][i % 4], 
+                                  color: '#fff', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  fontSize: '11px', 
+                                  fontWeight: 600, 
+                                  marginLeft: '-6px', 
+                                  border: '2px solid #fff',
+                                  zIndex: task.assignees.length - i
+                                }}
+                                title={a.name}
+                              >
+                                {a.name.split(' ').map(n => n[0]).join('')}
+                              </div>
+                            ))}
+                            {task.assignees.length > 3 && (
+                              <div style={{ 
+                                width: '28px', 
+                                height: '28px', 
+                                borderRadius: '50%', 
+                                background: '#e2e8f0', 
+                                color: '#64748b', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                fontSize: '10px', 
+                                fontWeight: 600, 
+                                marginLeft: '-6px', 
+                                border: '2px solid #fff' 
+                              }}>
+                                +{task.assignees.length - 3}
+                              </div>
                             )}
-                          </>
+                          </div>
                         ) : (
-                          <span style={{ fontSize: '13px', color: '#94a3b8' }}>—</span>
+                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>Unassigned</span>
                         )}
                       </div>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, background: sc.bg, color: sc.color }}>
-                        {sc.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: pc.color }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: pc.dot }} />
-                        {pc.label}
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <span style={{ fontSize: '13px', color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f97316' : '#64748b', fontWeight: isOverdue(task.due_date) || isDueSoon(task.due_date) ? 600 : 400 }}>
-                        {task.due_date || '—'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      {task.log_count > 0 ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, background: 'rgba(123,104,238,0.1)', color: '#7c3aed' }}>
-                          {task.log_count}
+
+                      {/* Due Date */}
+                      <div style={{ minWidth: '100px', textAlign: 'right' }}>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          fontWeight: 500,
+                          color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
+                        }}>
+                          {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No date'}
                         </span>
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            ))
+          )}
         </div>
       </div>
 
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} />}
     </AppShell>
+  );
+}
+
+function SummaryCard({ icon, label, value, color, subtext }: { icon: string; label: string; value: number; color: string; subtext: string }) {
+  return (
+    <div style={{ 
+      flex: 1, 
+      minWidth: '140px',
+      background: '#fff', 
+      borderRadius: '12px', 
+      border: '1px solid #e2e8f0',
+      padding: '16px',
+      cursor: 'pointer',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+        <span style={{ fontSize: '20px' }}>{icon}</span>
+        <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748b' }}>{label}</span>
+      </div>
+      <div style={{ fontSize: '28px', fontWeight: 700, color: color, marginBottom: '4px' }}>
+        {value}
+      </div>
+      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{subtext}</div>
+    </div>
   );
 }
