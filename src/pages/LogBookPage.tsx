@@ -1,12 +1,29 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, Tag, Clock, CheckCircle2, AlertCircle, Circle } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
 import { fetchLogs, fetchTask } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
-import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem } from '../types';
+import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem, type TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
+
+function StatusIcon({ status }: { status: TaskStatus }) {
+  const iconStyle = { width: '14px', height: '14px', borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  
+  switch (status) {
+    case 'done':
+      return <div style={{ ...iconStyle, borderColor: '#10b981', background: '#10b981' }}><CheckCircle2 size={10} color="#fff" /></div>;
+    case 'in_progress':
+      return <div style={{ ...iconStyle, borderColor: '#f59e0b', background: '#fef3c7' }}><Clock size={10} color="#f59e0b" /></div>;
+    case 'review':
+      return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={10} color="#7c3aed" /></div>;
+    case 'focus':
+      return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#7c3aed' }}><AlertCircle size={10} color="#fff" /></div>;
+    default:
+      return <div style={{ ...iconStyle, borderColor: '#94a3b8', background: 'transparent' }}><Circle size={10} color="#94a3b8" /></div>;
+  }
+}
 
 export function LogBookPage() {
   const { taskId = '' } = useParams();
@@ -44,44 +61,165 @@ export function LogBookPage() {
 
   return (
     <AppShell>
-      <div style={{ display: 'grid', gap: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '18px' }} className="page-head-stack">
-          <div>
-            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: '#6b7280', fontWeight: 700, marginBottom: '14px' }}><ArrowLeft size={16} /> Back to tasks</Link>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '34px', fontWeight: 800, color: '#111827', margin: 0 }}>{task.title}</h1>
+      <div style={{ display: 'grid', gap: '16px' }}>
+        {/* Back link */}
+        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: '#6b7280', fontWeight: 600, fontSize: '14px' }}>
+          <ArrowLeft size={16} /> Back to tasks
+        </Link>
+
+        {/* Compact Task Info Card */}
+        <div style={{ 
+          background: '#fff', 
+          borderRadius: '16px', 
+          border: '1px solid #e2e8f0',
+          padding: '16px 20px',
+        }}>
+          {/* Title Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111827', margin: 0 }}>{task.title}</h1>
+            <div style={{ display: 'flex', gap: '6px' }}>
               <Badge bg={status.bg} color={status.color} text={status.label} />
               <Badge bg={priority.bg} color={priority.color} text={priority.label} />
             </div>
-            <p style={{ fontSize: '15px', color: '#6b7280', lineHeight: 1.8, marginTop: '12px', maxWidth: '900px' }}>{task.description || 'No description yet.'}</p>
           </div>
-          <button onClick={() => setShowModal(true)} style={{ borderRadius: '22px', border: 'none', background: '#111827', color: '#fff', padding: '16px 20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}><Plus size={18} /> Add log</button>
-        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="summary-grid">
-          <MiniCard label="Due date" value={formatDate(task.due_date) || 'Not set'} />
-          <MiniCard label="Assignees" value={task.assignees.length ? task.assignees.map((item) => item.name).join(', ') : 'Unassigned'} />
-          <MiniCard label="Tags" value={task.tags.length ? task.tags.join(', ') : 'None'} />
-        </div>
+          {/* Description */}
+          {task.description && (
+            <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.6, margin: '0 0 14px 0' }}>
+              {task.description}
+            </p>
+          )}
 
-        <section style={{ display: 'grid', gap: '16px' }}>
-          {logs.length === 0 ? <div style={panelStyle}>No logs yet. Add the first update for this task.</div> : logs.map((log) => (
-            <article key={log.id} style={{ ...panelStyle, padding: '22px 24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start' }} className="task-card-head">
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <span style={{ borderRadius: '999px', background: '#ede9fe', color: '#6d28d9', padding: '8px 12px', fontSize: '12px', fontWeight: 800 }}>{log.category}</span>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280' }}>{formatDate(log.date)}</span>
-                    {log.time_spent && <span style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280' }}>{log.time_spent}</span>}
-                  </div>
-                  <p style={{ fontSize: '15px', lineHeight: 1.8, color: '#111827', marginTop: '14px', marginBottom: 0 }}>{log.event}</p>
-                </div>
-                <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>{log.created_by_profile?.name || 'Unknown'}</div>
-                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{formatDateTime(log.created_at)}</div>
+          {/* Info Grid - 3 columns */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+            gap: '12px',
+            paddingTop: '14px',
+            borderTop: '1px solid #f1f5f9',
+          }}>
+            {/* Due Date */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Calendar size={14} color="#7c3aed" />
+              <div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Due</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+                  {formatDate(task.due_date) || 'Not set'}
                 </div>
               </div>
-              {log.file_name && <div style={{ marginTop: '16px', borderRadius: '18px', background: '#faf5ff', padding: '14px 16px', color: '#6d28d9', fontWeight: 700 }}>Attachment: {log.file_name}</div>}
+            </div>
+
+            {/* Assignees */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={14} color="#7c3aed" />
+              <div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Assignees</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+                  {task.assignees.length ? task.assignees.map(a => a.name.split(' ')[0]).join(', ') : 'Unassigned'}
+                </div>
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Tag size={14} color="#7c3aed" />
+              <div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Tags</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+                  {task.tags.length ? task.tags.slice(0, 2).join(', ') + (task.tags.length > 2 ? ` +${task.tags.length - 2}` : '') : 'None'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Add Log Button */}
+        <button 
+          onClick={() => setShowModal(true)} 
+          style={{ 
+            width: '100%',
+            borderRadius: '12px', 
+            border: 'none', 
+            background: '#111827', 
+            color: '#fff', 
+            padding: '14px 20px', 
+            fontWeight: 600, 
+            fontSize: '15px',
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            gap: '8px', 
+            cursor: 'pointer' 
+          }}
+        >
+          <Plus size={18} /> Add Log
+        </button>
+
+        {/* Logs Section */}
+        <section style={{ display: 'grid', gap: '12px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: '8px 0 4px 0' }}>
+            Activity ({logs.length})
+          </h2>
+          
+          {logs.length === 0 ? (
+            <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}>
+              No logs yet. Add the first update for this task.
+            </div>
+          ) : logs.map((log) => (
+            <article key={log.id} style={{ ...panelStyle, padding: '16px 18px' }}>
+              {/* Log Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={{ 
+                    borderRadius: '6px', 
+                    background: '#ede9fe', 
+                    color: '#6d28d9', 
+                    padding: '4px 10px', 
+                    fontSize: '11px', 
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                  }}>
+                    {log.category}
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>
+                    {formatDate(log.date)}
+                  </span>
+                  {log.time_spent && (
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#9ca3af' }}>
+                      {log.time_spent}
+                    </span>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+                    {log.created_by_profile?.name || 'Unknown'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                    {formatDateTime(log.created_at)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Log Content */}
+              <p style={{ fontSize: '14px', lineHeight: 1.7, color: '#111827', margin: '0 0 12px 0' }}>
+                {log.event}
+              </p>
+
+              {/* Attachment */}
+              {log.file_name && (
+                <div style={{ 
+                  marginTop: '12px', 
+                  borderRadius: '8px', 
+                  background: '#faf5ff', 
+                  padding: '10px 14px', 
+                  color: '#6d28d9', 
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}>
+                  📎 {log.file_name}
+                </div>
+              )}
             </article>
           ))}
         </section>
@@ -91,10 +229,19 @@ export function LogBookPage() {
   );
 }
 
-function MiniCard({ label, value }: { label: string; value: string }) {
-  return <div style={panelStyle}><div style={{ fontSize: '12px', fontWeight: 700, color: '#7c3aed' }}>{label}</div><div style={{ fontSize: '15px', fontWeight: 700, color: '#111827', marginTop: '10px', lineHeight: 1.6 }}>{value}</div></div>;
-}
-
 function Badge({ bg, color, text }: { bg: string; color: string; text: string }) {
-  return <span style={{ borderRadius: '999px', background: bg, color, padding: '8px 12px', fontSize: '12px', fontWeight: 800 }}>{text}</span>;
+  return (
+    <span style={{ 
+      borderRadius: '6px', 
+      background: bg, 
+      color, 
+      padding: '3px 8px', 
+      fontSize: '11px', 
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.3px',
+    }}>
+      {text}
+    </span>
+  );
 }
