@@ -109,8 +109,8 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
             }}
           >
             <BottomNavLink to="/" icon={<Home size={20} />} label="All" />
-            <BottomNavLink to="/my-tasks" icon={<CheckSquare size={20} />} label="My Tasks" />
-            <BottomNavLink to="/my-log" icon={<ScrollText size={20} />} label="My Log" />
+            <BottomNavLink to="/my-tasks" icon={<CheckSquare size={20} />} label="Me" />
+            <BottomNavLink to="/my-log" icon={<ScrollText size={20} />} label="Logs" />
             
             {profile?.role === 'admin' && (
               <BottomNavLink to="/settings" icon={<Settings size={20} />} label="Settings" />
