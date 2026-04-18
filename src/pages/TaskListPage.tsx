@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, Plus, Search, ChevronDown, Filter, X, SlidersHorizontal, CheckCircle2, Clock, AlertCircle, Circle } from 'lucide-react';
+import { Calendar, Plus, Search, ChevronDown, Filter, X, SlidersHorizontal, CheckCircle2, Clock, AlertCircle, Circle, LayoutGrid } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { PRIORITY_META, STATUS_META, type TaskItem } from '../types';
@@ -95,35 +95,35 @@ export function TaskListPage() {
           </button>
         </div>
 
-        {/* ClickUp Style Summary Cards */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+        {/* Summary Cards - Two Row Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
           <SummaryCard 
-            icon="📋"
-            label="All Tasks" 
+            icon={<LayoutGrid size={20} color="#7c3aed" />}
+            title="All Tasks" 
             value={tasks.length} 
-            color="#7c3aed"
-            subtext={`${tasks.filter(t => t.status === 'todo').length} todo`}
+            subValue={`${tasks.filter(t => t.status === 'todo').length} todo`}
+            accentColor="#7c3aed"
           />
           <SummaryCard 
-            icon="🟡"
-            label="In Progress" 
+            icon={<Clock size={20} color="#f59e0b" />}
+            title="In Progress" 
             value={tasks.filter(t => t.status === 'in_progress').length} 
-            color="#f59e0b"
-            subtext="active"
+            subValue="active now"
+            accentColor="#f59e0b"
           />
           <SummaryCard 
-            icon="🟢"
-            label="Completed" 
+            icon={<CheckCircle2 size={20} color="#10b981" />}
+            title="Completed" 
             value={tasks.filter(t => t.status === 'done').length} 
-            color="#10b981"
-            subtext="this week"
+            subValue="this week"
+            accentColor="#10b981"
           />
           <SummaryCard 
-            icon="🔴"
-            label="Overdue" 
+            icon={<AlertCircle size={20} color="#ef4444" />}
+            title="Overdue" 
             value={tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done').length} 
-            color="#ef4444"
-            subtext="urgent"
+            subValue="needs attention"
+            accentColor="#ef4444"
           />
         </div>
 
@@ -288,25 +288,49 @@ export function TaskListPage() {
   );
 }
 
-function SummaryCard({ icon, label, value, color, subtext }: { icon: string; label: string; value: number; color: string; subtext: string }) {
+interface SummaryCardProps {
+  icon: React.ReactNode;
+  title: string;
+  value: number;
+  subValue: string;
+  accentColor: string;
+}
+
+function SummaryCard({ icon, title, value, subValue, accentColor }: SummaryCardProps) {
   return (
     <div style={{ 
-      flex: 1, 
-      minWidth: '140px',
       background: '#fff', 
-      borderRadius: '12px', 
+      borderRadius: '16px', 
       border: '1px solid #e2e8f0',
       padding: '16px',
       cursor: 'pointer',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-        <span style={{ fontSize: '20px' }}>{icon}</span>
-        <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748b' }}>{label}</span>
+      {/* Row 1: Icon + Title + Main Value */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+        <div style={{ 
+          width: '40px', 
+          height: '40px', 
+          borderRadius: '12px', 
+          background: `${accentColor}15`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {icon}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{title}</div>
+        </div>
+        <div style={{ fontSize: '24px', fontWeight: 700, color: accentColor }}>
+          {value}
+        </div>
       </div>
-      <div style={{ fontSize: '28px', fontWeight: 700, color: color, marginBottom: '4px' }}>
-        {value}
+      
+      {/* Row 2: Sub info */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
+        <span style={{ fontSize: '12px', color: '#9ca3af' }}>{subValue}</span>
       </div>
-      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{subtext}</div>
     </div>
   );
 }
