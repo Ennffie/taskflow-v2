@@ -107,10 +107,16 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
 }
 
 export async function fetchMyLogs(): Promise<LogEntry[]> {
-  // Simplified - fetch all logs and filter client-side
+  // Get current user first
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  
+  if (!userId) return [];
+
   const { data, error } = await supabase
     .from('log_entries')
     .select('*')
+    .eq('created_by', userId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -126,6 +132,10 @@ export async function createTask(payload: {
   assignee_ids: string[];
   tags: string[];
 }) {
+  // Get current user
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
@@ -134,6 +144,8 @@ export async function createTask(payload: {
       status: payload.status,
       priority: payload.priority,
       due_date: payload.due_date ?? null,
+      created_by: userId,
+      updated_by: userId,
     })
     .select()
     .single();
@@ -165,9 +177,13 @@ export async function updateTask(
     due_date: string | null;
   }>
 ) {
+  // Get current user
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
   const { error } = await supabase
     .from('tasks')
-    .update({ ...payload, updated_at: new Date().toISOString() })
+    .update({ ...payload, updated_at: new Date().toISOString(), updated_by: userId })
     .eq('id', taskId);
   if (error) throw error;
 }
@@ -186,7 +202,15 @@ export async function createLog(payload: {
   file_name?: string;
   next_status?: string;
 }) {
-  // Insert log entry (without next_status)
+  // Get current user
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  // Insert log entry with created_by
   const { error } = await supabase.from('log_entries').insert({
     task_id: payload.task_id,
     date: payload.date,
@@ -194,6 +218,7 @@ export async function createLog(payload: {
     category: payload.category,
     time_spent: payload.time_spent ?? null,
     file_name: payload.file_name ?? null,
+    created_by: userId,
   });
   if (error) throw error;
 
