@@ -186,6 +186,7 @@ export async function createLog(payload: {
   file_name?: string;
   next_status?: string;
 }) {
+  // Insert log entry
   const { error } = await supabase.from('log_entries').insert({
     task_id: payload.task_id,
     date: payload.date,
@@ -196,6 +197,15 @@ export async function createLog(payload: {
     next_status: payload.next_status ?? null,
   });
   if (error) throw error;
+
+  // If next_status is provided, update the task's status
+  if (payload.next_status && payload.next_status !== '') {
+    const { error: updateError } = await supabase
+      .from('tasks')
+      .update({ status: payload.next_status, updated_at: new Date().toISOString() })
+      .eq('id', payload.task_id);
+    if (updateError) throw updateError;
+  }
 }
 
 export async function fetchLogs(taskId: string): Promise<LogEntry[]> {
