@@ -227,7 +227,74 @@ export async function fetchLogs(taskId: string): Promise<LogEntry[]> {
   })) as LogEntry[];
 }
 
-export async function deleteLog(logId: string) {
-  const { error } = await supabase.from('log_entries').delete().eq('id', logId);
-  if (error) throw error;
+export async function fetchTask(taskId: string): Promise<TaskItem | null> {
+  try {
+    const { data: task, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+    
+    if (error || !task) return null;
+
+    await new Promise(r => setTimeout(r, 50));
+    
+    const [{ data: assignees }, { data: tags }, { data: logs }] = await Promise.all([
+      supabase.from('task_assignees').select('task_id, user_id').eq('task_id', taskId),
+      supabase.from('tags').select('task_id, name').eq('task_id', taskId),
+      supabase.from('log_entries').select('id, task_id').eq('task_id', taskId),
+    ]);
+
+    await new Promise(r => setTimeout(r, 50));
+    
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, name, email, role');
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p as Profile]));
+    
+    const taskAssignees = (assignees ?? [])
+      .map((a: any) => profileMap.get(a.user_id))
+      .filter(Boolean) as Profile[];
+    
+    const taskTags = (tags ?? []).map((t: any) => t.name);
+
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      due_date: task.due_date,
+      created_by: task.created_by,
+      updated_by: task.updated_by,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+      assignees: taskAssignees,
+      tags: taskTags,
+      log_count: (logs ?? []).length,
+    } as TaskItem;
+  } catch (err) {
+    console.error('fetchTask error:', err);
+    return null;
+  }
+}
+
+export async function fetchMyLogs(): Promise<LogEntry[]> {
+  try {
+    const userId = await currentUserId();
+    if (!userId) return [];
+
+    const { data, error } = await supabase
+      .from('log_entries')
+      .select('id, task_id, date, event, category, time_spent, file_name, next_status, created_at, created_by')
+      .eq('created_by', userId)
+      .order('date', { ascending: false });
+
+    if (error) throw error;
+    return (data ?? []) as LogEntry[];
+  } catch (err: any) {
+    console.error('fetchMyLogs error:', err);
+    return [];
+  }
 }
