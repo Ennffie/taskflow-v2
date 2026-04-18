@@ -186,7 +186,7 @@ export async function createLog(payload: {
   file_name?: string;
   next_status?: string;
 }) {
-  // Insert log entry
+  // Insert log entry (without next_status)
   const { error } = await supabase.from('log_entries').insert({
     task_id: payload.task_id,
     date: payload.date,
@@ -194,11 +194,10 @@ export async function createLog(payload: {
     category: payload.category,
     time_spent: payload.time_spent ?? null,
     file_name: payload.file_name ?? null,
-    next_status: payload.next_status ?? null,
   });
   if (error) throw error;
 
-  // If next_status is provided, update the task's status
+  // If status is provided, update the task's status
   if (payload.next_status && payload.next_status !== '') {
     const { error: updateError } = await supabase
       .from('tasks')
