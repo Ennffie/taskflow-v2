@@ -27,8 +27,8 @@ export function LogFormModal({ taskId, onClose, onCreated }: { taskId: string; o
   };
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: '24px', zIndex: 50 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(680px, 100%)', background: '#fff', borderRadius: '28px', padding: '28px' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: '24px', zIndex: 300 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(680px, 100%)', maxHeight: '85vh', overflow: 'auto', background: '#fff', borderRadius: '28px', padding: '28px', zIndex: 301, marginBottom: '80px' }}>
         <div style={{ fontSize: '24px', fontWeight: 800, color: '#111827', marginBottom: '24px' }}>Add log entry</div>
         <div style={{ display: 'grid', gap: '18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }} className="form-grid-2">
