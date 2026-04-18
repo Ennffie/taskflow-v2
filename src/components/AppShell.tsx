@@ -84,7 +84,7 @@ function BottomNavLink({ to, icon, label }: { to: string; icon: React.ReactNode;
         alignItems: 'center',
         justifyContent: 'center',
         gap: '4px',
-        padding: '10px 16px',
+        padding: '10px 12px',
         borderRadius: '40px',
         textDecoration: 'none',
         background: isActive ? '#1e293b' : 'transparent',
@@ -92,11 +92,13 @@ function BottomNavLink({ to, icon, label }: { to: string; icon: React.ReactNode;
         fontWeight: isActive ? 600 : 500,
         fontSize: '11px',
         transition: 'all 0.2s ease',
-        minWidth: '64px',
+        minWidth: '60px',
+        textAlign: 'center',
+        lineHeight: 1.2,
       })}
     >
       {icon}
-      <span>{label}</span>
+      <span style={{ textAlign: 'center', lineHeight: 1.2, maxWidth: '56px', wordWrap: 'break-word' }}>{label}</span>
     </NavLink>
   );
 }
