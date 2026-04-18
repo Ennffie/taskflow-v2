@@ -168,3 +168,13 @@ export async function fetchMyLogs() {
   const logs = await fetchLogs();
   return logs.filter((log) => log.created_by === userId);
 }
+
+export async function deleteTask(taskId: string) {
+  const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+  if (error) throw error;
+}
+
+export async function deleteLog(logId: string) {
+  const { error } = await supabase.from('log_entries').delete().eq('id', logId);
+  if (error) throw error;
+}
