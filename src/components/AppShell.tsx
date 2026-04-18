@@ -24,12 +24,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {profile?.role === 'admin' && <SidebarLink to="/settings" icon={<Settings size={18} />} label="Settings" />}
             </nav>
 
-            <div style={{ marginTop: '32px', padding: '18px', background: '#faf5ff', borderRadius: '22px', border: '1px solid #ede9fe' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#7c3aed', marginBottom: '6px' }}>Signed in</div>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: '#111827' }}>{profile?.name || 'Loading...'}</div>
-              <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>{profile?.email}</div>
-              <button onClick={signOut} style={{ marginTop: '16px', width: '100%', borderRadius: '18px', padding: '14px 16px', background: '#111827', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-                <LogOut size={16} /> Sign out
+            {/* Simplified user section */}
+            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>{profile?.name || 'User'}</div>
+              <button onClick={signOut} style={{ padding: '6px 10px', borderRadius: '8px', background: 'transparent', color: '#6b7280', border: 'none', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }} title="Sign out">
+                <LogOut size={14} />
               </button>
             </div>
           </aside>
