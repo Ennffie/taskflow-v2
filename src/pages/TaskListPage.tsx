@@ -82,8 +82,7 @@ export function TaskListPage() {
 
   const groupedTasks = useMemo(() => {
     const groups: Record<string, TaskItem[]> = {
-      "Today's Focus": filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus'),
-      'Focus': filtered.filter(t => t.status === 'focus'),
+      "Today's Focus": filtered.filter(t => t.status === 'focus'),
       'Overdue': filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done'),
       'Done': filtered.filter(t => t.status === 'done'),
     };
@@ -91,6 +90,7 @@ export function TaskListPage() {
   }, [filtered]);
 
   // Stats for compact cards
+  const allTasksCount = tasks.length;
   const focusCount = tasks.filter(t => t.status === 'focus').length;
   const myTasksCount = tasks.filter(t => t.assignees.some(a => a.id === profile?.id)).length;
   const urgentCount = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
@@ -116,16 +116,24 @@ export function TaskListPage() {
         }}>
           <CompactCard 
             icon={<LayoutGrid size={20} color="#7c3aed" />}
-            label="Focus" 
-            count={focusCount}
-            subLabel="priority"
+            label="All Tasks" 
+            count={allTasksCount}
+            subLabel="total"
             bgColor="#f5f3ff"
             iconBgColor="#ede9fe"
             active
           />
           <CompactCard 
+            icon={<AlertTriangle size={20} color="#7c3aed" />}
+            label="Focus" 
+            count={focusCount}
+            subLabel="priority"
+            bgColor="#ede9fe"
+            iconBgColor="#ddd6fe"
+          />
+          <CompactCard 
             icon={<User size={20} color="#3b82f6" />}
-            label="My Tasks" 
+            label="Me" 
             count={myTasksCount}
             subLabel="assigned"
             bgColor="#eff6ff"
