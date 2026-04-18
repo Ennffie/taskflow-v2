@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Plus, Calendar, Users, Tag, Clock, CheckCircle2, AlertCircle, Circle } from 'lucide-react';
+import { Calendar, Users, Tag, Plus, ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
 import { fetchLogs, fetchTask } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
-import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem, type TaskStatus } from '../types';
+import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem } from '../types';
 import { panelStyle } from './TaskListPage';
 
 function StatusIcon({ status }: { status: TaskStatus }) {
