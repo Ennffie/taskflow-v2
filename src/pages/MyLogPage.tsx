@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { fetchMyLogs } from '../lib/api';
+import { formatDate, formatDateTime } from '../lib/date';
 import type { LogEntry } from '../types';
 import { panelStyle } from './TaskListPage';
 
@@ -24,10 +25,10 @@ export function MyLogPage() {
             <article key={log.id} style={panelStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }} className="task-card-head">
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#7c3aed' }}>{log.category} • {log.date}</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#7c3aed' }}>{log.category} • {formatDate(log.date)}</div>
                   <div style={{ fontSize: '15px', color: '#111827', marginTop: '10px', lineHeight: 1.7 }}>{log.event}</div>
                 </div>
-                <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px' }}>{new Date(log.created_at).toLocaleString()}</div>
+                <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px' }}>{formatDateTime(log.created_at)}</div>
               </div>
             </article>
           ))}

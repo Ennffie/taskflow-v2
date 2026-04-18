@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
 import { fetchLogs, fetchTask } from '../lib/api';
+import { formatDate, formatDateTime } from '../lib/date';
 import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem } from '../types';
 import { panelStyle } from './TaskListPage';
 
@@ -58,7 +59,7 @@ export function LogBookPage() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="summary-grid">
-          <MiniCard label="Due date" value={task.due_date || 'Not set'} />
+          <MiniCard label="Due date" value={formatDate(task.due_date) || 'Not set'} />
           <MiniCard label="Assignees" value={task.assignees.length ? task.assignees.map((item) => item.name).join(', ') : 'Unassigned'} />
           <MiniCard label="Tags" value={task.tags.length ? task.tags.join(', ') : 'None'} />
         </div>
@@ -70,14 +71,14 @@ export function LogBookPage() {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span style={{ borderRadius: '999px', background: '#ede9fe', color: '#6d28d9', padding: '8px 12px', fontSize: '12px', fontWeight: 800 }}>{log.category}</span>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280' }}>{log.date}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280' }}>{formatDate(log.date)}</span>
                     {log.time_spent && <span style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280' }}>{log.time_spent}</span>}
                   </div>
                   <p style={{ fontSize: '15px', lineHeight: 1.8, color: '#111827', marginTop: '14px', marginBottom: 0 }}>{log.event}</p>
                 </div>
                 <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>{log.created_by_profile?.name || 'Unknown'}</div>
-                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{new Date(log.created_at).toLocaleString()}</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{formatDateTime(log.created_at)}</div>
                 </div>
               </div>
               {log.file_name && <div style={{ marginTop: '16px', borderRadius: '18px', background: '#faf5ff', padding: '14px 16px', color: '#6d28d9', fontWeight: 700 }}>Attachment: {log.file_name}</div>}

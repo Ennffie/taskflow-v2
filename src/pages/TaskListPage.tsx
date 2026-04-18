@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
+import { formatDate } from '../lib/date';
 import { STATUS_CONFIG, type TaskItem } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
@@ -306,13 +307,13 @@ export function TaskListPage() {
                         <div style={{ height: '28px' }} />
                       )}
 
-                      {/* Due Date */}
+                      {/* Due Date - using formatDate helper */}
                       <span style={{ 
                         fontSize: '12px', 
                         fontWeight: 500,
                         color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
                       }}>
-                        {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
+                        {formatDate(task.due_date)}
                       </span>
                     </div>
                   </div>
