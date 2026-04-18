@@ -209,31 +209,37 @@ export function TaskListPage() {
                     <div 
                       key={task.id}
                       onClick={() => navigate(`/tasks/${task.id}`)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 20px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
                       onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
-                      <StatusIcon status={task.status} />
+                      <div style={{ marginTop: '2px' }}>
+                        <StatusIcon status={task.status} />
+                      </div>
                       
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '14px', fontWeight: 500, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {/* Task Title - 2 lines */}
+                        <p style={{ 
+                          fontSize: '14px', 
+                          fontWeight: 500, 
+                          color: '#111827', 
+                          margin: 0, 
+                          lineHeight: 1.4,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}>
                           {task.title}
                         </p>
-                        {task.tags.length > 0 && (
-                          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                            {task.tags.slice(0, 3).map((tag) => (
-                              <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                      {/* Right side: Assignees + Due Date + Tags */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '100px' }}>
+                        {/* Assignees */}
                         {task.assignees.length > 0 ? (
                           <div style={{ display: 'flex', marginLeft: '-6px' }}>
-                            {task.assignees.slice(0, 3).map((a, i) => (
+                            {task.assignees.slice(0, 2).map((a, i) => (
                               <div 
                                 key={a.id} 
                                 style={{ 
@@ -247,7 +253,7 @@ export function TaskListPage() {
                                   justifyContent: 'center', 
                                   fontSize: '11px', 
                                   fontWeight: 600, 
-                                  marginLeft: '-6px', 
+                                  marginLeft: i === 0 ? 0 : '-6px', 
                                   border: '2px solid #fff',
                                   zIndex: task.assignees.length - i
                                 }}
@@ -256,7 +262,7 @@ export function TaskListPage() {
                                 {a.name.split(' ').map(n => n[0]).join('')}
                               </div>
                             ))}
-                            {task.assignees.length > 3 && (
+                            {task.assignees.length > 2 && (
                               <div style={{ 
                                 width: '28px', 
                                 height: '28px', 
@@ -271,16 +277,15 @@ export function TaskListPage() {
                                 marginLeft: '-6px', 
                                 border: '2px solid #fff' 
                               }}>
-                                +{task.assignees.length - 3}
+                                +{task.assignees.length - 2}
                               </div>
                             )}
                           </div>
                         ) : (
                           <span style={{ fontSize: '12px', color: '#94a3b8' }}>Unassigned</span>
                         )}
-                      </div>
 
-                      <div style={{ minWidth: '100px', textAlign: 'right' }}>
+                        {/* Due Date */}
                         <span style={{ 
                           fontSize: '12px', 
                           fontWeight: 500,
@@ -288,6 +293,22 @@ export function TaskListPage() {
                         }}>
                           {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No date'}
                         </span>
+
+                        {/* Tags - bottom right */}
+                        {task.tags.length > 0 && (
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                            {task.tags.slice(0, 2).map((tag) => (
+                              <span key={tag} style={{ fontSize: '10px', fontWeight: 500, padding: '2px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                                {tag}
+                              </span>
+                            ))}
+                            {task.tags.length > 2 && (
+                              <span style={{ fontSize: '10px', fontWeight: 500, padding: '2px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                                +{task.tags.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
