@@ -101,10 +101,10 @@ export function TaskListPage() {
     return groups;
   }, [filtered]);
 
-  // Stats for compact cards (only show non-empty groups)
-  const focusCount = tasks.filter(t => t.status === 'focus').length;
-  const overdueCount = tasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
-  const otherCount = tasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+  // Stats for compact cards - use filtered tasks to match list
+  const focusCount = filtered.filter(t => t.status === 'focus').length;
+  const overdueCount = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+  const otherCount = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
