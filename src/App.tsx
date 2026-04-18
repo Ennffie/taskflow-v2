@@ -10,7 +10,18 @@ function App() {
   const { session, loading, profile } = useAuth();
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f5f3ff', color: '#6d28d9', fontWeight: 700 }}>Loading TaskFlow...</div>;
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'grid', 
+        placeItems: 'center', 
+        background: '#f5f3ff', 
+        color: '#6d28d9', 
+        fontWeight: 700 
+      }}>
+        Loading TaskFlow...
+      </div>
+    );
   }
 
   if (!session) {

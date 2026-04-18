@@ -4,13 +4,16 @@ import { HashRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HashRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </HashRouter>
+    <ErrorBoundary>
+      <HashRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </HashRouter>
+    </ErrorBoundary>
   </StrictMode>,
 );
