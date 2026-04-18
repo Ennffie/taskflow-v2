@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Calendar, Users, Tag, Plus, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, Tag } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
@@ -7,23 +7,6 @@ import { fetchLogs, fetchTask } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem } from '../types';
 import { panelStyle } from './TaskListPage';
-
-function StatusIcon({ status }: { status: TaskStatus }) {
-  const iconStyle = { width: '14px', height: '14px', borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-  
-  switch (status) {
-    case 'done':
-      return <div style={{ ...iconStyle, borderColor: '#10b981', background: '#10b981' }}><CheckCircle2 size={10} color="#fff" /></div>;
-    case 'in_progress':
-      return <div style={{ ...iconStyle, borderColor: '#f59e0b', background: '#fef3c7' }}><Clock size={10} color="#f59e0b" /></div>;
-    case 'review':
-      return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={10} color="#7c3aed" /></div>;
-    case 'focus':
-      return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#7c3aed' }}><AlertCircle size={10} color="#fff" /></div>;
-    default:
-      return <div style={{ ...iconStyle, borderColor: '#94a3b8', background: 'transparent' }}><Circle size={10} color="#94a3b8" /></div>;
-  }
-}
 
 export function LogBookPage() {
   const { taskId = '' } = useParams();
