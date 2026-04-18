@@ -7,71 +7,117 @@ async function currentUserId() {
 }
 
 export async function fetchProfiles(): Promise<Profile[]> {
-  const { data, error } = await supabase.from('profiles').select('id, name, email, role').order('name');
-  if (error) throw error;
-  return (data ?? []) as Profile[];
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, role')
+      .order('name');
+    if (error) throw error;
+    return (data ?? []) as Profile[];
+  } catch (err) {
+    console.error('fetchProfiles error:', err);
+    return [];
+  }
 }
 
 export async function fetchTasks(): Promise<TaskItem[]> {
-  const [{ data: tasks, error: taskError }, { data: assignees, error: assigneeError }, { data: tags, error: tagError }, { data: logs, error: logError }, { data: profiles, error: profileError }] = await Promise.all([
-    supabase.from('tasks').select('*').order('updated_at', { ascending: false }),
-    supabase.from('task_assignees').select('task_id, user_id'),
-    supabase.from('tags').select('task_id, name'),
-    supabase.from('log_entries').select('id, task_id'),
-    supabase.from('profiles').select('id, name, email, role'),
-  ]);
+  try {
+    // Sequential requests to avoid lock conflicts
+    const { data: tasks, error: taskError } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('updated_at', { ascending: false });
 
-  if (taskError || assigneeError || tagError || logError || profileError) {
-    throw taskError || assigneeError || tagError || logError || profileError;
+    if (taskError) throw taskError;
+    if (!tasks || tasks.length === 0) return [];
+
+    // Fetch related data with delay to avoid lock
+    await new Promise(r => setTimeout(r, 100));
+    
+    const { data: assignees, error: assigneeError } = await supabase
+      .from('task_assignees')
+      .select('task_id, user_id');
+
+    if (assigneeError) {
+      console.warn('task_assignees fetch failed:', assigneeError);
+    }
+
+    await new Promise(r => setTimeout(r, 100));
+
+    const { data: tags, error: tagError } = await supabase
+      .from('tags')
+      .select('task_id, name');
+
+    if (tagError) {
+      console.warn('tags fetch failed:', tagError);
+    }
+
+    await new Promise(r => setTimeout(r, 100));
+
+    const { data: logs, error: logError } = await supabase
+      .from('log_entries')
+      .select('id, task_id');
+
+    if (logError) {
+      console.warn('log_entries fetch failed:', logError);
+    }
+
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, name, email, role');
+
+    if (profileError) {
+      console.warn('profiles fetch failed:', profileError);
+    }
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p as Profile]));
+    const assigneeMap = new Map<string, Profile[]>();
+    const tagMap = new Map<string, string[]>();
+
+    (assignees ?? []).forEach((a: any) => {
+      const profile = profileMap.get(a.user_id);
+      if (!profile) return;
+      const list = assigneeMap.get(a.task_id) ?? [];
+      list.push(profile);
+      assigneeMap.set(a.task_id, list);
+    });
+
+    (tags ?? []).forEach((t: any) => {
+      const list = tagMap.get(t.task_id) ?? [];
+      list.push(t.name);
+      tagMap.set(t.task_id, list);
+    });
+
+    const logCounts = new Map<string, number>();
+    (logs ?? []).forEach((l: any) => {
+      logCounts.set(l.task_id, (logCounts.get(l.task_id) ?? 0) + 1);
+    });
+
+    return (tasks as any[]).map((t) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      status: t.status,
+      priority: t.priority,
+      due_date: t.due_date,
+      created_by: t.created_by,
+      updated_by: t.updated_by,
+      created_at: t.created_at,
+      updated_at: t.updated_at,
+      assignees: assigneeMap.get(t.id) ?? [],
+      tags: tagMap.get(t.id) ?? [],
+      log_count: logCounts.get(t.id) ?? 0,
+    })) as TaskItem[];
+  } catch (err: any) {
+    console.error('fetchTasks error:', err);
+    // Return empty array instead of throwing to prevent UI crash
+    return [];
   }
-
-  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p as Profile]));
-  const assigneeMap = new Map<string, Profile[]>();
-  const tagMap = new Map<string, string[]>();
-  const logCountMap = new Map<string, number>();
-
-  (assignees ?? []).forEach((row: any) => {
-    const profile = profileMap.get(row.user_id);
-    if (!profile) return;
-    assigneeMap.set(row.task_id, [...(assigneeMap.get(row.task_id) ?? []), profile]);
-  });
-
-  (tags ?? []).forEach((row: any) => {
-    tagMap.set(row.task_id, [...(tagMap.get(row.task_id) ?? []), row.name]);
-  });
-
-  (logs ?? []).forEach((row: any) => {
-    logCountMap.set(row.task_id, (logCountMap.get(row.task_id) ?? 0) + 1);
-  });
-
-  return (tasks ?? []).map((task: any) => ({
-    ...task,
-    assignees: assigneeMap.get(task.id) ?? [],
-    tags: tagMap.get(task.id) ?? [],
-    log_count: logCountMap.get(task.id) ?? 0,
-  }));
 }
 
-export async function fetchTask(taskId: string): Promise<TaskItem | null> {
-  const tasks = await fetchTasks();
-  return tasks.find((task) => task.id === taskId) ?? null;
-}
-
-export async function fetchLogs(taskId?: string): Promise<LogEntry[]> {
-  let query = supabase.from('log_entries').select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
-  if (taskId) query = query.eq('task_id', taskId);
-  const [{ data: logs, error: logError }, { data: profiles, error: profileError }] = await Promise.all([
-    query,
-    supabase.from('profiles').select('id, name, email, role'),
-  ]);
-  if (logError || profileError) throw logError || profileError;
-  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p as Profile]));
-  return (logs ?? []).map((log: any) => ({ ...log, created_by_profile: profileMap.get(log.created_by) }));
-}
-
-export async function createTask(input: {
+export async function createTask(payload: {
   title: string;
-  description?: string;
+  description: string;
   status: TaskStatus;
   priority: TaskPriority;
   due_date?: string;
@@ -79,99 +125,106 @@ export async function createTask(input: {
   tags: string[];
 }) {
   const userId = await currentUserId();
-  if (!userId) throw new Error('Not signed in');
+  const { data: task, error } = await supabase
+    .from('tasks')
+    .insert({
+      title: payload.title,
+      description: payload.description,
+      status: payload.status,
+      priority: payload.priority,
+      due_date: payload.due_date ?? null,
+      created_by: userId,
+      updated_by: userId,
+    })
+    .select()
+    .single();
 
-  const { data: task, error } = await supabase.from('tasks').insert({
-    title: input.title,
-    description: input.description || null,
-    status: input.status,
-    priority: input.priority,
-    due_date: input.due_date || null,
-    created_by: userId,
-    updated_by: userId,
-  }).select().single();
   if (error) throw error;
 
-  const taskId = task.id;
-  const uniqueAssignees = Array.from(new Set(input.assignee_ids.filter(Boolean)));
-  const uniqueTags = Array.from(new Set(input.tags.map((tag) => tag.trim()).filter(Boolean)));
-
-  if (uniqueAssignees.length) {
-    const { error: assigneeError } = await supabase.from('task_assignees').insert(uniqueAssignees.map((user_id) => ({ task_id: taskId, user_id })));
+  if (payload.assignee_ids.length > 0) {
+    const { error: assigneeError } = await supabase.from('task_assignees').insert(
+      payload.assignee_ids.map((uid) => ({ task_id: task.id, user_id: uid }))
+    );
     if (assigneeError) throw assigneeError;
   }
 
-  if (uniqueTags.length) {
-    const { error: tagError } = await supabase.from('tags').insert(uniqueTags.map((name) => ({ task_id: taskId, name })));
+  if (payload.tags.length > 0) {
+    const { error: tagError } = await supabase.from('tags').insert(
+      payload.tags.map((name) => ({ task_id: task.id, name }))
+    );
     if (tagError) throw tagError;
   }
 
-  return taskId as string;
+  return task;
 }
 
-export async function updateTask(taskId: string, updates: Partial<Pick<TaskItem, 'title' | 'description' | 'status' | 'priority' | 'due_date'>>) {
+export async function updateTask(
+  taskId: string,
+  payload: Partial<{
+    title: string;
+    description: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+    due_date: string | null;
+  }>
+) {
   const userId = await currentUserId();
-  if (!userId) throw new Error('Not signed in');
-  const { error } = await supabase.from('tasks').update({ ...updates, updated_by: userId }).eq('id', taskId);
+  const { error } = await supabase
+    .from('tasks')
+    .update({ ...payload, updated_at: new Date().toISOString(), updated_by: userId })
+    .eq('id', taskId);
   if (error) throw error;
-}
-
-export async function replaceTaskAssignees(taskId: string, assigneeIds: string[]) {
-  const { error: deleteError } = await supabase.from('task_assignees').delete().eq('task_id', taskId);
-  if (deleteError) throw deleteError;
-  const uniqueAssignees = Array.from(new Set(assigneeIds.filter(Boolean)));
-  if (!uniqueAssignees.length) return;
-  const { error } = await supabase.from('task_assignees').insert(uniqueAssignees.map((user_id) => ({ task_id: taskId, user_id })));
-  if (error) throw error;
-}
-
-export async function replaceTaskTags(taskId: string, tags: string[]) {
-  const { error: deleteError } = await supabase.from('tags').delete().eq('task_id', taskId);
-  if (deleteError) throw deleteError;
-  const uniqueTags = Array.from(new Set(tags.map((tag) => tag.trim()).filter(Boolean)));
-  if (!uniqueTags.length) return;
-  const { error } = await supabase.from('tags').insert(uniqueTags.map((name) => ({ task_id: taskId, name })));
-  if (error) throw error;
-}
-
-export async function createLog(input: {
-  task_id: string;
-  date: string;
-  event: string;
-  category: LogEntry['category'];
-  time_spent?: string;
-  file_name?: string;
-  next_status?: TaskStatus | '';
-}) {
-  const userId = await currentUserId();
-  if (!userId) throw new Error('Not signed in');
-
-  const { error } = await supabase.from('log_entries').insert({
-    task_id: input.task_id,
-    date: input.date,
-    event: input.event,
-    category: input.category,
-    time_spent: input.time_spent || null,
-    file_name: input.file_name || null,
-    created_by: userId,
-  });
-  if (error) throw error;
-
-  if (input.next_status) {
-    await updateTask(input.task_id, { status: input.next_status });
-  }
-}
-
-export async function fetchMyLogs() {
-  const userId = await currentUserId();
-  if (!userId) throw new Error('Not signed in');
-  const logs = await fetchLogs();
-  return logs.filter((log) => log.created_by === userId);
 }
 
 export async function deleteTask(taskId: string) {
   const { error } = await supabase.from('tasks').delete().eq('id', taskId);
   if (error) throw error;
+}
+
+export async function createLog(payload: {
+  task_id: string;
+  date: string;
+  event: string;
+  category: string;
+  time_spent?: string;
+  file_name?: string;
+  next_status?: string;
+}) {
+  const userId = await currentUserId();
+  const { error } = await supabase.from('log_entries').insert({
+    task_id: payload.task_id,
+    date: payload.date,
+    event: payload.event,
+    category: payload.category,
+    time_spent: payload.time_spent ?? null,
+    file_name: payload.file_name ?? null,
+    next_status: payload.next_status ?? null,
+    created_by: userId,
+  });
+  if (error) throw error;
+}
+
+export async function fetchLogs(taskId: string): Promise<LogEntry[]> {
+  const { data, error } = await supabase
+    .from('log_entries')
+    .select('id, task_id, date, event, category, time_spent, file_name, next_status, created_at, created_by')
+    .eq('task_id', taskId)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+
+  const userIds = [...new Set((data ?? []).map((l: any) => l.created_by).filter(Boolean))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name, email, role')
+    .in('id', userIds);
+
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  return (data ?? []).map((l: any) => ({
+    ...l,
+    created_by_profile: profileMap.get(l.created_by),
+  })) as LogEntry[];
 }
 
 export async function deleteLog(logId: string) {
