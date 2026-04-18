@@ -217,6 +217,7 @@ export function TaskListPage() {
                         <StatusIcon status={task.status} />
                       </div>
                       
+                      {/* Middle: Title + Tags */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {/* Task Title - 2 lines */}
                         <p style={{ 
@@ -232,13 +233,29 @@ export function TaskListPage() {
                         }}>
                           {task.title}
                         </p>
+                        
+                        {/* Tags - below title, left aligned */}
+                        {task.tags.length > 0 && (
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                            {task.tags.slice(0, 3).map((tag) => (
+                              <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                                {tag}
+                              </span>
+                            ))}
+                            {task.tags.length > 3 && (
+                              <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                                +{task.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Right side: Assignees + Due Date + Tags */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '100px' }}>
+                      {/* Right side: Assignees + Due Date */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '80px' }}>
                         {/* Assignees */}
                         {task.assignees.length > 0 ? (
-                          <div style={{ display: 'flex', marginLeft: '-6px' }}>
+                          <div style={{ display: 'flex' }}>
                             {task.assignees.slice(0, 2).map((a, i) => (
                               <div 
                                 key={a.id} 
@@ -293,22 +310,6 @@ export function TaskListPage() {
                         }}>
                           {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No date'}
                         </span>
-
-                        {/* Tags - bottom right */}
-                        {task.tags.length > 0 && (
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-                            {task.tags.slice(0, 2).map((tag) => (
-                              <span key={tag} style={{ fontSize: '10px', fontWeight: 500, padding: '2px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                                {tag}
-                              </span>
-                            ))}
-                            {task.tags.length > 2 && (
-                              <span style={{ fontSize: '10px', fontWeight: 500, padding: '2px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                                +{task.tags.length - 2}
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
                   ))}
