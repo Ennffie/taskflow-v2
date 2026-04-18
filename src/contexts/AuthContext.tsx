@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { Profile, Role } from '../types';
+import type { Profile } from '../types';
 
 interface AuthContextValue {
   user: User | null;
@@ -16,105 +16,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-async function ensureProfile(user: User): Promise<Profile | null> {
-  try {
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id, name, email, role')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (existing) return existing as Profile;
-
-    const fallbackProfile = {
-      id: user.id,
-      name: (user.user_metadata?.name as string) || user.email?.split('@')[0] || 'User',
-      email: user.email || '',
-      role: 'member' as Role,
-    };
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert(fallbackProfile, { onConflict: 'id' })
-      .select('id, name, email, role')
-      .single();
-
-    if (error) {
-      console.error('ensureProfile error', error);
-      return null;
-    }
-
-    return data as Profile;
-  } catch (err) {
-    console.error('ensureProfile failed', err);
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error] = useState<string | null>(null);
 
-  const loadProfile = async (nextUser: User | null) => {
-    if (!nextUser) {
-      setProfile(null);
-      return;
-    }
-    try {
-      const nextProfile = await ensureProfile(nextUser);
-      setProfile(nextProfile);
-    } catch (err) {
-      console.error('loadProfile failed', err);
-      setProfile(null);
-    }
+  // No auto-auth check - storage disabled
+  const loadProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, name, email, role')
+      .eq('id', userId)
+      .single();
+    if (data) setProfile(data as Profile);
   };
-
-  useEffect(() => {
-    // Timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn('Auth loading timeout - forcing ready state');
-        setLoading(false);
-        setError('Auth initialization timeout');
-      }
-    }, 5000);
-
-    const initAuth = async () => {
-      try {
-        const { data, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error('getSession error', sessionError);
-          setError(sessionError.message);
-        }
-        setSession(data.session ?? null);
-        setUser(data.session?.user ?? null);
-        await loadProfile(data.session?.user ?? null);
-      } catch (err) {
-        console.error('Auth init failed', err);
-        setError('Auth initialization failed');
-      } finally {
-        setLoading(false);
-        clearTimeout(timeoutId);
-      }
-    };
-
-    initAuth();
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      await loadProfile(nextSession?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.subscription.unsubscribe();
-      clearTimeout(timeoutId);
-    };
-  }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
@@ -124,21 +41,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     signIn: async (email, password) => {
       try {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        return error ? { error: error.message } : {};
-      } catch (err) {
-        return { error: 'Sign in failed' };
+        setLoading(true);
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) return { error: error.message };
+        setUser(data.user);
+        setSession(data.session);
+        if (data.user) await loadProfile(data.user.id);
+        return {};
+      } catch (err: any) {
+        return { error: err.message || 'Sign in failed' };
+      } finally {
+        setLoading(false);
       }
     },
     signOut: async () => {
-      try {
-        await supabase.auth.signOut();
-      } catch (err) {
-        console.error('Sign out error', err);
-      }
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
     },
     refreshProfile: async () => {
-      await loadProfile(user);
+      if (user) await loadProfile(user.id);
     },
   }), [user, session, profile, loading, error]);
 
