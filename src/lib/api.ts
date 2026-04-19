@@ -123,6 +123,16 @@ export async function fetchMyLogs(): Promise<LogEntry[]> {
   return (data ?? []) as LogEntry[];
 }
 
+export async function fetchAllLogs(): Promise<LogEntry[]> {
+  const { data, error } = await supabase
+    .from('log_entries')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as LogEntry[];
+}
+
 export async function createTask(payload: {
   title: string;
   description: string;
