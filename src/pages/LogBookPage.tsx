@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { ArrowLeft, Plus, Calendar, Users, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Plus, Calendar, Users, Tag } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
