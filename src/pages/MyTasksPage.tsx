@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { formatDate } from '../lib/date';
@@ -62,6 +62,17 @@ export function MyTasksPage() {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [showModal, setShowModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
+  
+  // Section expand/collapse state - default: Other collapsed, others expanded
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    "Today's Focus": true,
+    'Overdue': true,
+    'Other': false,
+    'Done': true,
+  });
+  
+  // Selected tasks for logging
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
 
   const loadTasks = async () => {
     setLoading(true);
@@ -77,6 +88,26 @@ export function MyTasksPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleSection = (sectionName: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionName]: !prev[sectionName]
+    }));
+  };
+
+  const toggleTaskSelection = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation
+    setSelectedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
   };
 
   useEffect(() => { 
@@ -115,6 +146,24 @@ export function MyTasksPage() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>My Tasks</h1>
+          
+          {/* Selected count badge */}
+          {selectedTasks.size > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '8px 16px', 
+              background: '#7c3aed', 
+              borderRadius: '20px',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: 600
+            }}>
+              <CheckCircle2 size={16} />
+              {selectedTasks.size} selected for log
+            </div>
+          )}
         </div>
 
         {/* Horizontal Scrollable Compact Cards - 3 cards */}
@@ -204,75 +253,142 @@ export function MyTasksPage() {
               <p style={{ fontSize: '14px', color: '#94a3b8' }}>Tasks assigned to you will appear here</p>
             </div>
           ) : (
-            Object.entries(groupedTasks).map(([groupName, groupTasks]) => (
-              <div key={groupName}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <ChevronDown size={16} color="#64748b" />
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{groupName}</span>
-                  <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
-                </div>
-                
-                {groupTasks.map((task) => (
+            Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
+              const isExpanded = expandedSections[groupName] ?? true;
+              const isFocusSection = groupName === "Today's Focus";
+              
+              return (
+                <div key={groupName} style={isFocusSection ? { 
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  borderLeft: '4px solid #7c3aed'
+                } : {}}>
                   <div 
-                    key={task.id}
-                    onClick={() => navigate(`/tasks/${task.id}`)}
-                    style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 20px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    onClick={() => toggleSection(groupName)}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px', 
+                      padding: '12px 20px', 
+                      background: isFocusSection ? 'rgba(124, 58, 237, 0.08)' : '#f8fafc', 
+                      borderBottom: '1px solid #e2e8f0',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
                   >
-                    <div style={{ marginTop: '2px' }}>
-                      <StatusIcon status={task.status} />
-                    </div>
-                    
-                    {/* Middle: Title + Tags */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* Task Title - 2 lines */}
-                      <p style={{ 
-                        fontSize: '14px', 
-                        fontWeight: 500, 
-                        color: '#111827', 
-                        margin: 0, 
-                        lineHeight: 1.4,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}>
-                        {task.title}
-                      </p>
-                      
-                      {/* Tags - below title, left aligned */}
-                      {task.tags.length > 0 && (
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-                          {task.tags.slice(0, 3).map((tag) => (
-                            <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                              {tag}
-                            </span>
-                          ))}
-                          {task.tags.length > 3 && (
-                            <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                              +{task.tags.length - 3}
-                            </span>
+                    {isExpanded ? <ChevronUp size={16} color="#64748b" /> : <ChevronDown size={16} color="#64748b" />}
+                    <span style={{ 
+                      fontSize: '13px', 
+                      fontWeight: 700, 
+                      color: isFocusSection ? '#6d28d9' : '#64748b', 
+                      textTransform: 'uppercase', 
+                      letterSpacing: '0.5px' 
+                    }}>
+                      {groupName}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
+                    {isFocusSection && <span style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 8px', background: '#7c3aed', color: '#fff', borderRadius: '10px', fontWeight: 600 }}>FOCUS</span>}
+                  </div>
+                  
+                  {isExpanded && groupTasks.map((task) => {
+                    const isSelected = selectedTasks.has(task.id);
+                    return (
+                      <div 
+                        key={task.id}
+                        onClick={() => navigate(`/tasks/${task.id}`)}
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'flex-start', 
+                          gap: '12px', 
+                          padding: '14px 20px', 
+                          borderBottom: '1px solid #f1f5f9', 
+                          cursor: 'pointer',
+                          background: isFocusSection ? 'rgba(255,255,255,0.5)' : 'transparent'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = isFocusSection ? 'rgba(255,255,255,0.8)' : '#f8fafc'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = isFocusSection ? 'rgba(255,255,255,0.5)' : 'transparent'}
+                      >
+                        {/* Large Checkbox for logging */}
+                        <div 
+                          onClick={(e) => toggleTaskSelection(task.id, e)}
+                          style={{
+                            width: '44px',
+                            height: '44px',
+                            minWidth: '44px',
+                            borderRadius: '12px',
+                            background: isSelected ? '#7c3aed' : '#f3e8ff',
+                            border: `2px solid ${isSelected ? '#7c3aed' : '#ddd6fe'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            marginTop: '2px'
+                          }}
+                          title={isSelected ? 'Click to deselect' : 'Click to select for logging'}
+                        >
+                          {isSelected ? (
+                            <CheckCircle2 size={24} color="#fff" />
+                          ) : (
+                            <div style={{
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              background: '#ddd6fe'
+                            }} />
                           )}
                         </div>
-                      )}
-                    </div>
+                        
+                        {/* Middle: Title + Tags */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {/* Task Title - 2 lines */}
+                          <p style={{ 
+                            fontSize: '14px', 
+                            fontWeight: 500, 
+                            color: '#111827', 
+                            margin: 0, 
+                            lineHeight: 1.4,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}>
+                            {task.title}
+                          </p>
+                          
+                          {/* Tags - below title, left aligned */}
+                          {task.tags.length > 0 && (
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                              {task.tags.slice(0, 3).map((tag) => (
+                                <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                                  {tag}
+                                </span>
+                              ))}
+                              {task.tags.length > 3 && (
+                                <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
+                                  +{task.tags.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
-                    {/* Right side: Due Date only (no assignees since these are my tasks) */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '80px' }}>
-                      {/* Due Date */}
-                      <span style={{ 
-                        fontSize: '12px', 
-                        fontWeight: 500,
-                        color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
-                      }}>
-                        {formatDate(task.due_date)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))
+                        {/* Right side: Due Date */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '80px' }}>
+                          {/* Due Date */}
+                          <span style={{ 
+                            fontSize: '12px', 
+                            fontWeight: 500,
+                            color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
+                          }}>
+                            {formatDate(task.due_date)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
