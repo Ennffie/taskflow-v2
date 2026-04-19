@@ -1,20 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
-import { fetchMyLogs } from '../lib/api';
+import { fetchMyLogs, fetchTasks } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
-import type { LogEntry } from '../types';
+import type { LogEntry, TaskItem } from '../types';
 import { panelStyle } from './TaskListPage';
 
 export function MyLogPage() {
+  const navigate = useNavigate();
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTaskSelector, setShowTaskSelector] = useState(false);
 
   useEffect(() => {
     fetchMyLogs().then(setLogs).catch((error) => alert(`Load my logs failed: ${error.message}`)).finally(() => setLoading(false));
   }, []);
+
+  // Load tasks for selector
+  useEffect(() => {
+    if (showTaskSelector) {
+      fetchTasks().then(setTasks).catch((error) => alert(`Load tasks failed: ${error.message}`));
+    }
+  }, [showTaskSelector]);
 
   // Get all dates that have logs (for highlighting in calendar)
   const datesWithLogs = useMemo(() => {
@@ -86,9 +97,30 @@ export function MyLogPage() {
   return (
     <AppShell>
       <div style={{ display: 'grid', gap: '18px' }}>
-        {/* Header with Date Navigation */}
+        {/* Header with Date Navigation and Add Log Button */}
         <section style={panelStyle}>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827', marginBottom: '4px' }}>My logs</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>My logs</div>
+            <button
+              onClick={() => setShowTaskSelector(true)}
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                border: 'none',
+                background: '#7c3aed',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',
+              }}
+              title="Add Log"
+            >
+              <Plus size={24} />
+            </button>
+          </div>
           <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.6, margin: '0 0 16px 0' }}>
             A clean list of updates you have posted across the workspace.
           </p>
@@ -179,6 +211,96 @@ export function MyLogPage() {
             </button>
           </div>
         </section>
+
+        {/* Task Selector Modal */}
+        {showTaskSelector && (
+          <div 
+            onClick={() => setShowTaskSelector(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 400,
+              padding: '24px',
+            }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#fff',
+                borderRadius: '20px',
+                padding: '24px',
+                width: '100%',
+                maxWidth: '400px',
+                maxHeight: '80vh',
+                overflow: 'auto',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              }}
+            >
+              <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827', marginBottom: '8px' }}>
+                Select Task
+              </div>
+              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>
+                Choose a task to add a log entry:
+              </p>
+
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {tasks.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                    No tasks found. Create a task first.
+                  </div>
+                ) : (
+                  tasks.map((task) => (
+                    <button
+                      key={task.id}
+                      onClick={() => {
+                        setShowTaskSelector(false);
+                        navigate(`/tasks/${task.id}`);
+                      }}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        background: '#fff',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                      }}
+                    >
+                      <span style={{ fontSize: '15px', fontWeight: 600, color: '#111827' }}>
+                        {task.title}
+                      </span>
+                      <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                        Status: {task.status} • {task.log_count} logs
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowTaskSelector(false)}
+                style={{
+                  width: '100%',
+                  marginTop: '16px',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#f3f4f6',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Date Picker Modal */}
         {showDatePicker && (
