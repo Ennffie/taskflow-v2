@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Calendar, FileText, X } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { fetchMyLogs, fetchTasks, createLog, updateTask, updateLog } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
-import type { LogEntry, TaskItem } from '../types';
+import type { LogEntry, TaskItem, LogCategory, TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
 
 export function MyLogPage() {
@@ -18,7 +18,11 @@ export function MyLogPage() {
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [editingLog, setEditingLog] = useState<LogEntry | null>(null);
   const [editEvent, setEditEvent] = useState('');
-  const [editCategory, setEditCategory] = useState('other');
+  const [editCategory, setEditCategory] = useState<LogCategory>('design');
+  const [editDate, setEditDate] = useState('');
+  const [editTimeSpent, setEditTimeSpent] = useState('');
+  const [editFileName, setEditFileName] = useState('');
+  const [editNextStatus, setEditNextStatus] = useState<TaskStatus | ''>('');
   const [todayWork, setTodayWork] = useState('');
   const [tomorrowWork, setTomorrowWork] = useState('');
   const [saving, setSaving] = useState(false);
@@ -77,7 +81,11 @@ export function MyLogPage() {
   const handleEditClick = (log: LogEntry) => {
     setEditingLog(log);
     setEditEvent(log.event);
-    setEditCategory(log.category);
+    setEditCategory(log.category as LogCategory || 'design');
+    setEditDate(log.date || new Date().toISOString().slice(0, 10));
+    setEditTimeSpent(log.time_spent || '');
+    setEditFileName(log.file_name || '');
+    // next_status not available in LogEntry type
     setShowEditModal(true);
   };
 
@@ -89,6 +97,8 @@ export function MyLogPage() {
       await updateLog(editingLog.id, {
         event: editEvent.trim(),
         category: editCategory,
+        time_spent: editTimeSpent,
+        file_name: editFileName,
       });
       
       // Refresh logs
@@ -98,13 +108,17 @@ export function MyLogPage() {
       setShowEditModal(false);
       setEditingLog(null);
       setEditEvent('');
-      setEditCategory('other');
+      setEditCategory('design');
+      setEditDate('');
+      setEditTimeSpent('');
+      setEditFileName('');
     } catch (error: any) {
       alert(`Update log failed: ${error?.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
   };
+
   const handleSelectTask = (task: TaskItem) => {
     setSelectedTask(task);
     setShowTaskSelector(false);
@@ -205,6 +219,17 @@ export function MyLogPage() {
 
   const calendarDays = generateCalendarDays();
   const currentMonthYear = new Date(selectedDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Input style matching LogFormModal
+  const inputStyle = {
+    width: '100%',
+    padding: '14px',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+    fontSize: '14px',
+    background: '#fff',
+    boxSizing: 'border-box' as const,
+  };
 
   return (
     <AppShell>
@@ -326,7 +351,7 @@ export function MyLogPage() {
           </div>
         )}
 
-        {/* Edit Log Modal */}
+        {/* Edit Log Modal - Updated to match LogFormModal */}
         {showEditModal && editingLog && (
           <div onClick={() => setShowEditModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
@@ -356,41 +381,83 @@ export function MyLogPage() {
               </div>
 
               <div style={{ display: 'grid', gap: '18px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Category:</label>
-                  <select 
-                    value={editCategory} 
-                    onChange={(e) => setEditCategory(e.target.value)}
-                    style={{ 
-                      width: '100%', 
-                      padding: '14px', 
-                      borderRadius: '12px', 
-                      border: '1px solid #e2e8f0', 
-                      fontSize: '14px',
-                      background: '#fff'
-                    }}
-                  >
-                    {['design', 'ux', 'development', 'testing', 'research', 'other'].map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                {/* Row 1: Date + Category */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                    Date
+                    <input 
+                      type="date" 
+                      value={editDate} 
+                      onChange={(e) => setEditDate(e.target.value)} 
+                      style={inputStyle} 
+                    />
+                  </label>
+                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                    Category
+                    <select 
+                      value={editCategory} 
+                      onChange={(e) => setEditCategory(e.target.value as LogCategory)}
+                      style={inputStyle}
+                    >
+                      <option value="design">Design</option>
+                      <option value="research">Research</option>
+                      <option value="meeting">Meeting</option>
+                      <option value="review">Review</option>
+                      <option value="development">Development</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Content:</label>
+                
+                {/* Row 2: Update */}
+                <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                  Update
                   <textarea 
                     value={editEvent} 
                     onChange={(e) => setEditEvent(e.target.value)} 
-                    placeholder="Enter log content..."
-                    style={{ 
-                      width: '100%', 
-                      minHeight: '160px', 
-                      padding: '14px', 
-                      borderRadius: '12px', 
-                      border: '1px solid #e2e8f0', 
-                      fontSize: '14px', 
-                      resize: 'vertical' 
-                    }} 
+                    placeholder="What changed, what was decided, and what happens next"
+                    style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} 
                   />
+                </label>
+                
+                {/* Row 3: File name */}
+                <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                  File name
+                  <input 
+                    value={editFileName} 
+                    onChange={(e) => setEditFileName(e.target.value)} 
+                    placeholder="Optional"
+                    style={inputStyle} 
+                  />
+                </label>
+                
+                {/* Row 4: Time spent + Next status */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                    Time spent
+                    <input 
+                      value={editTimeSpent} 
+                      onChange={(e) => setEditTimeSpent(e.target.value)} 
+                      placeholder="e.g. 1.5h"
+                      style={inputStyle} 
+                    />
+                  </label>
+                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                    Status
+                    <select 
+                      value={editNextStatus} 
+                      onChange={(e) => setEditNextStatus(e.target.value as TaskStatus | '')}
+                      style={inputStyle}
+                    >
+                      <option value="">No change</option>
+                      <option value="todo">Todo</option>
+                      <option value="focus">Focus</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="review">Review</option>
+                      <option value="done">Done</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </label>
                 </div>
               </div>
 
