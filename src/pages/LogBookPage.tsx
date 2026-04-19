@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, X,
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
-import { fetchLogs, fetchTask, updateTask, deleteTask, fetchProfiles, updateLog } from '../lib/api';
+import { fetchLogs, fetchTask, updateTask, deleteTask, fetchProfiles, updateLog, deleteLog } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { useAuth } from '../contexts/AuthContext';
 import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem, type Profile, type TaskStatus, type TaskPriority, type LogCategory } from '../types';
@@ -41,6 +41,7 @@ export function LogBookPage() {
   const [editLogTimeSpent, setEditLogTimeSpent] = useState('');
   const [editLogFileName, setEditLogFileName] = useState('');
   const [savingLog, setSavingLog] = useState(false);
+  const [deletingLog, setDeletingLog] = useState(false);
 
   const loadData = async () => {
     if (!taskId) return;
@@ -165,6 +166,25 @@ export function LogBookPage() {
       alert(`Update log failed: ${error?.message || 'Unknown error'}`);
     } finally {
       setSavingLog(false);
+    }
+  };
+
+  const handleLogDelete = async () => {
+    if (!editingLog) return;
+    setDeletingLog(true);
+    try {
+      await deleteLog(editingLog.id);
+      await loadData();
+      setShowLogEditModal(false);
+      setEditingLog(null);
+      setEditLogEvent('');
+      setEditLogCategory('design');
+      setEditLogTimeSpent('');
+      setEditLogFileName('');
+    } catch (error: any) {
+      alert(`Delete log failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setDeletingLog(false);
     }
   };
 
@@ -358,8 +378,24 @@ export function LogBookPage() {
                 <div style={{ fontSize: '24px', fontWeight: 800 }}>Edit Log</div>
                 <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Task: <strong>{task?.title || 'Unknown Task'}</strong></div>
               </div>
-              <button onClick={() => setShowLogEditModal(false)} style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <X size={20} color="#374151" />
+              <button 
+                onClick={handleLogDelete}
+                disabled={deletingLog}
+                style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '50%', 
+                  border: 'none', 
+                  background: '#fef2f2', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  cursor: deletingLog ? 'not-allowed' : 'pointer',
+                  opacity: deletingLog ? 0.6 : 1,
+                }}
+                title="Delete Log"
+              >
+                <Trash2 size={20} color="#dc2626" />
               </button>
             </div>
             <div style={{ display: 'grid', gap: '18px' }}>
