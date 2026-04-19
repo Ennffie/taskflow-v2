@@ -25,6 +25,8 @@ export function MyLogPage() {
 
   useEffect(() => {
     fetchMyLogs().then(setLogs).catch((error) => alert(`Load my logs failed: ${error.message}`)).finally(() => setLoading(false));
+    // Load all tasks for task name mapping
+    fetchTasks().then(setTasks).catch((error) => console.error('Load tasks failed:', error));
   }, []);
 
   // Load tasks for selector
@@ -47,6 +49,13 @@ export function MyLogPage() {
   const filteredLogs = useMemo(() => {
     return logs.filter(log => log.date === selectedDate);
   }, [logs, selectedDate]);
+
+  // Task name lookup map
+  const taskMap = useMemo(() => {
+    const map = new Map<string, string>();
+    tasks.forEach(task => map.set(task.id, task.title));
+    return map;
+  }, [tasks]);
 
   // Navigation
   const goToPreviousDay = () => {
@@ -322,7 +331,12 @@ export function MyLogPage() {
           <div onClick={() => setShowEditModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <div style={{ fontSize: '24px', fontWeight: 800 }}>Edit Log</div>
+                <div>
+                  <div style={{ fontSize: '24px', fontWeight: 800 }}>Edit Log</div>
+                  <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
+                    Task: <strong>{taskMap.get(editingLog.task_id) || 'Unknown Task'}</strong>
+                  </div>
+                </div>
                 <button 
                   onClick={() => setShowEditModal(false)}
                   style={{ 
@@ -439,18 +453,30 @@ export function MyLogPage() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-                <div style={{ flex: 1 }}>
-                  {/* Category only (no date since it's always today) */}
-                  <div style={{ 
-                    fontSize: '13px', 
-                    fontWeight: 700, 
-                    color: '#7c3aed',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    {log.category}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Task Name + Category */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ 
+                      fontSize: '14px', 
+                      fontWeight: 700, 
+                      color: '#111827'
+                    }}>
+                      {taskMap.get(log.task_id) || 'Unknown Task'}
+                    </span>
+                    <span style={{ 
+                      fontSize: '12px', 
+                      fontWeight: 600, 
+                      color: '#7c3aed',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      padding: '2px 8px',
+                      background: '#ede9fe',
+                      borderRadius: '6px'
+                    }}>
+                      {log.category}
+                    </span>
                   </div>
-                  <div style={{ fontSize: '15px', color: '#111827', marginTop: '10px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{log.event}</div>
+                  <div style={{ fontSize: '15px', color: '#374151', marginTop: '10px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{log.event}</div>
                 </div>
                 <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDateTime(log.created_at)}</div>
               </div>
