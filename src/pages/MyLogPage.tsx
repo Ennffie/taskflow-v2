@@ -84,7 +84,7 @@ export function MyLogPage() {
         await createLog({
           task_id: selectedTask.id,
           date: today,
-          event: `【今日完成】\n${todayWork.trim()}`,
+          event: `[Today's Work]\n${todayWork.trim()}`,
           category: 'other',
           time_spent: '',
           file_name: '',
@@ -97,7 +97,7 @@ export function MyLogPage() {
         await createLog({
           task_id: selectedTask.id,
           date: tomorrow,
-          event: `【明天計劃】\n${tomorrowWork.trim()}`,
+          event: `[Tomorrow's Plan]\n${tomorrowWork.trim()}`,
           category: 'other',
           time_spent: '',
           file_name: '',
@@ -107,8 +107,8 @@ export function MyLogPage() {
 
       // 3. Update task description
       const currentDesc = selectedTask.description || '';
-      const todayEntry = todayWork.trim() ? `[${today}] 今日完成：\n${todayWork.trim()}` : '';
-      const tomorrowEntry = tomorrowWork.trim() ? `[${tomorrow}] 明天計劃：\n${tomorrowWork.trim()}` : '';
+      const todayEntry = todayWork.trim() ? `[${today}] Today's Work:\n${todayWork.trim()}` : '';
+      const tomorrowEntry = tomorrowWork.trim() ? `[${tomorrow}] Tomorrow's Plan:\n${tomorrowWork.trim()}` : '';
       const newDesc = [currentDesc, todayEntry, tomorrowEntry].filter(Boolean).join('\n\n');
       
       if (todayWork.trim() || tomorrowWork.trim()) {
@@ -239,13 +239,13 @@ export function MyLogPage() {
 
               <div style={{ display: 'grid', gap: '18px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>今日做咗乜：</label>
-                  <textarea value={todayWork} onChange={(e) => setTodayWork(e.target.value)} placeholder={`例如：\n- 完成 Login page design\n- Review 咗 PR #123`} style={{ width: '100%', minHeight: '120px', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What did you do today:</label>
+                  <textarea value={todayWork} onChange={(e) => setTodayWork(e.target.value)} placeholder={`Example:\n- Completed Login page design\n- Reviewed PR #123`} style={{ width: '100%', minHeight: '120px', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>明天會做乜：</label>
-                  <textarea value={tomorrowWork} onChange={(e) => setTomorrowWork(e.target.value)} placeholder={`例如：\n- Start on Dashboard\n- Client meeting at 2pm`} style={{ width: '100%', minHeight: '120px', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
-                  <p style={{ fontSize: '12px', color: '#7c3aed', marginTop: '6px' }}>💡 明天做嘅嘢會自動將 task status 改成 Focus</p>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What will you do tomorrow:</label>
+                  <textarea value={tomorrowWork} onChange={(e) => setTomorrowWork(e.target.value)} placeholder={`Example:\n- Start on Dashboard\n- Client meeting at 2pm`} style={{ width: '100%', minHeight: '120px', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
+                  <p style={{ fontSize: '12px', color: '#7c3aed', marginTop: '6px' }}>💡 Tomorrow's plan will automatically set task status to Focus</p>
                 </div>
               </div>
 
