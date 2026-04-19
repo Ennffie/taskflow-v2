@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { formatDate } from '../lib/date';
 import { STATUS_CONFIG, type TaskItem } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
+import { useAuth } from '../contexts/AuthContext';
 import type { TaskStatus } from '../types';
 
 export const panelStyle = {
@@ -61,12 +62,23 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 
 export function TaskListPage() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [showModal, setShowModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
+  
+  // Section expand/collapse state - default: Other collapsed, others expanded
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    "Today's Focus": true,
+    'Overdue': true,
+    'Other': false,
+    'Done': true,
+  });
+  
+  const userName = profile?.name || 'User';
 
   const loadTasks = async () => {
     setLoading(true);
@@ -77,6 +89,13 @@ export function TaskListPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleSection = (sectionName: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionName]: !prev[sectionName]
+    }));
   };
 
   useEffect(() => { void loadTasks(); }, []);
@@ -110,9 +129,17 @@ export function TaskListPage() {
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
       <div style={{ maxWidth: '1200px' }}>
-        {/* Header */}
+        {/* Header with User */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>All Tasks</h1>
+          
+          {/* User Profile */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <User size={16} color="#fff" />
+            </div>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{userName}</span>
+          </div>
         </div>
 
         {/* Horizontal Scrollable Compact Cards - 3 cards only */}
@@ -202,21 +229,57 @@ export function TaskListPage() {
               <p style={{ fontSize: '14px', color: '#94a3b8' }}>Create your first task to get started</p>
             </div>
           ) : (
-            Object.entries(groupedTasks).map(([groupName, groupTasks]) => (
-              <div key={groupName}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <ChevronDown size={16} color="#64748b" />
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{groupName}</span>
-                  <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
-                </div>
-                
-                {groupTasks.map((task) => (
+            Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
+              const isExpanded = expandedSections[groupName] ?? true;
+              const isFocusSection = groupName === "Today's Focus";
+              
+              return (
+                <div key={groupName} style={isFocusSection ? { 
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  borderLeft: '4px solid #7c3aed'
+                } : {}}>
+                  <div 
+                    onClick={() => toggleSection(groupName)}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px', 
+                      padding: '12px 20px', 
+                      background: isFocusSection ? 'rgba(124, 58, 237, 0.08)' : '#f8fafc', 
+                      borderBottom: '1px solid #e2e8f0',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
+                  >
+                    {isExpanded ? <ChevronUp size={16} color="#64748b" /> : <ChevronDown size={16} color="#64748b" />}
+                    <span style={{ 
+                      fontSize: '13px', 
+                      fontWeight: 700, 
+                      color: isFocusSection ? '#6d28d9' : '#64748b', 
+                      textTransform: 'uppercase', 
+                      letterSpacing: '0.5px' 
+                    }}>
+                      {groupName}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
+                    {isFocusSection && <span style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 8px', background: '#7c3aed', color: '#fff', borderRadius: '10px', fontWeight: 600 }}>FOCUS</span>}
+                  </div>
+                  
+                  {isExpanded && groupTasks.map((task) => (
                   <div 
                     key={task.id}
                     onClick={() => navigate(`/tasks/${task.id}`)}
-                    style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 20px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'flex-start', 
+                      gap: '12px', 
+                      padding: '14px 20px', 
+                      borderBottom: '1px solid #f1f5f9', 
+                      cursor: 'pointer',
+                      background: isFocusSection ? 'rgba(255,255,255,0.5)' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = isFocusSection ? 'rgba(255,255,255,0.8)' : '#f8fafc'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = isFocusSection ? 'rgba(255,255,255,0.5)' : 'transparent'}
                   >
                     <div style={{ marginTop: '2px' }}>
                       <StatusIcon status={task.status} />
@@ -318,8 +381,9 @@ export function TaskListPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            ))
+                </div>
+              );
+            })
           )}
         </div>
       </div>
