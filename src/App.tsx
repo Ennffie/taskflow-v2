@@ -6,6 +6,7 @@ import { MyTasksPage } from './pages/MyTasksPage';
 import { LogBookPage } from './pages/LogBookPage';
 import { MyLogPage } from './pages/MyLogPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ImportReviewPage } from './pages/ImportReviewPage';
 
 function App() {
   const { session, profile } = useAuth();
@@ -20,6 +21,7 @@ function App() {
       <Route path="/my-tasks" element={<MyTasksPage />} />
       <Route path="/tasks/:taskId" element={<LogBookPage />} />
       <Route path="/my-log" element={<MyLogPage />} />
+      <Route path="/import-review" element={profile?.role === 'admin' ? <ImportReviewPage /> : <Navigate to="/" replace />} />
       <Route path="/settings" element={profile?.role === 'admin' ? <SettingsPage /> : <Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

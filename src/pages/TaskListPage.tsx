@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { formatDate } from '../lib/date';
@@ -15,6 +15,16 @@ export const panelStyle = {
   border: '1px solid #e2e8f0',
   padding: '20px',
 };
+
+interface ImportRow {
+  rowIndex: number;
+  taskId: string | null;
+  title: string;
+  status: string;
+  assigneeNames: string[];
+  dueDate: string | null;
+  description: string;
+}
 
 function isDueSoon(dueDate: string | null): boolean {
   if (!dueDate) return false;
@@ -68,6 +78,7 @@ export function TaskListPage() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [showModal, setShowModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
   
   // Section expand/collapse state - default: Other collapsed, others expanded
@@ -79,6 +90,7 @@ export function TaskListPage() {
   });
   
   const userName = profile?.name || 'User';
+  const isAdmin = profile?.role === 'admin';
 
   const loadTasks = async () => {
     setLoading(true);
@@ -133,12 +145,37 @@ export function TaskListPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>All Tasks</h1>
           
-          {/* User Profile */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <User size={16} color="#fff" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Import Tasks Button - Admin only */}
+            {isAdmin && (
+              <button
+                onClick={() => setShowImportModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: '#475569',
+                }}
+              >
+                <Upload size={16} />
+                Import Tasks
+              </button>
+            )}
+            
+            {/* User Profile */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <User size={16} color="#fff" />
+              </div>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{userName}</span>
             </div>
-            <span style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{userName}</span>
           </div>
         </div>
 
@@ -401,11 +438,289 @@ export function TaskListPage() {
       </div>
 
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} />}
+      {showImportModal && <ImportModal onClose={() => setShowImportModal(false)} />}
     </AppShell>
   );
 }
 
-// Compact Card Component - like the reference image
+// Import Modal Component
+function ImportModal({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+  const [previewData, setPreviewData] = useState<ImportRow[] | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (selected) {
+      if (selected.name.endsWith('.xlsx') || selected.name.endsWith('.xls') || selected.name.endsWith('.csv')) {
+        setError(null);
+        parseFile(selected);
+      } else {
+        setError('Please upload XLSX, XLS, or CSV file');
+      }
+    }
+  };
+
+  const parseFile = async (file: File) => {
+    setParsing(true);
+    setError(null);
+    
+    try {
+      const text = await file.text();
+      const rows = text.split('\n').filter(r => r.trim());
+      
+      // Parse CSV/XLS format: Date | Member | Task ID | Task Name | Update | Status
+      const parsed: ImportRow[] = [];
+      let hasHeader = true;
+      
+      for (let i = hasHeader ? 1 : 0; i < rows.length; i++) {
+        const cols = rows[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+        
+        if (cols.length >= 5) {
+          const taskName = cols[3] || '';
+          const update = cols[4] || '';
+          const status = cols[5] || 'New';
+          
+          parsed.push({
+            rowIndex: i,
+            taskId: null,
+            title: taskName,
+            status: status,
+            assigneeNames: cols[1] ? [cols[1]] : [],
+            dueDate: null,
+            description: update,
+          });
+        }
+      }
+      
+      if (parsed.length === 0) {
+        setError('No valid data found in file. Expected format: Date, Member, Task ID, Task Name, Update, Status');
+      } else {
+        setPreviewData(parsed);
+      }
+    } catch (err) {
+      setError('Failed to parse file: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const handleProceed = () => {
+    if (previewData && previewData.length > 0) {
+      navigate('/import-review', { state: { importData: previewData } });
+      onClose();
+    }
+  };
+
+  return (
+    <div 
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        padding: '20px',
+      }}
+      onClick={onClose}
+    >
+      <div 
+        style={{
+          background: '#fff',
+          borderRadius: '16px',
+          width: '100%',
+          maxWidth: '520px',
+          maxHeight: '80vh',
+          overflow: 'auto',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid #e2e8f0' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#111827', margin: 0 }}>Import Tasks</h2>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0 0' }}>
+            Upload Excel/CSV file with daily report format
+          </p>
+        </div>
+        
+        {/* Content */}
+        <div style={{ padding: '20px 24px' }}>
+          {/* Upload Area */}
+          {!previewData && (
+            <div
+              style={{
+                border: '2px dashed #cbd5e1',
+                borderRadius: '12px',
+                padding: '40px 24px',
+                textAlign: 'center',
+                background: '#f8fafc',
+              }}
+            >
+              <Upload size={40} color="#94a3b8" style={{ marginBottom: '12px' }} />
+              <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 8px 0' }}>
+                Drop XLS/XLSX/CSV file here
+              </p>
+              <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 16px 0' }}>
+                Or click to browse
+              </p>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+                id="import-file-input"
+              />
+              <label
+                htmlFor="import-file-input"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  background: '#111827',
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Choose File
+              </label>
+            </div>
+          )}
+          
+          {/* Error */}
+          {error && (
+            <div style={{ 
+              marginTop: '16px', 
+              padding: '12px 16px', 
+              background: '#fef2f2', 
+              borderRadius: '8px',
+              border: '1px solid #fecaca',
+            }}>
+              <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>{error}</p>
+            </div>
+          )}
+          
+          {/* Preview */}
+          {previewData && (
+            <div>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                marginBottom: '12px' 
+              }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                  Preview ({previewData.length} tasks found)
+                </span>
+                <button
+                  onClick={() => { setPreviewData(null); setError(null); }}
+                  style={{
+                    fontSize: '13px',
+                    color: '#64748b',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Change file
+                </button>
+              </div>
+              
+              <div style={{ 
+                maxHeight: '200px', 
+                overflow: 'auto', 
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+              }}>
+                {previewData.slice(0, 5).map((row, i) => (
+                  <div 
+                    key={i}
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: i < 4 ? '1px solid #f1f5f9' : 'none',
+                      fontSize: '13px',
+                    }}
+                  >
+                    <span style={{ color: '#64748b', marginRight: '8px' }}>#{row.rowIndex}</span>
+                    <span style={{ color: '#111827', fontWeight: 500 }}>{row.title || 'Untitled'}</span>
+                    {row.assigneeNames.length > 0 && (
+                      <span style={{ color: '#94a3b8', marginLeft: '8px' }}>• {row.assigneeNames[0]}</span>
+                    )}
+                  </div>
+                ))}
+                {previewData.length > 5 && (
+                  <div style={{ padding: '8px 16px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
+                    +{previewData.length - 5} more...
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Expected format info */}
+          <div style={{ marginTop: '20px', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px' }}>
+            <p style={{ fontSize: '12px', fontWeight: 600, color: '#374151', margin: '0 0 8px 0' }}>
+              Expected format:
+            </p>
+            <code style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>
+              Date, Member, Task ID, Task Name, Update, Status
+            </code>
+          </div>
+        </div>
+        
+        {/* Footer */}
+        <div style={{ 
+          padding: '16px 24px', 
+          borderTop: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '12px',
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              background: '#fff',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: '#475569',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleProceed}
+            disabled={!previewData || parsing}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '8px',
+              border: 'none',
+              background: previewData ? '#111827' : '#e2e8f0',
+              color: previewData ? '#fff' : '#94a3b8',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: previewData ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {parsing ? 'Parsing...' : 'Proceed to Review'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Compact Card Component
 interface CompactCardProps {
   icon: React.ReactNode;
   label: string;
