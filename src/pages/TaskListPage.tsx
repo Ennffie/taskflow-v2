@@ -265,22 +265,33 @@ export function TaskListPage() {
                     {isFocusSection && <span style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 8px', background: '#7c3aed', color: '#fff', borderRadius: '10px', fontWeight: 600 }}>FOCUS</span>}
                   </div>
                   
-                  {isExpanded && groupTasks.map((task) => (
-                  <div 
-                    key={task.id}
-                    onClick={() => navigate(`/tasks/${task.id}`)}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'flex-start', 
-                      gap: '12px', 
-                      padding: '14px 20px', 
-                      borderBottom: '1px solid #f1f5f9', 
-                      cursor: 'pointer',
-                      background: isFocusSection ? 'rgba(255,255,255,0.5)' : 'transparent'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = isFocusSection ? 'rgba(255,255,255,0.8)' : '#f8fafc'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = isFocusSection ? 'rgba(255,255,255,0.5)' : 'transparent'}
-                  >
+                  {isExpanded && groupTasks.map((task, taskIndex) => {
+                    // Alternate background colors for tasks within the same group
+                    const isEvenIndex = taskIndex % 2 === 0;
+                    const baseBgColor = isFocusSection 
+                      ? (isEvenIndex ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)')
+                      : (isEvenIndex ? '#ffffff' : '#f8fafc');
+                    const hoverBgColor = isFocusSection 
+                      ? (isEvenIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)')
+                      : (isEvenIndex ? '#f1f5f9' : '#e2e8f0');
+                    
+                    return (
+                    <div 
+                      key={task.id}
+                      onClick={() => navigate(`/tasks/${task.id}`)}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'flex-start', 
+                        gap: '12px', 
+                        padding: '14px 20px', 
+                        borderBottom: '1px solid #f1f5f9', 
+                        cursor: 'pointer',
+                        background: baseBgColor,
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = hoverBgColor}
+                      onMouseLeave={(e) => e.currentTarget.style.background = baseBgColor}
+                    >
                     <div style={{ marginTop: '2px' }}>
                       <StatusIcon status={task.status} />
                     </div>
@@ -380,7 +391,8 @@ export function TaskListPage() {
                       </span>
                     </div>
                   </div>
-                ))}
+                );
+              })}
                 </div>
               );
             })
