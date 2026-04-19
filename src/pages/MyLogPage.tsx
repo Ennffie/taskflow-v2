@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, FileText, X } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { fetchMyLogs, fetchTasks, createLog, updateTask } from '../lib/api';
+import { fetchMyLogs, fetchTasks, createLog, updateTask, updateLog } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import type { LogEntry, TaskItem } from '../types';
 import { panelStyle } from './TaskListPage';
@@ -14,7 +14,11 @@ export function MyLogPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTaskSelector, setShowTaskSelector] = useState(false);
   const [showDailyLogModal, setShowDailyLogModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [editingLog, setEditingLog] = useState<LogEntry | null>(null);
+  const [editEvent, setEditEvent] = useState('');
+  const [editCategory, setEditCategory] = useState('other');
   const [todayWork, setTodayWork] = useState('');
   const [tomorrowWork, setTomorrowWork] = useState('');
   const [saving, setSaving] = useState(false);
@@ -61,7 +65,37 @@ export function MyLogPage() {
     setSelectedDate(new Date().toISOString().slice(0, 10));
   };
 
-  // Handle task selection
+  const handleEditClick = (log: LogEntry) => {
+    setEditingLog(log);
+    setEditEvent(log.event);
+    setEditCategory(log.category);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingLog) return;
+    
+    setSaving(true);
+    try {
+      await updateLog(editingLog.id, {
+        event: editEvent.trim(),
+        category: editCategory,
+      });
+      
+      // Refresh logs
+      const updatedLogs = await fetchMyLogs();
+      setLogs(updatedLogs);
+      
+      setShowEditModal(false);
+      setEditingLog(null);
+      setEditEvent('');
+      setEditCategory('other');
+    } catch (error: any) {
+      alert(`Update log failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
   const handleSelectTask = (task: TaskItem) => {
     setSelectedTask(task);
     setShowTaskSelector(false);
@@ -283,17 +317,142 @@ export function MyLogPage() {
           </div>
         )}
 
+        {/* Edit Log Modal */}
+        {showEditModal && editingLog && (
+          <div onClick={() => setShowEditModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ fontSize: '24px', fontWeight: 800 }}>Edit Log</div>
+                <button 
+                  onClick={() => setShowEditModal(false)}
+                  style={{ 
+                    width: '36px', 
+                    height: '36px', 
+                    borderRadius: '50%', 
+                    border: 'none', 
+                    background: '#f3f4f6', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={20} color="#374151" />
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gap: '18px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Category:</label>
+                  <select 
+                    value={editCategory} 
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    style={{ 
+                      width: '100%', 
+                      padding: '14px', 
+                      borderRadius: '12px', 
+                      border: '1px solid #e2e8f0', 
+                      fontSize: '14px',
+                      background: '#fff'
+                    }}
+                  >
+                    {['design', 'ux', 'development', 'testing', 'research', 'other'].map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Content:</label>
+                  <textarea 
+                    value={editEvent} 
+                    onChange={(e) => setEditEvent(e.target.value)} 
+                    placeholder="Enter log content..."
+                    style={{ 
+                      width: '100%', 
+                      minHeight: '160px', 
+                      padding: '14px', 
+                      borderRadius: '12px', 
+                      border: '1px solid #e2e8f0', 
+                      fontSize: '14px', 
+                      resize: 'vertical' 
+                    }} 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button 
+                  onClick={() => setShowEditModal(false)} 
+                  style={{ 
+                    flex: 1, 
+                    padding: '14px', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e2e8f0', 
+                    background: '#fff', 
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveEdit} 
+                  disabled={saving || !editEvent.trim()} 
+                  style={{ 
+                    flex: 1, 
+                    padding: '14px', 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    background: '#111827', 
+                    color: '#fff', 
+                    fontWeight: 600, 
+                    opacity: (saving || !editEvent.trim()) ? 0.6 : 1,
+                    cursor: (saving || !editEvent.trim()) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Logs List */}
         <section style={{ display: 'grid', gap: '14px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>{filteredLogs.length} log{filteredLogs.length !== 1 ? 's' : ''} for {formatDate(selectedDate)}</h2>
           {loading ? <div style={panelStyle}>Loading...</div> : filteredLogs.length === 0 ? <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}><p>No log entries for this date.</p></div> : filteredLogs.map((log) => (
-            <article key={log.id} style={panelStyle}>
+            <article 
+              key={log.id} 
+              onClick={() => handleEditClick(log)}
+              style={{ 
+                ...panelStyle, 
+                cursor: 'pointer',
+                transition: 'transform 0.1s ease, box-shadow 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#7c3aed' }}>{log.category} • {formatDate(log.date)}</div>
+                <div style={{ flex: 1 }}>
+                  {/* Category only (no date since it's always today) */}
+                  <div style={{ 
+                    fontSize: '13px', 
+                    fontWeight: 700, 
+                    color: '#7c3aed',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {log.category}
+                  </div>
                   <div style={{ fontSize: '15px', color: '#111827', marginTop: '10px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{log.event}</div>
                 </div>
-                <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px' }}>{formatDateTime(log.created_at)}</div>
+                <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDateTime(log.created_at)}</div>
               </div>
             </article>
           ))}

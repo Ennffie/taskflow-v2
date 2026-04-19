@@ -257,3 +257,19 @@ export async function deleteLog(logId: string) {
   const { error } = await supabase.from('log_entries').delete().eq('id', logId);
   if (error) throw error;
 }
+
+export async function updateLog(
+  logId: string,
+  payload: {
+    event?: string;
+    category?: string;
+    time_spent?: string;
+    file_name?: string;
+  }
+) {
+  const { error } = await supabase
+    .from('log_entries')
+    .update({ ...payload, updated_at: new Date().toISOString() })
+    .eq('id', logId);
+  if (error) throw error;
+}
