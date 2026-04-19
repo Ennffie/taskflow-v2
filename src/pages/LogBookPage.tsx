@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Plus, Calendar, Users, Tag } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { ArrowLeft, Plus, Calendar, Users, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
@@ -50,15 +50,40 @@ export function LogBookPage() {
           <ArrowLeft size={16} /> Back to tasks
         </Link>
 
-        {/* Compact Task Info Card */}
+        {/* Compact Task Info Card with + Log button */}
         <div style={{ 
           background: '#fff', 
           borderRadius: '16px', 
           border: '1px solid #e2e8f0',
           padding: '16px 20px',
+          position: 'relative',
         }}>
+          {/* + Log Button - Top Right */}
+          <button 
+            onClick={() => setShowModal(true)}
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              border: 'none',
+              background: '#111827',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            }}
+            title="Add Log"
+          >
+            <Plus size={20} />
+          </button>
+
           {/* Title Row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px', paddingRight: '50px' }}>
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111827', margin: 0 }}>{task.title}</h1>
             <div style={{ display: 'flex', gap: '6px' }}>
               <Badge bg={status.bg} color={status.color} text={status.label} />
@@ -116,7 +141,7 @@ export function LogBookPage() {
           </div>
         </div>
 
-        {/* Add Log Button */}
+        {/* Add Log Button (Full width - kept for clarity) */}
         <button 
           onClick={() => setShowModal(true)} 
           style={{ 
