@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { LogEntry, Profile, TaskItem, TaskPriority, TaskStatus } from '../types';
+import type { LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
 export async function fetchProfiles(): Promise<Profile[]> {
   const { data, error } = await supabase
@@ -258,6 +258,39 @@ export async function deleteLog(logId: string) {
   if (error) throw error;
 }
 
+export async function inviteMember(payload: {
+  name: string;
+  email: string;
+  role: Role;
+  tempPassword: string;
+}): Promise<{ userId: string; tempPassword: string }> {
+  // Create user in Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: payload.email,
+    password: payload.tempPassword,
+  });
+
+  if (authError || !authData.user) {
+    throw new Error(authError?.message || 'Failed to create user');
+  }
+
+  const userId = authData.user.id;
+
+  // Create profile entry
+  const { error: profileError } = await supabase.from('profiles').insert({
+    id: userId,
+    name: payload.name,
+    email: payload.email,
+    role: payload.role,
+  });
+
+  if (profileError) {
+    throw new Error(`User created but profile failed: ${profileError.message}`);
+  }
+
+  return { userId, tempPassword: payload.tempPassword };
+}
+
 export async function updateLog(
   logId: string,
   payload: {
@@ -273,3 +306,4 @@ export async function updateLog(
     .eq('id', logId);
   if (error) throw error;
 }
+
