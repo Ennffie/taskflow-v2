@@ -54,8 +54,13 @@ export function LogBookPage() {
 
   const handleEditClick = () => {
     if (!task) return;
+    
+    // Extract clean description (without log entries)
+    // Log entries start with [YYYY-MM-DD] pattern
+    const cleanDescription = task.description?.split(/\n\n\[\d{4}-\d{2}-\d{2}\]/)[0] || '';
+    
     setEditTitle(task.title);
-    setEditDescription(task.description || '');
+    setEditDescription(cleanDescription);
     setEditStatus(task.status);
     setEditPriority(task.priority);
     setEditDueDate(task.due_date || '');
@@ -69,9 +74,16 @@ export function LogBookPage() {
     if (!task) return;
     setSaving(true);
     try {
+      // Extract log entries from current description (anything after [YYYY-MM-DD] pattern)
+      const logMatch = task.description?.match(/\n\n(\[\d{4}-\d{2}-\d{2}\].*)/s);
+      const logEntries = logMatch ? '\n\n' + logMatch[1] : '';
+      
+      // Combine clean description with log entries
+      const finalDescription = editDescription.trim() + logEntries;
+      
       await updateTask(task.id, {
         title: editTitle.trim(),
-        description: editDescription.trim(),
+        description: finalDescription,
         status: editStatus,
         priority: editPriority,
         due_date: editDueDate || null,
@@ -448,7 +460,14 @@ export function LogBookPage() {
                   type="date"
                   value={editDueDate} 
                   onChange={(e) => setEditDueDate(e.target.value)} 
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }}
+                  style={{ 
+                    padding: '12px 14px', 
+                    borderRadius: '10px', 
+                    border: '1px solid #e2e8f0', 
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    minWidth: '140px'
+                  }}
                 />
               </div>
 
