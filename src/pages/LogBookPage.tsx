@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, X, User } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
@@ -245,12 +245,16 @@ export function LogBookPage() {
             </div>
           </div>
 
-          {/* Description */}
-          {task.description && (
-            <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.6, margin: '0 0 14px 0' }}>
-              {task.description}
-            </p>
-          )}
+          {/* Description - clean version without log entries */}
+          {(() => {
+            // Extract clean description (without log entries that start with [YYYY-MM-DD])
+            const cleanDesc = task.description?.split(/\n\n\[\d{4}-\d{2}-\d{2}\]/)[0] || '';
+            return cleanDesc && (
+              <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.6, margin: '0 0 14px 0' }}>
+                {cleanDesc}
+              </p>
+            );
+          })()}
 
           {/* Info Grid - 3 columns */}
           <div style={{ 
@@ -354,9 +358,6 @@ export function LogBookPage() {
                   )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>
-                    {log.created_by_profile?.name || 'Unknown'}
-                  </div>
                   <div style={{ fontSize: '11px', color: '#9ca3af' }}>
                     {formatDateTime(log.created_at)}
                   </div>
@@ -367,6 +368,16 @@ export function LogBookPage() {
               <p style={{ fontSize: '14px', lineHeight: 1.7, color: '#111827', margin: '0 0 12px 0' }}>
                 {log.event}
               </p>
+
+              {/* User info with icon */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <User size={14} color="#fff" />
+                </div>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+                  {log.created_by_profile?.name || 'Unknown'}
+                </span>
+              </div>
 
               {/* Attachment */}
               {log.file_name && (
@@ -451,24 +462,6 @@ export function LogBookPage() {
                     ))}
                   </select>
                 </div>
-              </div>
-
-              {/* Due Date */}
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Due Date</label>
-                <input 
-                  type="date"
-                  value={editDueDate} 
-                  onChange={(e) => setEditDueDate(e.target.value)} 
-                  style={{ 
-                    padding: '12px 14px', 
-                    borderRadius: '10px', 
-                    border: '1px solid #e2e8f0', 
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    minWidth: '140px'
-                  }}
-                />
               </div>
 
               {/* Assignees */}
