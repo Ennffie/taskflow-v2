@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, User, Search } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { fetchTasks, fetchProfiles, updateTask, createTask, createLog } from '../lib/api';
+import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, createTask, createLog } from '../lib/api';
 import type { TaskItem, Profile, TaskStatus } from '../types';
 import { STATUS_META } from '../types';
 
@@ -18,30 +18,11 @@ interface ImportRow {
 
 interface MatchResult {
   row: ImportRow;
-  matchType: 'exact' | 'suggested' | 'none' | 'duplicate';
+  action: 'create' | 'update' | 'skip';
   matchedTask: TaskItem | null;
-  suggestedTasks: TaskItem[];
   matchedAssignees: Profile[];
   parsedStatus: TaskStatus | null;
-  confirmed: boolean;
-  action: 'update' | 'create' | 'skip';
-  originalIndex: number; // Track original index in matchResults
-}
-
-// Check if imported row matches existing task (by Task ID or title)
-function isDuplicate(row: ImportRow, task: TaskItem): boolean {
-  // Use Task ID if available
-  const rowTaskId = row.taskId || extractTaskId(row.title);
-  const taskTaskId = extractTaskId(task.title);
-  
-  if (rowTaskId && taskTaskId && rowTaskId === taskTaskId) return true;
-  
-  // Or compare full title
-  const importTitle = row.taskId && row.taskId !== '-' ? `${row.taskId} - ${row.title}` : row.title;
-  if (importTitle === task.title) return true;
-  if (row.title === task.title) return true;
-  
-  return false;
+  reason: string;
 }
 
 // Status mapping from XLS to TaskStatus
@@ -58,52 +39,39 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   'Priority': 'focus',
 };
 
-// Parse status from XLS
 function parseStatus(statusStr: string): TaskStatus | null {
-  const normalized = statusStr.trim();
-  return STATUS_MAP[normalized] || null;
+  return STATUS_MAP[statusStr.trim()] || null;
 }
 
-// Extract Task ID from title (e.g., "CR-109: Some title" or "CRCE-2523 Task name")
 function extractTaskId(title: string): string | null {
-  // Match patterns like CR-109, CRCE-2523, PMC-123, etc.
   const match = title.match(/^([A-Z]{2,6}-\d{2,6})/i);
   return match ? match[1].toUpperCase() : null;
 }
 
-// Clean title by removing Task ID prefix
 function cleanTitle(title: string): string {
   return title.replace(/^([A-Z]{2,6}-\d{2,6})[\s:-]*/i, '').trim();
 }
 
-// Fuzzy match score between two strings (0-1)
 function similarityScore(str1: string, str2: string): number {
   const s1 = str1.toLowerCase().trim();
   const s2 = str2.toLowerCase().trim();
-  
   if (s1 === s2) return 1;
   if (s1.includes(s2) || s2.includes(s1)) return 0.8;
-  
-  // Simple word overlap score
   const words1 = new Set(s1.split(/\s+/));
   const words2 = new Set(s2.split(/\s+/));
   const intersection = [...words1].filter(w => words2.has(w));
-  const union = new Set([...words1, ...words2]);
-  return intersection.length / union.size;
+  return intersection.length / new Set([...words1, ...words2]).size;
 }
 
-// Find matching assignees by name
 function findAssigneesByName(names: string[], profiles: Profile[]): Profile[] {
   const matches: Profile[] = [];
   for (const name of names) {
     const normalizedName = name.trim().toLowerCase();
     const match = profiles.find(p => 
       p.name.toLowerCase().includes(normalizedName) ||
-      normalizedName.includes(p.name.toLowerCase().split(' ')[0].toLowerCase())
+      normalizedName.includes(p.name.toLowerCase().split(' ')[0])
     );
-    if (match && !matches.find(m => m.id === match.id)) {
-      matches.push(match);
-    }
+    if (match && !matches.find(m => m.id === match.id)) matches.push(match);
   }
   return matches;
 }
@@ -113,30 +81,34 @@ export function ImportReviewPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    exact: true,
-    suggested: true,
-    duplicate: true,
-    none: true,
+  const [expandedSections, setExpandedSections] = useState({
+    create: true,
+    update: true,
+    skip: true,
   });
   
-  // Parse imported data from navigation state
   const importData: ImportRow[] = location.state?.importData || [];
-  
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
 
   useEffect(() => {
-    if (!importData.length) {
-      navigate('/');
-      return;
-    }
+    if (!importData.length) { navigate('/'); return; }
     
     const loadData = async () => {
       try {
-        const [tasks, profs] = await Promise.all([fetchTasks(), fetchProfiles()]);
+        const [tasks, profs, logs] = await Promise.all([
+          fetchTasks(), 
+          fetchProfiles(),
+          fetchAllLogs()
+        ]);
         
-        // Perform matching
-        const results = performMatching(importData, tasks, profs);
+        // Build map: task_id -> Set of log descriptions
+        const taskLogMap = new Map<string, Set<string>>();
+        for (const log of logs) {
+          if (!taskLogMap.has(log.task_id)) taskLogMap.set(log.task_id, new Set());
+          taskLogMap.get(log.task_id)!.add(log.event.trim().toLowerCase());
+        }
+        
+        const results = performMatching(importData, tasks, profs, taskLogMap);
         setMatchResults(results);
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -148,166 +120,124 @@ export function ImportReviewPage() {
     loadData();
   }, [importData, navigate]);
 
-  const performMatching = (rows: ImportRow[], tasks: TaskItem[], profs: Profile[]): MatchResult[] => {
-    return rows.map((row, rowIndex) => {
+  const performMatching = (
+    rows: ImportRow[], 
+    tasks: TaskItem[], 
+    profs: Profile[],
+    taskLogMap: Map<string, Set<string>>
+  ): MatchResult[] => {
+    return rows.map((row) => {
       const parsedStatus = parseStatus(row.status);
       const rowTaskId = row.taskId || extractTaskId(row.title);
       const cleanTitleStr = cleanTitle(row.title);
-      
-      // Try exact match by Task ID (from row.taskId or extracted from title)
-      let matchedTask: TaskItem | null = null;
-      let matchType: 'exact' | 'suggested' | 'none' = 'none';
-      
-      if (rowTaskId) {
-        matchedTask = tasks.find(t => {
-          const taskExtractedId = extractTaskId(t.title);
-          return taskExtractedId === rowTaskId;
-        }) || null;
-        
-        if (matchedTask) {
-          matchType = 'exact';
-        }
-      }
-      
-      // If no exact match, try fuzzy match
-      const suggestedTasks: TaskItem[] = [];
-      if (!matchedTask) {
-        const scoredTasks = tasks
-          .map(t => ({ task: t, score: similarityScore(cleanTitleStr, t.title) }))
-          .filter(t => t.score > 0.4)
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 3);
-        
-        if (scoredTasks.length > 0) {
-          suggestedTasks.push(...scoredTasks.map(t => t.task));
-          
-          // If perfect match (score === 1), treat as exact
-          if (scoredTasks[0].score === 1) {
-            matchedTask = scoredTasks[0].task;
-            matchType = 'exact';
-          } else {
-            matchType = 'suggested';
-          }
-        }
-      }
-      
       const matchedAssignees = findAssigneesByName(row.assigneeNames, profs);
       
-      // Check if this is a duplicate (same task already exists)
-      if (matchedTask && isDuplicate(row, matchedTask)) {
-        // Always update status and add log for duplicates
+      // 1. Try find by Task ID
+      let matchedTask = tasks.find(t => extractTaskId(t.title) === rowTaskId) || null;
+      
+      // 2. Try find by exact title
+      if (!matchedTask) {
+        matchedTask = tasks.find(t => 
+          t.title === row.title || 
+          t.title === `${row.taskId} - ${row.title}`
+        ) || null;
+      }
+      
+      // 3. Try fuzzy match
+      if (!matchedTask) {
+        const bestMatch = tasks
+          .map(t => ({ task: t, score: similarityScore(cleanTitleStr, t.title) }))
+          .filter(t => t.score > 0.6)
+          .sort((a, b) => b.score - a.score)[0];
+        if (bestMatch) matchedTask = bestMatch.task;
+      }
+      
+      // No match → create new
+      if (!matchedTask) {
         return {
           row,
-          matchType: 'duplicate',
-          matchedTask,
-          suggestedTasks,
+          action: 'create',
+          matchedTask: null,
           matchedAssignees,
           parsedStatus,
-          confirmed: true, // Auto-confirm all duplicates
-          action: 'update', // Always update, never skip
-          originalIndex: rowIndex,
+          reason: 'New task',
         };
       }
       
+      // Task exists → check if log already exists
+      const existingLogs = taskLogMap.get(matchedTask.id);
+      const logExists = existingLogs?.has(row.description.trim().toLowerCase());
+      
+      if (logExists) {
+        return {
+          row,
+          action: 'skip',
+          matchedTask,
+          matchedAssignees,
+          parsedStatus,
+          reason: 'Same log already exists',
+        };
+      }
+      
+      // Task exists + new log → update
       return {
         row,
-        matchType,
+        action: 'update',
         matchedTask,
-        suggestedTasks,
         matchedAssignees,
         parsedStatus,
-        confirmed: matchType === 'exact',
-        action: matchType === 'exact' ? 'update' : matchType === 'none' ? 'create' : 'skip',
-        originalIndex: rowIndex, // Track original index
+        reason: parsedStatus !== matchedTask.status 
+          ? `Status: ${STATUS_META[matchedTask.status].label} → ${parsedStatus ? STATUS_META[parsedStatus].label : '?'}`
+          : 'Add new log',
       };
     });
   };
 
-  const groupedResults = useMemo(() => {
-    return {
-      exact: matchResults.filter(r => r.matchType === 'exact'),
-      suggested: matchResults.filter(r => r.matchType === 'suggested'),
-      duplicate: matchResults.filter(r => r.matchType === 'duplicate'),
-      none: matchResults.filter(r => r.matchType === 'none'),
-    };
-  }, [matchResults]);
-
-  const totalCount = matchResults.length;
+  const grouped = useMemo(() => ({
+    create: matchResults.filter(r => r.action === 'create'),
+    update: matchResults.filter(r => r.action === 'update'),
+    skip: matchResults.filter(r => r.action === 'skip'),
+  }), [matchResults]);
 
   const handleExecute = async () => {
     setProcessing(true);
-    
-    // Auto-confirm all items (including duplicates)
-    const resultsToProcess = matchResults.map(r => ({
-      ...r,
-      confirmed: true,
-    }));
-    
-    // Track newly created tasks during this batch by Task ID
     const createdTasksMap = new Map<string, TaskItem>();
     let created = 0, updated = 0, logsAdded = 0, skipped = 0;
     const failures: { row: number; title: string; error: string }[] = [];
     
-    for (const result of resultsToProcess) {
-      if (!result.confirmed || result.action === 'skip') {
-        skipped++;
-        continue;
-      }
-      
+    for (const result of matchResults) {
       try {
+        if (result.action === 'skip') {
+          skipped++;
+          continue;
+        }
+        
         if (result.action === 'update' && result.matchedTask) {
-          // For duplicates, update status if different and always add log
-          if (result.matchType === 'duplicate') {
-            // Update status if different
-            if (result.parsedStatus && result.parsedStatus !== result.matchedTask.status) {
-              await updateTask(result.matchedTask.id, {
-                status: result.parsedStatus,
-              });
-              updated++;
-            }
-            // Always add log if description exists
-            if (result.row.description) {
-              await createLog({
-                task_id: result.matchedTask.id,
-                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
-                event: result.row.description,
-                category: 'other',
-              });
-              logsAdded++;
-            }
-          } else {
-            // Normal update - update task status
-            await updateTask(result.matchedTask.id, {
-              status: result.parsedStatus || result.matchedTask.status,
-            });
+          // Update status if changed
+          if (result.parsedStatus && result.parsedStatus !== result.matchedTask.status) {
+            await updateTask(result.matchedTask.id, { status: result.parsedStatus });
             updated++;
-            // Create log entry for the update
-            if (result.row.description) {
-              await createLog({
-                task_id: result.matchedTask.id,
-                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
-                event: result.row.description,
-                category: 'other',
-              });
-              logsAdded++;
-            }
+          }
+          // Add log
+          if (result.row.description) {
+            await createLog({
+              task_id: result.matchedTask.id,
+              date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+              event: result.row.description,
+              category: 'other',
+            });
+            logsAdded++;
           }
         } else if (result.action === 'create') {
           const taskKey = result.row.taskId || result.row.title;
-          
-          // Check if this task was already created in this batch
           const existingCreatedTask = createdTasksMap.get(taskKey);
           
           if (existingCreatedTask) {
-            // Task already created in this batch, update status if different and add log
+            // Same task in batch → update status + add log
             if (result.parsedStatus && result.parsedStatus !== existingCreatedTask.status) {
-              await updateTask(existingCreatedTask.id, {
-                status: result.parsedStatus,
-              });
-              existingCreatedTask.status = result.parsedStatus;
+              await updateTask(existingCreatedTask.id, { status: result.parsedStatus });
               updated++;
             }
-            // Add log if description exists
             if (result.row.description) {
               await createLog({
                 task_id: existingCreatedTask.id,
@@ -334,11 +264,8 @@ export function ImportReviewPage() {
             });
             
             created++;
-            
-            // Track the newly created task
             createdTasksMap.set(taskKey, newTask as TaskItem);
             
-            // Create log entry
             if (result.row.description) {
               await createLog({
                 task_id: newTask.id,
@@ -351,39 +278,25 @@ export function ImportReviewPage() {
           }
         }
       } catch (error) {
-        console.error(`Failed to process row ${result.row.rowIndex}:`, error);
+        console.error(`Failed row ${result.row.rowIndex}:`, error);
         failures.push({
           row: result.row.rowIndex,
           title: result.row.title,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof Error ? error.message : 'Unknown',
         });
       }
     }
     
-    // Build detailed report
-    let report = `Import Results:\n\n`;
-    report += `✅ Created: ${created} tasks\n`;
-    report += `📝 Updated: ${updated} tasks\n`;
-    report += `📋 Logs added: ${logsAdded}\n`;
-    report += `⏭️ Skipped: ${skipped} duplicates\n`;
-    
-    if (failures.length > 0) {
-      report += `\n❌ Failed: ${failures.length} items\n`;
-      failures.slice(0, 5).forEach(f => {
-        report += `  Row ${f.row}: ${f.title} - ${f.error}\n`;
-      });
-      if (failures.length > 5) {
-        report += `  ...and ${failures.length - 5} more\n`;
-      }
-    }
-    
-    alert(report);
+    alert(
+      `Import Results:\n\n` +
+      `✅ Created: ${created}\n` +
+      `📝 Updated: ${updated}\n` +
+      `📋 Logs: ${logsAdded}\n` +
+      `⏭️ Skipped: ${skipped}` +
+      (failures.length ? `\n\n❌ Failed: ${failures.length}` : '')
+    );
     navigate('/');
     setProcessing(false);
-  };
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
   if (loading) {
@@ -391,8 +304,7 @@ export function ImportReviewPage() {
       <AppShell>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
           <div style={{ textAlign: 'center', color: '#64748b' }}>
-            <div style={{ fontSize: '16px', marginBottom: '8px' }}>Loading tasks...</div>
-            <div style={{ fontSize: '14px', color: '#94a3b8' }}>Matching imported data with existing tasks</div>
+            <div style={{ fontSize: '16px' }}>Loading tasks...</div>
           </div>
         </div>
       </AppShell>
@@ -405,217 +317,69 @@ export function ImportReviewPage() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button 
-              onClick={() => navigate('/')}
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                padding: '10px 16px', 
-                borderRadius: '10px', 
-                border: '1px solid #e2e8f0', 
-                background: '#fff', 
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: '#475569',
-              }}
-            >
+            <button onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: '14px', color: '#475569' }}>
               <ArrowLeft size={16} />
               Back
             </button>
             <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>Import Review</h1>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span style={{ fontSize: '14px', color: '#64748b' }}>
-              {totalCount} items ready to import
-            </span>
-            <button 
-              onClick={handleExecute}
-              disabled={processing}
-              style={{ 
-                padding: '12px 24px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                background: '#111827', 
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 600,
-              }}
-            >
-              {processing ? 'Importing...' : 'Import All'}
-            </button>
-          </div>
+          <button 
+            onClick={handleExecute}
+            disabled={processing}
+            style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#111827', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}
+          >
+            {processing ? 'Importing...' : 'Import All'}
+          </button>
         </div>
 
         {/* Stats Cards */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-          <StatCard 
-            label="Exact Match" 
-            count={groupedResults.exact.length} 
-            color="#10b981" 
-            icon={<CheckCircle2 size={20} />}
-          />
-          <StatCard 
-            label="Suggested Match" 
-            count={groupedResults.suggested.length} 
-            color="#f59e0b" 
-            icon={<Search size={20} />}
-          />
-          <StatCard 
-            label="Duplicate" 
-            count={groupedResults.duplicate.length} 
-            color="#6b7280" 
-            icon={<AlertCircle size={20} />}
-          />
-          <StatCard 
-            label="Create New" 
-            count={groupedResults.none.length} 
-            color="#3b82f6" 
-            icon={<Plus size={20} />}
-          />
+          <StatCard label="Create New" count={grouped.create.length} color="#3b82f6" icon={<Plus size={20} />} />
+          <StatCard label="Update" count={grouped.update.length} color="#10b981" icon={<CheckCircle2 size={20} />} />
+          <StatCard label="Skip" count={grouped.skip.length} color="#6b7280" icon={<AlertCircle size={20} />} />
         </div>
 
         {/* Sections */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Exact Matches */}
-          <MatchSection
-            title="Exact Match (Auto)"
-            subtitle="Tasks matched by Task ID - will be updated automatically"
-            color="#10b981"
-            expanded={expandedSections.exact}
-            onToggle={() => toggleSection('exact')}
-            results={groupedResults.exact}
-          />
-          
-          {/* Suggested Matches */}
-          <MatchSection
-            title="Suggested Match"
-            subtitle="Similar tasks found - will be updated automatically"
-            color="#f59e0b"
-            expanded={expandedSections.suggested}
-            onToggle={() => toggleSection('suggested')}
-            results={groupedResults.suggested}
-          />
-          
-          {/* Duplicate */}
-          <MatchSection
-            title="Duplicate"
-            subtitle="Same task found - will update status + add log"
-            color="#6b7280"
-            expanded={expandedSections.duplicate}
-            onToggle={() => toggleSection('duplicate')}
-            results={groupedResults.duplicate}
-          />
-          
-          {/* No Match - Create New */}
-          <MatchSection
-            title="Create New"
-            subtitle="No matching tasks found - will create new tasks"
-            color="#3b82f6"
-            expanded={expandedSections.none}
-            onToggle={() => toggleSection('none')}
-            results={groupedResults.none}
-          />
+          <MatchSection title="Create New" subtitle="New tasks" color="#3b82f6" expanded={expandedSections.create} onToggle={() => setExpandedSections(p => ({...p, create: !p.create}))} results={grouped.create} />
+          <MatchSection title="Update" subtitle="Existing tasks with new logs" color="#10b981" expanded={expandedSections.update} onToggle={() => setExpandedSections(p => ({...p, update: !p.update}))} results={grouped.update} />
+          <MatchSection title="Skip" subtitle="Same task + same log already exists" color="#6b7280" expanded={expandedSections.skip} onToggle={() => setExpandedSections(p => ({...p, skip: !p.skip}))} results={grouped.skip} />
         </div>
       </div>
     </AppShell>
   );
 }
 
-interface StatCardProps {
-  label: string;
-  count: number;
-  color: string;
-  icon: React.ReactNode;
-}
-
-function StatCard({ label, count, color, icon }: StatCardProps) {
+function StatCard({ label, count, color, icon }: { label: string; count: number; color: string; icon: React.ReactNode }) {
   return (
-    <div style={{ 
-      flex: 1,
-      background: '#fff',
-      borderRadius: '12px',
-      border: '1px solid #e2e8f0',
-      padding: '16px 20px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-    }}>
-      <div style={{ 
-        width: '40px', 
-        height: '40px', 
-        borderRadius: '10px', 
-        background: `${color}15`,
-        color: color,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+    <div style={{ flex: 1, background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${color}15`, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {icon}
       </div>
       <div>
-        <div style={{ fontSize: '24px', fontWeight: 700, color: '#111827' }}>{count}</div>
+        <div style={{ fontSize: '24px', fontWeight: 700 }}>{count}</div>
         <div style={{ fontSize: '13px', color: '#64748b' }}>{label}</div>
       </div>
     </div>
   );
 }
 
-interface MatchSectionProps {
-  title: string;
-  subtitle: string;
-  color: string;
-  expanded: boolean;
-  onToggle: () => void;
-  results: MatchResult[];
-}
-
-function MatchSection({ 
-  title, subtitle, color, expanded, onToggle, results
-}: MatchSectionProps) {
+function MatchSection({ title, subtitle, color, expanded, onToggle, results }: {
+  title: string; subtitle: string; color: string; expanded: boolean; onToggle: () => void; results: MatchResult[];
+}) {
   if (results.length === 0) return null;
 
   return (
-    <div style={{ 
-      background: '#fff', 
-      borderRadius: '12px', 
-      border: '1px solid #e2e8f0',
-      overflow: 'hidden',
-    }}>
-      <div 
-        onClick={onToggle}
-        style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '12px', 
-          padding: '16px 20px', 
-          background: '#f8fafc',
-          borderBottom: expanded ? '1px solid #e2e8f0' : 'none',
-          cursor: 'pointer',
-        }}
-      >
+    <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', background: '#f8fafc', borderBottom: expanded ? '1px solid #e2e8f0' : 'none', cursor: 'pointer' }}>
         {expanded ? <ChevronUp size={18} color="#64748b" /> : <ChevronDown size={18} color="#64748b" />}
-        <div style={{ 
-          width: '10px', 
-          height: '10px', 
-          borderRadius: '50%', 
-          background: color 
-        }} />
+        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: color }} />
         <div style={{ flex: 1 }}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: '#111827' }}>{title}</span>
+          <span style={{ fontSize: '15px', fontWeight: 600 }}>{title}</span>
           <span style={{ fontSize: '13px', color: '#64748b', marginLeft: '12px' }}>{subtitle}</span>
         </div>
-        <span style={{ 
-          fontSize: '13px', 
-          fontWeight: 600, 
-          color: color,
-          background: `${color}15`,
-          padding: '4px 12px',
-          borderRadius: '20px',
-        }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color, background: `${color}15`, padding: '4px 12px', borderRadius: '20px' }}>
           {results.length}
         </span>
       </div>
@@ -623,10 +387,7 @@ function MatchSection({
       {expanded && (
         <div style={{ padding: '8px' }}>
           {results.map((result) => (
-            <MatchResultRow
-              key={result.row.rowIndex}
-              result={result}
-            />
+            <MatchResultRow key={result.row.rowIndex} result={result} />
           ))}
         </div>
       )}
@@ -634,103 +395,68 @@ function MatchSection({
   );
 }
 
-interface MatchResultRowProps {
-  result: MatchResult;
-}
-
-function MatchResultRow({ result }: MatchResultRowProps) {
-  const { row, matchedTask, matchedAssignees, parsedStatus } = result;
-  
+function MatchResultRow({ result }: { result: MatchResult }) {
+  const { row, matchedTask, matchedAssignees, parsedStatus, action, reason } = result;
   const statusConfig = parsedStatus ? STATUS_META[parsedStatus] : null;
   const extractedId = extractTaskId(row.title);
 
+  const actionLabel = action === 'create' ? 'Create' : action === 'update' ? 'Update' : 'Skip';
+  const actionColor = action === 'create' ? '#1d4ed8' : action === 'update' ? '#047857' : '#6b7280';
+  const actionBg = action === 'create' ? '#eff6ff' : action === 'update' ? '#f0fdf4' : '#f3f4f6';
+
   return (
-    <div style={{ 
-      padding: '16px 20px',
-      borderBottom: '1px solid #f1f5f9',
-      background: '#fff',
-    }}>
+    <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
       <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-        {/* Auto-action indicator */}
+        {/* Action badge */}
         <div style={{ paddingTop: '4px' }}>
-          {result.matchType === 'duplicate' ? (
-            <span style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '4px' }}>Update</span>
-          ) : result.matchType === 'exact' ? (
-            <span style={{ fontSize: '11px', color: '#047857', background: '#f0fdf4', padding: '2px 8px', borderRadius: '4px' }}>Update</span>
-          ) : result.matchType === 'suggested' ? (
-            <span style={{ fontSize: '11px', color: '#b45309', background: '#fefce8', padding: '2px 8px', borderRadius: '4px' }}>Update</span>
-          ) : (
-            <span style={{ fontSize: '11px', color: '#1d4ed8', background: '#eff6ff', padding: '2px 8px', borderRadius: '4px' }}>Create</span>
-          )}
+          <span style={{ fontSize: '11px', color: actionColor, background: actionBg, padding: '2px 8px', borderRadius: '4px' }}>
+            {actionLabel}
+          </span>
         </div>
 
         {/* Content */}
         <div style={{ flex: 1 }}>
           {/* Title row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
             {extractedId && (
-              <span style={{ 
-                fontSize: '12px', 
-                fontWeight: 600, 
-                color: '#7c3aed',
-                background: '#ede9fe',
-                padding: '2px 8px',
-                borderRadius: '4px',
-              }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#7c3aed', background: '#ede9fe', padding: '2px 8px', borderRadius: '4px' }}>
                 {extractedId}
               </span>
             )}
-            <span style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>
-              {row.taskId && row.taskId !== '-' ? `${row.taskId} - ${row.title}` : row.title}
+            <span style={{ fontSize: '15px', fontWeight: 500 }}>
+              {row.title}
             </span>
             {statusConfig && (
-              <span style={{ 
-                fontSize: '11px', 
-                fontWeight: 600,
-                color: statusConfig.color,
-                background: statusConfig.bg,
-                padding: '2px 8px',
-                borderRadius: '4px',
-              }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: statusConfig.color, background: statusConfig.bg, padding: '2px 8px', borderRadius: '4px' }}>
                 {statusConfig.label}
               </span>
             )}
           </div>
 
-          {/* Details row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '13px', color: '#64748b' }}>
-              Row {row.rowIndex}
-            </span>
+          {/* Reason */}
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>
+            {reason}
+          </div>
+
+          {/* Details */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontSize: '13px', color: '#64748b' }}>Row {row.rowIndex}</span>
             {matchedAssignees.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <User size={12} color="#94a3b8" />
-                <span style={{ fontSize: '13px', color: '#64748b' }}>
-                  {matchedAssignees.map(a => a.name).join(', ')}
-                </span>
-              </div>
+              <span style={{ fontSize: '13px', color: '#64748b' }}>
+                <User size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                {matchedAssignees.map(a => a.name).join(', ')}
+              </span>
             )}
             {row.dueDate && (
-              <span style={{ fontSize: '13px', color: '#64748b' }}>
-                Due: {row.dueDate}
-              </span>
+              <span style={{ fontSize: '13px', color: '#64748b' }}>Due: {row.dueDate}</span>
             )}
           </div>
 
-          {/* Matched task display */}
+          {/* Matched task */}
           {matchedTask && (
-            <div style={{ 
-              padding: '8px 12px', 
-              background: '#f8fafc', 
-              borderRadius: '6px',
-              border: '1px solid #e2e8f0',
-              fontSize: '12px',
-              color: '#64748b',
-            }}>
+            <div style={{ padding: '6px 12px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
               → {matchedTask.title}
-              <span style={{ marginLeft: '8px', color: '#94a3b8' }}>
-                ({STATUS_META[matchedTask.status].label})
-              </span>
+              <span style={{ marginLeft: '8px', color: '#94a3b8' }}>({STATUS_META[matchedTask.status].label})</span>
             </div>
           )}
         </div>
