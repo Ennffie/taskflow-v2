@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Upload, MessageSquare } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { formatDate } from '../lib/date';
@@ -81,12 +81,12 @@ export function TaskListPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
   
-  // Section expand/collapse state - default: Other collapsed, others expanded
+  // Section expand/collapse state - default: Only Focus expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     "Today's Focus": true,
-    'Overdue': true,
+    'Overdue': false,
     'Other': false,
-    'Done': true,
+    'Done': false,
   });
   
   const userName = profile?.name || 'User';
@@ -164,7 +164,7 @@ export function TaskListPage() {
                   color: '#475569',
                 }}
               >
-                <Upload size={16} />
+                <Download size={16} />
                 Import Tasks
               </button>
             )}
@@ -193,26 +193,28 @@ export function TaskListPage() {
             icon={<AlertTriangle size={20} color="#7c3aed" />}
             label="Today's Focus" 
             count={focusCount}
-            subLabel="priority"
             bgColor="#ede9fe"
             iconBgColor="#ddd6fe"
-            active
+            active={expandedSections["Today's Focus"]}
+            onToggle={() => toggleSection("Today's Focus")}
           />
           <CompactCard 
             icon={<AlertTriangle size={20} color="#ef4444" />}
             label="Overdue" 
             count={overdueCount}
-            subLabel="needs attention"
             bgColor="#fef2f2"
             iconBgColor="#fee2e2"
+            active={expandedSections['Overdue']}
+            onToggle={() => toggleSection('Overdue')}
           />
           <CompactCard 
             icon={<Inbox size={20} color="#3b82f6" />}
             label="Other" 
             count={otherCount}
-            subLabel="remaining"
             bgColor="#eff6ff"
             iconBgColor="#dbeafe"
+            active={expandedSections['Other']}
+            onToggle={() => toggleSection('Other')}
           />
         </div>
 
@@ -704,7 +706,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
                 cursor: 'pointer',
               }}
             >
-              <Upload size={40} color={isDragging ? '#7c3aed' : '#94a3b8'} style={{ marginBottom: '12px' }} />
+              <Download size={40} color={isDragging ? '#7c3aed' : '#94a3b8'} style={{ marginBottom: '12px' }} />
               <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 8px 0' }}>
                 {isDragging ? 'Drop file here!' : 'Drop XLS/XLSX/CSV file here'}
               </p>
@@ -914,28 +916,31 @@ interface CompactCardProps {
   icon: React.ReactNode;
   label: string;
   count: number;
-  subLabel: string;
   bgColor: string;
   iconBgColor: string;
   active?: boolean;
+  onToggle?: () => void;
 }
 
-function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, active }: CompactCardProps) {
+function CompactCard({ icon, label, count, bgColor, iconBgColor, active, onToggle }: CompactCardProps) {
   return (
-    <div style={{ 
-      background: active ? bgColor : '#f8fafc',
-      borderRadius: '16px',
-      padding: '16px',
-      minWidth: '140px',
-      width: '140px',
-      height: '100px',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      cursor: 'pointer',
-      flexShrink: 0,
-      border: active ? '2px solid #7c3aed' : '2px solid transparent',
-    }}>
+    <div 
+      onClick={onToggle}
+      style={{ 
+        background: active ? bgColor : '#f8fafc',
+        borderRadius: '16px',
+        padding: '16px',
+        minWidth: '140px',
+        width: '140px',
+        height: '80px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        cursor: 'pointer',
+        flexShrink: 0,
+        border: active ? '2px solid #7c3aed' : '2px solid transparent',
+      }}
+    >
       <div style={{ 
         width: '32px', 
         height: '32px', 
@@ -947,14 +952,9 @@ function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, activ
       }}>
         {icon}
       </div>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{label}</span>
-          <span style={{ fontSize: '20px', fontWeight: 700, color: active ? '#7c3aed' : '#111827' }}>{count}</span>
-        </div>
-        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-          {subLabel}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+        <span style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{label}</span>
+        <span style={{ fontSize: '20px', fontWeight: 700, color: active ? '#7c3aed' : '#111827' }}>{count}</span>
       </div>
     </div>
   );
