@@ -333,22 +333,32 @@ export function TaskListPage() {
                       <StatusIcon status={task.status} />
                     </div>
                     
-                    {/* Middle: Title + Tags */}
+                    {/* Middle: Title + Tags + Log Count */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* Task Title - 2 lines */}
-                      <p style={{ 
-                        fontSize: '14px', 
-                        fontWeight: 500, 
-                        color: '#111827', 
-                        margin: 0, 
-                        lineHeight: 1.4,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}>
-                        {task.title}
-                      </p>
+                      {/* Task Title + Log Count inline */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <p style={{ 
+                          fontSize: '14px', 
+                          fontWeight: 500, 
+                          color: '#111827', 
+                          margin: 0, 
+                          lineHeight: 1.4,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          flex: 1,
+                        }}>
+                          {task.title}
+                        </p>
+                        {/* Log Count - inline with title */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                          <MessageSquare size={14} color="#94a3b8" />
+                          <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
+                            {task.log_count}
+                          </span>
+                        </div>
+                      </div>
                       
                       {/* Tags - below title, left aligned */}
                       {task.tags.length > 0 && (
@@ -418,15 +428,7 @@ export function TaskListPage() {
                         <div style={{ height: '28px' }} />
                       )}
 
-                      {/* Log Count */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <MessageSquare size={12} color="#94a3b8" />
-                        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-                          {task.log_count}
-                        </span>
-                      </div>
-
-                      {/* Due Date - using formatDate helper */}
+                      {/* Due Date */}
                       <span style={{ 
                         fontSize: '12px', 
                         fontWeight: 500,
