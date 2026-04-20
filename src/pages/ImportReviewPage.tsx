@@ -287,7 +287,15 @@ export function ImportReviewPage() {
           const existingCreatedTask = createdTasksMap.get(taskKey);
           
           if (existingCreatedTask) {
-            // Task already created in this batch, just add log
+            // Task already created in this batch, update status if different and add log
+            if (result.parsedStatus && result.parsedStatus !== existingCreatedTask.status) {
+              await updateTask(existingCreatedTask.id, {
+                status: result.parsedStatus,
+              });
+              // Update our local reference
+              existingCreatedTask.status = result.parsedStatus;
+            }
+            // Add log if description exists
             if (result.row.description) {
               await createLog({
                 task_id: existingCreatedTask.id,
@@ -365,10 +373,12 @@ export function ImportReviewPage() {
     
     setCreating(true);
     try {
+      const result = creatingResultIndex !== null ? matchResults[creatingResultIndex] : null;
+      
       const newTask = await createTask({
         title: newTaskTitle.trim(),
         description: newTaskDescription,
-        status: 'todo',
+        status: result?.parsedStatus || 'todo',
         priority: newTaskPriority,
         due_date: newTaskDueDate || undefined,
         assignee_ids: newTaskAssigneeIds,
