@@ -452,6 +452,41 @@ function ImportModal({ onClose }: { onClose: () => void }) {
   const [previewData, setPreviewData] = useState<ImportRow[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
+        setError(null);
+        parseFile(file);
+      } else {
+        setError('Please upload XLSX, XLS, or CSV file');
+      }
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -645,17 +680,23 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           {/* Upload Area - Initial State */}
           {!previewData && availableSheets.length === 0 && (
             <div
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
               style={{
-                border: '2px dashed #cbd5e1',
+                border: isDragging ? '2px dashed #7c3aed' : '2px dashed #cbd5e1',
                 borderRadius: '12px',
                 padding: '40px 24px',
                 textAlign: 'center',
-                background: '#f8fafc',
+                background: isDragging ? '#faf5ff' : '#f8fafc',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer',
               }}
             >
-              <Upload size={40} color="#94a3b8" style={{ marginBottom: '12px' }} />
+              <Upload size={40} color={isDragging ? '#7c3aed' : '#94a3b8'} style={{ marginBottom: '12px' }} />
               <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 8px 0' }}>
-                Drop XLS/XLSX/CSV file here
+                {isDragging ? 'Drop file here!' : 'Drop XLS/XLSX/CSV file here'}
               </p>
               <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 16px 0' }}>
                 Or click to browse
