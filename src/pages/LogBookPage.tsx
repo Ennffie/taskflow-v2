@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, X, User } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, X, User, FileText } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
@@ -188,6 +188,31 @@ export function LogBookPage() {
     }
   };
 
+  // Helper functions for file name display
+  const isValidUrl = (str: string): boolean => {
+    try {
+      new URL(str);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const getDisplayUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      // Return pathname for cleaner display, or full URL if pathname is just "/"
+      const pathname = urlObj.pathname;
+      if (pathname && pathname !== '/') {
+        // Decode URL-encoded characters
+        return decodeURIComponent(pathname.split('/').pop() || url);
+      }
+      return url;
+    } catch {
+      return url;
+    }
+  };
+
   if (loading) {
     return <AppShell><div style={panelStyle}>Loading log book...</div></AppShell>;
   }
@@ -307,7 +332,21 @@ export function LogBookPage() {
                 <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>{log.created_by_profile?.name || 'Unknown'}</span>
               </div>
               {log.file_name && (
-                <div style={{ marginTop: '12px', borderRadius: '8px', background: '#faf5ff', padding: '10px 14px', color: '#6d28d9', fontWeight: 600, fontSize: '13px' }}>📎 {log.file_name}</div>
+                <div style={{ marginTop: '12px', borderRadius: '8px', background: '#faf5ff', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileText size={16} color="#6d28d9" />
+                  {isValidUrl(log.file_name) ? (
+                    <a 
+                      href={log.file_name} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ color: '#6d28d9', fontWeight: 600, fontSize: '13px', textDecoration: 'underline', wordBreak: 'break-all' }}
+                    >
+                      {getDisplayUrl(log.file_name)}
+                    </a>
+                  ) : (
+                    <span style={{ color: '#6d28d9', fontWeight: 600, fontSize: '13px', wordBreak: 'break-all' }}>{log.file_name}</span>
+                  )}
+                </div>
               )}
             </article>
           ))}
