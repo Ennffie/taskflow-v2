@@ -302,7 +302,7 @@ export async function updateLog(
 ) {
   const { error } = await supabase
     .from('log_entries')
-    .update({ ...payload, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', logId);
   if (error) throw error;
 }

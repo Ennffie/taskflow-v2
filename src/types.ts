@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'member' | 'viewer';
 export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled' | 'focus';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'development' | 'other';
+export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'other';
 
 export interface Profile {
   id: string;

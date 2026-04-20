@@ -407,7 +407,6 @@ export function LogBookPage() {
                     <option value="research">Research</option>
                     <option value="meeting">Meeting</option>
                     <option value="review">Review</option>
-                    <option value="development">Development</option>
                     <option value="other">Other</option>
                   </select>
                 </label>

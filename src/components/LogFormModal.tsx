@@ -34,7 +34,7 @@ export function LogFormModal({ taskId, onClose, onCreated }: { taskId: string; o
           {/* Row 1: Date + Category */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <Field label="Date"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} /></Field>
-            <Field label="Category"><select value={category} onChange={(e) => setCategory(e.target.value as LogCategory)} style={inputStyle}><option value="design">Design</option><option value="research">Research</option><option value="meeting">Meeting</option><option value="review">Review</option><option value="development">Development</option><option value="other">Other</option></select></Field>
+            <Field label="Category"><select value={category} onChange={(e) => setCategory(e.target.value as LogCategory)} style={inputStyle}><option value="design">Design</option><option value="research">Research</option><option value="meeting">Meeting</option><option value="review">Review</option><option value="other">Other</option></select></Field>
           </div>
           
           {/* Row 2: Update */}
