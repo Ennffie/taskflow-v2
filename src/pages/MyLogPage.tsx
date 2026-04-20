@@ -9,7 +9,9 @@ import { panelStyle } from './TaskListPage';
 export function MyLogPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [tomorrowTasks, setTomorrowTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'today' | 'tomorrow'>('today');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTaskSelector, setShowTaskSelector] = useState(false);
@@ -28,10 +30,22 @@ export function MyLogPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchMyLogs().then(setLogs).catch((error) => alert(`Load my logs failed: ${error.message}`)).finally(() => setLoading(false));
-    // Load all tasks for task name mapping
-    fetchTasks().then(setTasks).catch((error) => console.error('Load tasks failed:', error));
+    setLoading(true);
+    Promise.all([
+      fetchMyLogs().then(setLogs),
+      fetchTasks().then(setTasks),
+    ]).catch((error) => alert(`Load data failed: ${error.message}`)).finally(() => setLoading(false));
   }, []);
+
+  // Load focus tasks for tomorrow tab
+  useEffect(() => {
+    if (activeTab === 'tomorrow') {
+      fetchTasks().then(allTasks => {
+        const focusTasks = allTasks.filter(t => t.status === 'focus');
+        setTomorrowTasks(focusTasks);
+      });
+    }
+  }, [activeTab]);
 
   // Load tasks for selector
   useEffect(() => {
@@ -261,22 +275,64 @@ export function MyLogPage() {
             A clean list of updates you have posted across the workspace.
           </p>
           
-          {/* Date Navigation */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '12px 16px', background: '#f8fafc', borderRadius: '12px' }}>
-            <button onClick={goToPreviousDay} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <ChevronLeft size={18} color="#374151" />
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <button
+              onClick={() => setActiveTab('today')}
+              style={{
+                flex: 1,
+                padding: '12px 20px',
+                borderRadius: '10px',
+                border: 'none',
+                background: activeTab === 'today' ? '#111827' : '#f3f4f6',
+                color: activeTab === 'today' ? '#fff' : '#6b7280',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              📋 Today
             </button>
-            <button onClick={() => setShowDatePicker(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: '2px solid #7c3aed', background: '#fff', cursor: 'pointer', fontSize: '16px', fontWeight: 700 }}>
-              <Calendar size={18} color="#7c3aed" />
-              {formatDate(selectedDate)}
-            </button>
-            <button onClick={goToNextDay} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <ChevronRight size={18} color="#374151" />
+            <button
+              onClick={() => setActiveTab('tomorrow')}
+              style={{
+                flex: 1,
+                padding: '12px 20px',
+                borderRadius: '10px',
+                border: 'none',
+                background: activeTab === 'tomorrow' ? '#7c3aed' : '#f3f4f6',
+                color: activeTab === 'tomorrow' ? '#fff' : '#6b7280',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              🎯 Tomorrow
             </button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-            <button onClick={goToToday} style={{ fontSize: '12px', fontWeight: 600, color: '#7c3aed', background: 'transparent', border: 'none', cursor: 'pointer' }}>Go to Today</button>
-          </div>
+          
+          {/* Date Navigation - Only show for Today tab */}
+          {activeTab === 'today' && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '12px 16px', background: '#f8fafc', borderRadius: '12px' }}>
+              <button onClick={goToPreviousDay} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <ChevronLeft size={18} color="#374151" />
+              </button>
+              <button onClick={() => setShowDatePicker(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: '2px solid #7c3aed', background: '#fff', cursor: 'pointer', fontSize: '16px', fontWeight: 700 }}>
+                <Calendar size={18} color="#7c3aed" />
+                {formatDate(selectedDate)}
+              </button>
+              <button onClick={goToNextDay} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <ChevronRight size={18} color="#374151" />
+              </button>
+            </div>
+          )}
+          {activeTab === 'today' && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+              <button onClick={goToToday} style={{ fontSize: '12px', fontWeight: 600, color: '#7c3aed', background: 'transparent', border: 'none', cursor: 'pointer' }}>Go to Today</button>
+            </div>
+          )}
         </section>
 
         {/* Task Selector */}
@@ -498,58 +554,114 @@ export function MyLogPage() {
           </div>
         )}
 
-        {/* Logs List */}
-        <section style={{ display: 'grid', gap: '14px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>{filteredLogs.length} log{filteredLogs.length !== 1 ? 's' : ''} for {formatDate(selectedDate)}</h2>
-          {loading ? <div style={panelStyle}>Loading...</div> : filteredLogs.length === 0 ? <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}><p>No log entries for this date.</p></div> : filteredLogs.map((log) => (
-            <article 
-              key={log.id} 
-              onClick={() => handleEditClick(log)}
-              style={{ 
-                ...panelStyle, 
-                cursor: 'pointer',
-                transition: 'transform 0.1s ease, box-shadow 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* Task Name + Category */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ 
-                      fontSize: '14px', 
-                      fontWeight: 700, 
-                      color: '#111827'
-                    }}>
-                      {taskMap.get(log.task_id) || 'Unknown Task'}
-                    </span>
-                    <span style={{ 
-                      fontSize: '12px', 
-                      fontWeight: 600, 
-                      color: '#7c3aed',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      padding: '2px 8px',
-                      background: '#ede9fe',
-                      borderRadius: '6px'
-                    }}>
-                      {log.category}
-                    </span>
+        {/* Logs List - Today Tab */}
+        {activeTab === 'today' && (
+          <section style={{ display: 'grid', gap: '14px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>{filteredLogs.length} log{filteredLogs.length !== 1 ? 's' : ''} for {formatDate(selectedDate)}</h2>
+            {loading ? <div style={panelStyle}>Loading...</div> : filteredLogs.length === 0 ? <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}><p>No log entries for this date.</p></div> : filteredLogs.map((log) => (
+              <article 
+                key={log.id} 
+                onClick={() => handleEditClick(log)}
+                style={{ 
+                  ...panelStyle, 
+                  cursor: 'pointer',
+                  transition: 'transform 0.1s ease, box-shadow 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Task Name + Category */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: 700, 
+                        color: '#111827'
+                      }}>
+                        {taskMap.get(log.task_id) || 'Unknown Task'}
+                      </span>
+                      <span style={{ 
+                        fontSize: '12px', 
+                        fontWeight: 600, 
+                        color: '#7c3aed',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        padding: '2px 8px',
+                        background: '#ede9fe',
+                        borderRadius: '6px'
+                      }}>
+                        {log.category}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '15px', color: '#374151', marginTop: '10px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{log.event}</div>
                   </div>
-                  <div style={{ fontSize: '15px', color: '#374151', marginTop: '10px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{log.event}</div>
+                  <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDateTime(log.created_at)}</div>
                 </div>
-                <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDateTime(log.created_at)}</div>
+              </article>
+            ))}
+          </section>
+        )}
+
+        {/* Tomorrow Tasks Tab */}
+        {activeTab === 'tomorrow' && (
+          <section style={{ display: 'grid', gap: '14px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>
+              🎯 {tomorrowTasks.length} task{tomorrowTasks.length !== 1 ? 's' : ''} for tomorrow
+            </h2>
+            {loading ? <div style={panelStyle}>Loading...</div> : tomorrowTasks.length === 0 ? (
+              <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}>
+                <p>No tasks planned for tomorrow.</p>
+                <p style={{ fontSize: '14px', marginTop: '8px' }}>Add a daily log with "What I will focus on tomorrow" to create tomorrow tasks.</p>
               </div>
-            </article>
-          ))}
-        </section>
+            ) : tomorrowTasks.map((task) => (
+              <article 
+                key={task.id}
+                style={{ 
+                  ...panelStyle,
+                  borderLeft: '4px solid #7c3aed',
+                  background: '#faf5ff',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
+                      {task.title}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                      <span style={{ 
+                        fontSize: '12px', 
+                        fontWeight: 600,
+                        color: '#7c3aed',
+                        background: '#ede9fe',
+                        padding: '2px 8px',
+                        borderRadius: '6px'
+                      }}>
+                        Focus
+                      </span>
+                      {task.assignees.length > 0 && (
+                        <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                          {task.assignees.map(a => a.name).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                    {task.description && (
+                      <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px', lineHeight: 1.6 }}>
+                        {task.description}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
       </div>
     </AppShell>
   );

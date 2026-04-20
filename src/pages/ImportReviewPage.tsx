@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, User, Search } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, User, Search, X } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { fetchTasks, fetchProfiles, updateTask, createTask } from '../lib/api';
-import type { TaskItem, Profile, TaskStatus } from '../types';
-import { STATUS_META } from '../types';
+import { fetchTasks, fetchProfiles, updateTask, createTask, createLog } from '../lib/api';
+import type { TaskItem, Profile, TaskStatus, TaskPriority } from '../types';
+import { STATUS_META, PRIORITY_META } from '../types';
 
 interface ImportRow {
   rowIndex: number;
@@ -106,6 +106,17 @@ export function ImportReviewPage() {
   const importData: ImportRow[] = location.state?.importData || [];
   
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
+  
+  // Create New Task Modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creatingResultIndex, setCreatingResultIndex] = useState<number | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
+  const [newTaskDueDate, setNewTaskDueDate] = useState('');
+  const [newTaskAssigneeIds, setNewTaskAssigneeIds] = useState<string[]>([]);
+  const [newTaskTags, setNewTaskTags] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!importData.length) {
@@ -205,12 +216,27 @@ export function ImportReviewPage() {
     try {
       for (const result of confirmedResults) {
         if (result.action === 'update' && result.matchedTask) {
+          // Update existing task status
           await updateTask(result.matchedTask.id, {
             status: result.parsedStatus || result.matchedTask.status,
           });
+          // Create log entry for the update
+          if (result.row.description) {
+            await createLog({
+              task_id: result.matchedTask.id,
+              date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+              event: result.row.description,
+              category: 'other',
+            });
+          }
         } else if (result.action === 'create') {
-          await createTask({
-            title: result.row.title,
+          // Create new task
+          const fullTitle = result.row.taskId 
+            ? `${result.row.taskId} - ${result.row.title}` 
+            : result.row.title;
+          
+          const newTask = await createTask({
+            title: fullTitle,
             description: result.row.description,
             status: result.parsedStatus || 'todo',
             priority: 'medium',
@@ -218,6 +244,16 @@ export function ImportReviewPage() {
             assignee_ids: result.matchedAssignees.map(a => a.id),
             tags: [],
           });
+          
+          // Create log entry
+          if (result.row.description) {
+            await createLog({
+              task_id: newTask.id,
+              date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+              event: result.row.description,
+              category: 'other',
+            });
+          }
         }
       }
       
@@ -232,6 +268,70 @@ export function ImportReviewPage() {
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Open Create New Task Modal
+  const openCreateModal = (resultIndex: number) => {
+    const result = matchResults[resultIndex];
+    if (!result) return;
+    
+    setCreatingResultIndex(resultIndex);
+    const fullTitle = result.row.taskId 
+      ? `${result.row.taskId} - ${result.row.title}` 
+      : result.row.title;
+    setNewTaskTitle(fullTitle);
+    setNewTaskDescription(result.row.description);
+    setNewTaskPriority('medium');
+    setNewTaskDueDate(result.row.dueDate || '');
+    setNewTaskAssigneeIds(result.matchedAssignees.map(a => a.id));
+    setNewTaskTags('');
+    setShowCreateModal(true);
+  };
+
+  // Handle Create New Task
+  const handleCreateTask = async () => {
+    if (!newTaskTitle.trim()) return;
+    
+    setCreating(true);
+    try {
+      const newTask = await createTask({
+        title: newTaskTitle.trim(),
+        description: newTaskDescription,
+        status: 'todo',
+        priority: newTaskPriority,
+        due_date: newTaskDueDate || undefined,
+        assignee_ids: newTaskAssigneeIds,
+        tags: newTaskTags.split(',').map(t => t.trim()).filter(Boolean),
+      });
+      
+      // If there's a description, create a log entry
+      if (newTaskDescription && creatingResultIndex !== null) {
+        const result = matchResults[creatingResultIndex];
+        await createLog({
+          task_id: newTask.id,
+          date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+          event: newTaskDescription,
+          category: 'other',
+        });
+      }
+      
+      // Update the match result to reference the new task
+      if (creatingResultIndex !== null) {
+        updateMatchResult(creatingResultIndex, {
+          matchedTask: newTask as TaskItem,
+          action: 'update',
+          confirmed: true,
+        });
+      }
+      
+      setShowCreateModal(false);
+      setCreatingResultIndex(null);
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      alert('Failed to create task. Please try again.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (loading) {
@@ -358,8 +458,66 @@ export function ImportReviewPage() {
             onUpdate={updateMatchResult}
             _profiles={profiles}
             isCreateNew
+            onCreateNew={openCreateModal}
           />
         </div>
+
+        {/* Create New Task Modal */}
+        {showCreateModal && (
+          <div onClick={() => setShowCreateModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ fontSize: '24px', fontWeight: 800 }}>Create New Task</div>
+                <button onClick={() => setShowCreateModal(false)} style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <X size={20} color="#374151" />
+                </button>
+              </div>
+              
+              <div style={{ display: 'grid', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Title *</label>
+                  <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Task title..." style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Description</label>
+                  <textarea value={newTaskDescription} onChange={(e) => setNewTaskDescription(e.target.value)} placeholder="Task description..." rows={3} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Priority</label>
+                    <select value={newTaskPriority} onChange={(e) => setNewTaskPriority(e.target.value as TaskPriority)} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', background: '#fff' }}>
+                      {Object.entries(PRIORITY_META).map(([key, meta]) => (<option key={key} value={key}>{meta.label}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Due Date</label>
+                    <input type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Assignees</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                    {profiles.map((profile) => (
+                      <label key={profile.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: newTaskAssigneeIds.includes(profile.id) ? '#ede9fe' : '#f3f4f6', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={newTaskAssigneeIds.includes(profile.id)} onChange={(e) => { if (e.target.checked) { setNewTaskAssigneeIds([...newTaskAssigneeIds, profile.id]); } else { setNewTaskAssigneeIds(newTaskAssigneeIds.filter(id => id !== profile.id)); } }} style={{ cursor: 'pointer' }} />
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: newTaskAssigneeIds.includes(profile.id) ? '#6d28d9' : '#374151' }}>{profile.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Tags (comma separated)</label>
+                  <input value={newTaskTags} onChange={(e) => setNewTaskTags(e.target.value)} placeholder="design, urgent, frontend..." style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button onClick={() => setShowCreateModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()} style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', fontWeight: 600, opacity: (creating || !newTaskTitle.trim()) ? 0.6 : 1, cursor: (creating || !newTaskTitle.trim()) ? 'not-allowed' : 'pointer' }}>{creating ? 'Creating...' : 'Create Task'}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );
@@ -415,10 +573,11 @@ interface MatchSectionProps {
   _profiles: Profile[];  // Available for future use
   showSuggestions?: boolean;
   isCreateNew?: boolean;
+  onCreateNew?: (resultIndex: number) => void;
 }
 
 function MatchSection({ 
-  title, subtitle, color, expanded, onToggle, results, onUpdate, _profiles, showSuggestions, isCreateNew 
+  title, subtitle, color, expanded, onToggle, results, onUpdate, _profiles, showSuggestions, isCreateNew, onCreateNew
 }: MatchSectionProps) {
   if (results.length === 0) return null;
 
@@ -473,10 +632,12 @@ function MatchSection({
             <MatchResultRow
               key={idx}
               result={result}
+              resultIndex={idx}
               onUpdate={(updates) => onUpdate(results.indexOf(result), updates)}
               _profiles={_profiles}
               showSuggestions={showSuggestions}
               isCreateNew={isCreateNew}
+              onCreateNew={onCreateNew}
             />
           ))}
         </div>
@@ -487,13 +648,15 @@ function MatchSection({
 
 interface MatchResultRowProps {
   result: MatchResult;
+  resultIndex: number;
   onUpdate: (updates: Partial<MatchResult>) => void;
   _profiles: Profile[];  // Available for future use
   showSuggestions?: boolean;
   isCreateNew?: boolean;
+  onCreateNew?: (resultIndex: number) => void;
 }
 
-function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, showSuggestions, isCreateNew }: MatchResultRowProps) {
+function MatchResultRow({ result, resultIndex, onUpdate, _profiles: _unusedProfiles, showSuggestions, isCreateNew, onCreateNew }: MatchResultRowProps) {
   const { row, matchedTask, suggestedTasks, matchedAssignees, parsedStatus, confirmed, action } = result;
   
   const statusConfig = parsedStatus ? STATUS_META[parsedStatus] : null;
@@ -599,7 +762,13 @@ function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, showSugg
               </button>
             )}
             <button
-              onClick={() => onUpdate({ action: 'create', confirmed: true })}
+              onClick={() => {
+                if (isCreateNew && onCreateNew) {
+                  onCreateNew(resultIndex);
+                } else {
+                  onUpdate({ action: 'create', confirmed: true });
+                }
+              }}
               style={{
                 padding: '6px 12px',
                 borderRadius: '6px',
@@ -611,7 +780,7 @@ function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, showSugg
                 cursor: 'pointer',
               }}
             >
-              Create New
+              {isCreateNew && onCreateNew ? 'Create New Task +' : 'Create New'}
             </button>
             <button
               onClick={() => onUpdate({ action: 'skip', confirmed: false })}
