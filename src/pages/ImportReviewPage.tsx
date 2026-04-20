@@ -249,6 +249,9 @@ export function ImportReviewPage() {
     setProcessing(true);
     const confirmedResults = matchResults.filter(r => r.confirmed && r.action !== 'skip');
     
+    // Track newly created tasks during this batch by Task ID
+    const createdTasksMap = new Map<string, TaskItem>();
+    
     try {
       for (const result of confirmedResults) {
         if (result.action === 'update' && result.matchedTask) {
@@ -278,29 +281,49 @@ export function ImportReviewPage() {
             }
           }
         } else if (result.action === 'create') {
-          // Create new task
-          const fullTitle = result.row.taskId 
-            ? `${result.row.taskId} - ${result.row.title}` 
-            : result.row.title;
+          const taskKey = result.row.taskId || result.row.title;
           
-          const newTask = await createTask({
-            title: fullTitle,
-            description: result.row.description,
-            status: result.parsedStatus || 'todo',
-            priority: 'medium',
-            due_date: result.row.dueDate || undefined,
-            assignee_ids: result.matchedAssignees.map(a => a.id),
-            tags: [],
-          });
+          // Check if this task was already created in this batch
+          const existingCreatedTask = createdTasksMap.get(taskKey);
           
-          // Create log entry
-          if (result.row.description) {
-            await createLog({
-              task_id: newTask.id,
-              date: result.row.dueDate || new Date().toISOString().slice(0, 10),
-              event: result.row.description,
-              category: 'other',
+          if (existingCreatedTask) {
+            // Task already created in this batch, just add log
+            if (result.row.description) {
+              await createLog({
+                task_id: existingCreatedTask.id,
+                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+                event: result.row.description,
+                category: 'other',
+              });
+            }
+          } else {
+            // Create new task
+            const fullTitle = result.row.taskId 
+              ? `${result.row.taskId} - ${result.row.title}` 
+              : result.row.title;
+            
+            const newTask = await createTask({
+              title: fullTitle,
+              description: result.row.description,
+              status: result.parsedStatus || 'todo',
+              priority: 'medium',
+              due_date: result.row.dueDate || undefined,
+              assignee_ids: result.matchedAssignees.map(a => a.id),
+              tags: [],
             });
+            
+            // Track the newly created task
+            createdTasksMap.set(taskKey, newTask as TaskItem);
+            
+            // Create log entry
+            if (result.row.description) {
+              await createLog({
+                task_id: newTask.id,
+                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+                event: result.row.description,
+                category: 'other',
+              });
+            }
           }
         }
       }
