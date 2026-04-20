@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, User, Search, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, User, Search } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { fetchTasks, fetchProfiles, updateTask, createTask, createLog } from '../lib/api';
-import type { TaskItem, Profile, TaskStatus, TaskPriority } from '../types';
-import { STATUS_META, PRIORITY_META } from '../types';
+import type { TaskItem, Profile, TaskStatus } from '../types';
+import { STATUS_META } from '../types';
 
 interface ImportRow {
   rowIndex: number;
@@ -107,8 +107,6 @@ function findAssigneesByName(names: string[], profiles: Profile[]): Profile[] {
 export function ImportReviewPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [_existingTasks, setExistingTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -122,17 +120,6 @@ export function ImportReviewPage() {
   const importData: ImportRow[] = location.state?.importData || [];
   
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
-  
-  // Create New Task Modal state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [creatingResultIndex, setCreatingResultIndex] = useState<number | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
-  const [newTaskDueDate, setNewTaskDueDate] = useState('');
-  const [newTaskAssigneeIds, setNewTaskAssigneeIds] = useState<string[]>([]);
-  const [newTaskTags, setNewTaskTags] = useState('');
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!importData.length) {
@@ -143,8 +130,6 @@ export function ImportReviewPage() {
     const loadData = async () => {
       try {
         const [tasks, profs] = await Promise.all([fetchTasks(), fetchProfiles()]);
-        setExistingTasks(tasks);
-        setProfiles(profs);
         
         // Perform matching
         const results = performMatching(importData, tasks, profs);
@@ -229,10 +214,6 @@ export function ImportReviewPage() {
     });
   };
 
-  const updateMatchResult = (index: number, updates: Partial<MatchResult>) => {
-    setMatchResults(prev => prev.map((r, i) => i === index ? { ...r, ...updates } : r));
-  };
-
   const groupedResults = useMemo(() => {
     return {
       exact: matchResults.filter(r => r.matchType === 'exact'),
@@ -242,18 +223,30 @@ export function ImportReviewPage() {
     };
   }, [matchResults]);
 
-  const confirmedCount = matchResults.filter(r => r.confirmed).length;
   const totalCount = matchResults.length;
 
   const handleExecute = async () => {
     setProcessing(true);
-    const confirmedResults = matchResults.filter(r => r.confirmed && r.action !== 'skip');
+    
+    // Auto-confirm all non-duplicate items
+    const resultsToProcess = matchResults.map(r => {
+      if (r.matchType === 'duplicate' && !r.row.description) {
+        return { ...r, confirmed: false, action: 'skip' as const };
+      }
+      return { ...r, confirmed: true };
+    });
     
     // Track newly created tasks during this batch by Task ID
     const createdTasksMap = new Map<string, TaskItem>();
+    let created = 0, updated = 0, logsAdded = 0, skipped = 0;
     
     try {
-      for (const result of confirmedResults) {
+      for (const result of resultsToProcess) {
+        if (!result.confirmed || result.action === 'skip') {
+          skipped++;
+          continue;
+        }
+        
         if (result.action === 'update' && result.matchedTask) {
           if (result.matchType === 'duplicate') {
             // For duplicates with new description, only add log
@@ -264,12 +257,14 @@ export function ImportReviewPage() {
                 event: result.row.description,
                 category: 'other',
               });
+              logsAdded++;
             }
           } else {
             // Normal update - update task status
             await updateTask(result.matchedTask.id, {
               status: result.parsedStatus || result.matchedTask.status,
             });
+            updated++;
             // Create log entry for the update
             if (result.row.description) {
               await createLog({
@@ -278,6 +273,7 @@ export function ImportReviewPage() {
                 event: result.row.description,
                 category: 'other',
               });
+              logsAdded++;
             }
           }
         } else if (result.action === 'create') {
@@ -292,8 +288,8 @@ export function ImportReviewPage() {
               await updateTask(existingCreatedTask.id, {
                 status: result.parsedStatus,
               });
-              // Update our local reference
               existingCreatedTask.status = result.parsedStatus;
+              updated++;
             }
             // Add log if description exists
             if (result.row.description) {
@@ -303,6 +299,7 @@ export function ImportReviewPage() {
                 event: result.row.description,
                 category: 'other',
               });
+              logsAdded++;
             }
           } else {
             // Create new task
@@ -320,6 +317,8 @@ export function ImportReviewPage() {
               tags: [],
             });
             
+            created++;
+            
             // Track the newly created task
             createdTasksMap.set(taskKey, newTask as TaskItem);
             
@@ -331,11 +330,13 @@ export function ImportReviewPage() {
                 event: result.row.description,
                 category: 'other',
               });
+              logsAdded++;
             }
           }
         }
       }
       
+      alert(`Import complete!\nCreated: ${created} tasks\nUpdated: ${updated} tasks\nLogs added: ${logsAdded}\nSkipped: ${skipped} duplicates`);
       navigate('/');
     } catch (error) {
       console.error('Failed to execute imports:', error);
@@ -347,127 +348,6 @@ export function ImportReviewPage() {
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  // Open Create New Task Modal
-  const openCreateModal = (originalIndex: number) => {
-    const result = matchResults[originalIndex];
-    if (!result) return;
-    
-    setCreatingResultIndex(originalIndex);
-    const fullTitle = result.row.taskId 
-      ? `${result.row.taskId} - ${result.row.title}` 
-      : result.row.title;
-    setNewTaskTitle(fullTitle);
-    setNewTaskDescription(result.row.description);
-    setNewTaskPriority('medium');
-    setNewTaskDueDate(result.row.dueDate || '');
-    setNewTaskAssigneeIds(result.matchedAssignees.map(a => a.id));
-    setNewTaskTags('');
-    setShowCreateModal(true);
-  };
-
-  // Handle Create New Task
-  const handleCreateTask = async () => {
-    if (!newTaskTitle.trim()) return;
-    
-    setCreating(true);
-    try {
-      const result = creatingResultIndex !== null ? matchResults[creatingResultIndex] : null;
-      
-      const newTask = await createTask({
-        title: newTaskTitle.trim(),
-        description: newTaskDescription,
-        status: result?.parsedStatus || 'todo',
-        priority: newTaskPriority,
-        due_date: newTaskDueDate || undefined,
-        assignee_ids: newTaskAssigneeIds,
-        tags: newTaskTags.split(',').map(t => t.trim()).filter(Boolean),
-      });
-      
-      // If there's a description, create a log entry
-      if (newTaskDescription && creatingResultIndex !== null) {
-        const result = matchResults[creatingResultIndex];
-        await createLog({
-          task_id: newTask.id,
-          date: result.row.dueDate || new Date().toISOString().slice(0, 10),
-          event: newTaskDescription,
-          category: 'other',
-        });
-      }
-      
-      // Update the match result to reference the new task
-      if (creatingResultIndex !== null) {
-        updateMatchResult(creatingResultIndex, {
-          matchedTask: newTask as TaskItem,
-          action: 'update',
-          confirmed: true,
-        });
-      }
-      
-      // Refresh tasks and re-run matching for remaining rows
-      const refreshedTasks = await fetchTasks();
-      setExistingTasks(refreshedTasks);
-      
-      // Re-run matching on all rows that are NOT yet confirmed
-      setMatchResults(prev => {
-        return prev.map((result, idx) => {
-          // Skip already confirmed rows (except the one we just created)
-          if (result.confirmed && idx !== creatingResultIndex) return result;
-          
-          // Re-match this row against refreshed tasks
-          const parsedStatus = parseStatus(result.row.status);
-          const extractedId = extractTaskId(result.row.title);
-          const cleanTitleStr = cleanTitle(result.row.title);
-          
-          let matchedTask: TaskItem | null = null;
-          let matchType: 'exact' | 'suggested' | 'none' = 'none';
-          
-          if (extractedId) {
-            matchedTask = refreshedTasks.find(t => {
-              const taskExtractedId = extractTaskId(t.title);
-              return taskExtractedId === extractedId;
-            }) || null;
-            
-            if (matchedTask) {
-              matchType = 'exact';
-            }
-          }
-          
-          const suggestedTasks: TaskItem[] = [];
-          if (!matchedTask) {
-            const scoredTasks = refreshedTasks
-              .map(t => ({ task: t, score: similarityScore(cleanTitleStr, t.title) }))
-              .filter(t => t.score > 0.4)
-              .sort((a, b) => b.score - a.score)
-              .slice(0, 3);
-            
-            if (scoredTasks.length > 0) {
-              suggestedTasks.push(...scoredTasks.map(t => t.task));
-              matchType = 'suggested';
-            }
-          }
-          
-          return {
-            ...result,
-            matchType,
-            matchedTask,
-            suggestedTasks,
-            parsedStatus,
-            // If now matched, suggest update action
-            action: matchType === 'exact' ? 'update' : matchType === 'none' ? 'create' : result.action,
-          };
-        });
-      });
-      
-      setShowCreateModal(false);
-      setCreatingResultIndex(null);
-    } catch (error) {
-      console.error('Failed to create task:', error);
-      alert('Failed to create task. Please try again.');
-    } finally {
-      setCreating(false);
-    }
   };
 
   if (loading) {
@@ -513,23 +393,23 @@ export function ImportReviewPage() {
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <span style={{ fontSize: '14px', color: '#64748b' }}>
-              {confirmedCount} of {totalCount} confirmed
+              {totalCount} items ready to import
             </span>
             <button 
               onClick={handleExecute}
-              disabled={processing || confirmedCount === 0}
+              disabled={processing}
               style={{ 
                 padding: '12px 24px', 
                 borderRadius: '10px', 
                 border: 'none', 
-                background: confirmedCount > 0 ? '#111827' : '#e2e8f0', 
-                color: confirmedCount > 0 ? '#fff' : '#94a3b8',
-                cursor: confirmedCount > 0 ? 'pointer' : 'not-allowed',
+                background: '#111827', 
+                color: '#fff',
+                cursor: 'pointer',
                 fontSize: '14px',
                 fontWeight: 600,
               }}
             >
-              {processing ? 'Processing...' : `Execute ${confirmedCount} Imports`}
+              {processing ? 'Importing...' : 'Import All'}
             </button>
           </div>
         </div>
@@ -572,36 +452,26 @@ export function ImportReviewPage() {
             expanded={expandedSections.exact}
             onToggle={() => toggleSection('exact')}
             results={groupedResults.exact}
-            onUpdate={updateMatchResult}
-            _profiles={profiles}
-            allTasks={_existingTasks}
           />
           
           {/* Suggested Matches */}
           <MatchSection
-            title="Suggested Match (Needs Confirmation)"
-            subtitle="Similar tasks found - please review and confirm"
+            title="Suggested Match"
+            subtitle="Similar tasks found - will be updated automatically"
             color="#f59e0b"
             expanded={expandedSections.suggested}
             onToggle={() => toggleSection('suggested')}
             results={groupedResults.suggested}
-            onUpdate={updateMatchResult}
-            _profiles={profiles}
-            allTasks={_existingTasks}
-            showSuggestions
           />
           
           {/* Duplicate */}
           <MatchSection
             title="Duplicate"
-            subtitle="Same task found - can add new log if description differs"
+            subtitle="Same task found - will be skipped"
             color="#6b7280"
             expanded={expandedSections.duplicate}
             onToggle={() => toggleSection('duplicate')}
             results={groupedResults.duplicate}
-            onUpdate={updateMatchResult}
-            _profiles={profiles}
-            allTasks={_existingTasks}
           />
           
           {/* No Match - Create New */}
@@ -612,70 +482,8 @@ export function ImportReviewPage() {
             expanded={expandedSections.none}
             onToggle={() => toggleSection('none')}
             results={groupedResults.none}
-            onUpdate={updateMatchResult}
-            _profiles={profiles}
-            allTasks={_existingTasks}
-            isCreateNew
-            onCreateNew={openCreateModal}
           />
         </div>
-
-        {/* Create New Task Modal */}
-        {showCreateModal && (
-          <div onClick={() => setShowCreateModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <div style={{ fontSize: '24px', fontWeight: 800 }}>Create New Task</div>
-                <button onClick={() => setShowCreateModal(false)} style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                  <X size={20} color="#374151" />
-                </button>
-              </div>
-              
-              <div style={{ display: 'grid', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Title *</label>
-                  <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Task title..." style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Description</label>
-                  <textarea value={newTaskDescription} onChange={(e) => setNewTaskDescription(e.target.value)} placeholder="Task description..." rows={3} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Priority</label>
-                    <select value={newTaskPriority} onChange={(e) => setNewTaskPriority(e.target.value as TaskPriority)} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', background: '#fff' }}>
-                      {Object.entries(PRIORITY_META).map(([key, meta]) => (<option key={key} value={key}>{meta.label}</option>))}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Due Date</label>
-                    <input type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Assignees</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                    {profiles.map((profile) => (
-                      <label key={profile.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: newTaskAssigneeIds.includes(profile.id) ? '#ede9fe' : '#f3f4f6', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={newTaskAssigneeIds.includes(profile.id)} onChange={(e) => { if (e.target.checked) { setNewTaskAssigneeIds([...newTaskAssigneeIds, profile.id]); } else { setNewTaskAssigneeIds(newTaskAssigneeIds.filter(id => id !== profile.id)); } }} style={{ cursor: 'pointer' }} />
-                        <span style={{ fontSize: '13px', fontWeight: 500, color: newTaskAssigneeIds.includes(profile.id) ? '#6d28d9' : '#374151' }}>{profile.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Tags (comma separated)</label>
-                  <input value={newTaskTags} onChange={(e) => setNewTaskTags(e.target.value)} placeholder="design, urgent, frontend..." style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <button onClick={() => setShowCreateModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                <button onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()} style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', fontWeight: 600, opacity: (creating || !newTaskTitle.trim()) ? 0.6 : 1, cursor: (creating || !newTaskTitle.trim()) ? 'not-allowed' : 'pointer' }}>{creating ? 'Creating...' : 'Create Task'}</button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </AppShell>
   );
@@ -727,16 +535,10 @@ interface MatchSectionProps {
   expanded: boolean;
   onToggle: () => void;
   results: MatchResult[];
-  onUpdate: (index: number, updates: Partial<MatchResult>) => void;
-  _profiles: Profile[];
-  allTasks?: TaskItem[];  // All existing tasks for manual selection
-  showSuggestions?: boolean;
-  isCreateNew?: boolean;
-  onCreateNew?: (originalIndex: number) => void;
 }
 
 function MatchSection({ 
-  title, subtitle, color, expanded, onToggle, results, onUpdate, _profiles, allTasks, showSuggestions, isCreateNew, onCreateNew
+  title, subtitle, color, expanded, onToggle, results
 }: MatchSectionProps) {
   if (results.length === 0) return null;
 
@@ -788,12 +590,6 @@ function MatchSection({
             <MatchResultRow
               key={result.row.rowIndex}
               result={result}
-              onUpdate={(updates) => onUpdate(result.originalIndex, updates)}
-              _profiles={_profiles}
-              allTasks={allTasks}
-              showSuggestions={showSuggestions}
-              isCreateNew={isCreateNew}
-              onCreateNew={onCreateNew ? () => onCreateNew(result.originalIndex) : undefined}
             />
           ))}
         </div>
@@ -804,51 +600,32 @@ function MatchSection({
 
 interface MatchResultRowProps {
   result: MatchResult;
-  onUpdate: (updates: Partial<MatchResult>) => void;
-  _profiles: Profile[];
-  allTasks?: TaskItem[];
-  showSuggestions?: boolean;
-  isCreateNew?: boolean;
-  onCreateNew?: (originalIndex: number) => void;
 }
 
-function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, allTasks, showSuggestions, isCreateNew, onCreateNew }: MatchResultRowProps) {
-  const { row, matchedTask, suggestedTasks, matchedAssignees, parsedStatus, confirmed, action } = result;
+function MatchResultRow({ result }: MatchResultRowProps) {
+  const { row, matchedTask, matchedAssignees, parsedStatus } = result;
   
   const statusConfig = parsedStatus ? STATUS_META[parsedStatus] : null;
   const extractedId = extractTaskId(row.title);
-  const [showOtherTasks, setShowOtherTasks] = useState(false);
-  
-  // Filter other tasks (excluding already suggested ones)
-  const otherTasks = (allTasks || []).filter(task => 
-    !suggestedTasks.find(st => st.id === task.id)
-  );
 
   return (
     <div style={{ 
       padding: '16px 20px',
       borderBottom: '1px solid #f1f5f9',
-      background: confirmed ? '#f0fdf4' : '#fff',
+      background: '#fff',
     }}>
       <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-        {/* Checkbox */}
+        {/* Auto-action indicator */}
         <div style={{ paddingTop: '4px' }}>
-          <button
-            onClick={() => onUpdate({ confirmed: !confirmed })}
-            style={{
-              width: '22px',
-              height: '22px',
-              borderRadius: '6px',
-              border: confirmed ? 'none' : '2px solid #cbd5e1',
-              background: confirmed ? '#10b981' : '#fff',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {confirmed && <CheckCircle2 size={14} color="#fff" />}
-          </button>
+          {result.matchType === 'duplicate' ? (
+            <span style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '4px' }}>Skip</span>
+          ) : result.matchType === 'exact' ? (
+            <span style={{ fontSize: '11px', color: '#047857', background: '#f0fdf4', padding: '2px 8px', borderRadius: '4px' }}>Update</span>
+          ) : result.matchType === 'suggested' ? (
+            <span style={{ fontSize: '11px', color: '#b45309', background: '#fefce8', padding: '2px 8px', borderRadius: '4px' }}>Update</span>
+          ) : (
+            <span style={{ fontSize: '11px', color: '#1d4ed8', background: '#eff6ff', padding: '2px 8px', borderRadius: '4px' }}>Create</span>
+          )}
         </div>
 
         {/* Content */}
@@ -904,209 +681,20 @@ function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, allTasks
             )}
           </div>
 
-          {/* Action selector */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: showSuggestions && suggestedTasks.length > 0 ? '12px' : 0 }}>
-            {result.matchType === 'duplicate' ? (
-              <>
-                {row.description ? (
-                  <button
-                    onClick={() => onUpdate({ action: 'update', confirmed: true })}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      border: action === 'update' ? '1px solid #10b981' : '1px solid #e2e8f0',
-                      background: action === 'update' ? '#f0fdf4' : '#fff',
-                      color: action === 'update' ? '#047857' : '#64748b',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Add Log Entry
-                  </button>
-                ) : (
-                  <span style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    background: '#f3f4f6',
-                    color: '#6b7280',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                  }}>
-                    Duplicate - Will Skip
-                  </span>
-                )}
-                <button
-                  onClick={() => onUpdate({ action: 'skip', confirmed: false })}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: action === 'skip' ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                    background: action === 'skip' ? '#fef2f2' : '#fff',
-                    color: action === 'skip' ? '#dc2626' : '#64748b',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Skip
-                </button>
-              </>
-            ) : (
-              <>
-                {!isCreateNew && (
-                  <button
-                    onClick={() => onUpdate({ action: 'update', confirmed: true })}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      border: action === 'update' ? '1px solid #10b981' : '1px solid #e2e8f0',
-                      background: action === 'update' ? '#f0fdf4' : '#fff',
-                      color: action === 'update' ? '#047857' : '#64748b',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Update Existing
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    if (isCreateNew && onCreateNew) {
-                      onCreateNew(result.originalIndex);
-                    } else {
-                      onUpdate({ action: 'create', confirmed: true });
-                    }
-                  }}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: action === 'create' ? '1px solid #3b82f6' : '1px solid #e2e8f0',
-                    background: action === 'create' ? '#eff6ff' : '#fff',
-                    color: action === 'create' ? '#1d4ed8' : '#64748b',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {isCreateNew && onCreateNew ? 'Create New Task +' : 'Create New'}
-                </button>
-                <button
-                  onClick={() => onUpdate({ action: 'skip', confirmed: false })}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: action === 'skip' ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                    background: action === 'skip' ? '#fef2f2' : '#fff',
-                    color: action === 'skip' ? '#dc2626' : '#64748b',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Skip
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Suggested matches */}
-          {showSuggestions && suggestedTasks.length > 0 && (
-            <div style={{ marginTop: '12px', padding: '12px', background: '#fefce8', borderRadius: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#854d0e', marginBottom: '8px' }}>
-                <AlertCircle size={12} style={{ display: 'inline', marginRight: '4px' }} />
-                Similar tasks found:
-              </div>
-              {suggestedTasks.map((task, i) => (
-                <div 
-                  key={task.id}
-                  onClick={() => onUpdate({ matchedTask: task, action: 'update', confirmed: true })}
-                  style={{
-                    padding: '8px 12px',
-                    marginBottom: i < suggestedTasks.length - 1 ? '4px' : 0,
-                    background: matchedTask?.id === task.id ? '#f0fdf4' : '#fff',
-                    border: matchedTask?.id === task.id ? '1px solid #10b981' : '1px solid #e2e8f0',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    color: matchedTask?.id === task.id ? '#047857' : '#374151',
-                  }}
-                >
-                  {task.title}
-                  <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '8px' }}>
-                    Current: {STATUS_META[task.status].label}
-                  </span>
-                </div>
-              ))}
-              
-              {/* Other Tasks Option */}
-              {otherTasks.length > 0 && (
-                <div style={{ marginTop: '8px', borderTop: '1px solid #fde68a', paddingTop: '8px' }}>
-                  <button
-                    onClick={() => setShowOtherTasks(!showOtherTasks)}
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      color: '#7c3aed',
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    {showOtherTasks ? '▲' : '▼'} Other Tasks ({otherTasks.length})
-                  </button>
-                  
-                  {showOtherTasks && (
-                    <div style={{ marginTop: '8px', display: 'grid', gap: '4px' }}>
-                      {otherTasks.map((task) => (
-                        <div 
-                          key={task.id}
-                          onClick={() => onUpdate({ matchedTask: task, action: 'update', confirmed: true })}
-                          style={{
-                            padding: '8px 12px',
-                            background: matchedTask?.id === task.id ? '#f0fdf4' : '#fff',
-                            border: matchedTask?.id === task.id ? '1px solid #10b981' : '1px solid #e2e8f0',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            color: matchedTask?.id === task.id ? '#047857' : '#374151',
-                          }}
-                        >
-                          {task.title}
-                          <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '8px' }}>
-                            Current: {STATUS_META[task.status].label}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Matched task display */}
-          {matchedTask && action === 'update' && (
+          {matchedTask && (
             <div style={{ 
-              marginTop: '12px', 
-              padding: '12px', 
-              background: '#f0fdf4', 
-              borderRadius: '8px',
-              border: '1px solid #10b981',
+              padding: '8px 12px', 
+              background: '#f8fafc', 
+              borderRadius: '6px',
+              border: '1px solid #e2e8f0',
+              fontSize: '12px',
+              color: '#64748b',
             }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#047857', marginBottom: '4px' }}>
-                Will update:
-              </div>
-              <div style={{ fontSize: '13px', color: '#374151' }}>
-                {matchedTask.title}
-              </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                Status: {STATUS_META[matchedTask.status].label} → {statusConfig?.label || 'Unchanged'}
-              </div>
+              → {matchedTask.title}
+              <span style={{ marginLeft: '8px', color: '#94a3b8' }}>
+                ({STATUS_META[matchedTask.status].label})
+              </span>
             </div>
           )}
         </div>
