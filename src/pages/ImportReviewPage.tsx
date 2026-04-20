@@ -92,8 +92,8 @@ function findAssigneesByName(names: string[], profiles: Profile[]): Profile[] {
 export function ImportReviewPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [, setExistingTasks] = useState<TaskItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [_existingTasks, setExistingTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -323,6 +323,61 @@ export function ImportReviewPage() {
           confirmed: true,
         });
       }
+      
+      // Refresh tasks and re-run matching for remaining rows
+      const refreshedTasks = await fetchTasks();
+      setExistingTasks(refreshedTasks);
+      
+      // Re-run matching on all rows that are NOT yet confirmed
+      setMatchResults(prev => {
+        return prev.map((result, idx) => {
+          // Skip already confirmed rows (except the one we just created)
+          if (result.confirmed && idx !== creatingResultIndex) return result;
+          
+          // Re-match this row against refreshed tasks
+          const parsedStatus = parseStatus(result.row.status);
+          const extractedId = extractTaskId(result.row.title);
+          const cleanTitleStr = cleanTitle(result.row.title);
+          
+          let matchedTask: TaskItem | null = null;
+          let matchType: 'exact' | 'suggested' | 'none' = 'none';
+          
+          if (extractedId) {
+            matchedTask = refreshedTasks.find(t => {
+              const taskExtractedId = extractTaskId(t.title);
+              return taskExtractedId === extractedId;
+            }) || null;
+            
+            if (matchedTask) {
+              matchType = 'exact';
+            }
+          }
+          
+          const suggestedTasks: TaskItem[] = [];
+          if (!matchedTask) {
+            const scoredTasks = refreshedTasks
+              .map(t => ({ task: t, score: similarityScore(cleanTitleStr, t.title) }))
+              .filter(t => t.score > 0.4)
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 3);
+            
+            if (scoredTasks.length > 0) {
+              suggestedTasks.push(...scoredTasks.map(t => t.task));
+              matchType = 'suggested';
+            }
+          }
+          
+          return {
+            ...result,
+            matchType,
+            matchedTask,
+            suggestedTasks,
+            parsedStatus,
+            // If now matched, suggest update action
+            action: matchType === 'exact' ? 'update' : matchType === 'none' ? 'create' : result.action,
+          };
+        });
+      });
       
       setShowCreateModal(false);
       setCreatingResultIndex(null);
