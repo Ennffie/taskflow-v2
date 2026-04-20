@@ -195,9 +195,7 @@ export function ImportReviewPage() {
       
       // Check if this is a duplicate (same task already exists)
       if (matchedTask && isDuplicate(row, matchedTask)) {
-        // Check if description is also the same
-        const hasNewDescription = row.description && row.description.trim().length > 0;
-        
+        // Always update status and add log for duplicates
         return {
           row,
           matchType: 'duplicate',
@@ -205,8 +203,8 @@ export function ImportReviewPage() {
           suggestedTasks,
           matchedAssignees,
           parsedStatus,
-          confirmed: !hasNewDescription, // Auto-skip if no new description
-          action: hasNewDescription ? 'update' : 'skip', // If has description, allow adding log
+          confirmed: true, // Auto-confirm all duplicates
+          action: 'update', // Always update, never skip
           originalIndex: rowIndex,
         };
       }
@@ -239,13 +237,11 @@ export function ImportReviewPage() {
   const handleExecute = async () => {
     setProcessing(true);
     
-    // Auto-confirm all non-duplicate items
-    const resultsToProcess = matchResults.map(r => {
-      if (r.matchType === 'duplicate' && !r.row.description) {
-        return { ...r, confirmed: false, action: 'skip' as const };
-      }
-      return { ...r, confirmed: true };
-    });
+    // Auto-confirm all items (including duplicates)
+    const resultsToProcess = matchResults.map(r => ({
+      ...r,
+      confirmed: true,
+    }));
     
     // Track newly created tasks during this batch by Task ID
     const createdTasksMap = new Map<string, TaskItem>();
@@ -260,8 +256,16 @@ export function ImportReviewPage() {
       
       try {
         if (result.action === 'update' && result.matchedTask) {
+          // For duplicates, update status if different and always add log
           if (result.matchType === 'duplicate') {
-            // For duplicates with new description, only add log
+            // Update status if different
+            if (result.parsedStatus && result.parsedStatus !== result.matchedTask.status) {
+              await updateTask(result.matchedTask.id, {
+                status: result.parsedStatus,
+              });
+              updated++;
+            }
+            // Always add log if description exists
             if (result.row.description) {
               await createLog({
                 task_id: result.matchedTask.id,
@@ -499,7 +503,7 @@ export function ImportReviewPage() {
           {/* Duplicate */}
           <MatchSection
             title="Duplicate"
-            subtitle="Same task found - will be skipped"
+            subtitle="Same task found - will update status + add log"
             color="#6b7280"
             expanded={expandedSections.duplicate}
             onToggle={() => toggleSection('duplicate')}
@@ -650,7 +654,7 @@ function MatchResultRow({ result }: MatchResultRowProps) {
         {/* Auto-action indicator */}
         <div style={{ paddingTop: '4px' }}>
           {result.matchType === 'duplicate' ? (
-            <span style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '4px' }}>Skip</span>
+            <span style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '4px' }}>Update</span>
           ) : result.matchType === 'exact' ? (
             <span style={{ fontSize: '11px', color: '#047857', background: '#f0fdf4', padding: '2px 8px', borderRadius: '4px' }}>Update</span>
           ) : result.matchType === 'suggested' ? (
