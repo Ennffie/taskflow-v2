@@ -25,6 +25,7 @@ interface MatchResult {
   parsedStatus: TaskStatus | null;
   confirmed: boolean;
   action: 'update' | 'create' | 'skip';
+  originalIndex: number; // Track original index in matchResults
 }
 
 // Status mapping from XLS to TaskStatus
@@ -144,7 +145,7 @@ export function ImportReviewPage() {
   }, [importData, navigate]);
 
   const performMatching = (rows: ImportRow[], tasks: TaskItem[], profs: Profile[]): MatchResult[] => {
-    return rows.map(row => {
+    return rows.map((row, rowIndex) => {
       const parsedStatus = parseStatus(row.status);
       const extractedId = extractTaskId(row.title);
       const cleanTitleStr = cleanTitle(row.title);
@@ -190,6 +191,7 @@ export function ImportReviewPage() {
         parsedStatus,
         confirmed: matchType === 'exact',
         action: matchType === 'exact' ? 'update' : matchType === 'none' ? 'create' : 'skip',
+        originalIndex: rowIndex, // Track original index
       };
     });
   };
@@ -271,11 +273,11 @@ export function ImportReviewPage() {
   };
 
   // Open Create New Task Modal
-  const openCreateModal = (resultIndex: number) => {
-    const result = matchResults[resultIndex];
+  const openCreateModal = (originalIndex: number) => {
+    const result = matchResults[originalIndex];
     if (!result) return;
     
-    setCreatingResultIndex(resultIndex);
+    setCreatingResultIndex(originalIndex);
     const fullTitle = result.row.taskId 
       ? `${result.row.taskId} - ${result.row.title}` 
       : result.row.title;
@@ -632,16 +634,13 @@ interface MatchSectionProps {
   allTasks?: TaskItem[];  // All existing tasks for manual selection
   showSuggestions?: boolean;
   isCreateNew?: boolean;
-  onCreateNew?: (resultIndex: number) => void;
+  onCreateNew?: (originalIndex: number) => void;
 }
 
 function MatchSection({ 
   title, subtitle, color, expanded, onToggle, results, onUpdate, _profiles, allTasks, showSuggestions, isCreateNew, onCreateNew
 }: MatchSectionProps) {
   if (results.length === 0) return null;
-
-  // Offset tracking removed - not currently used
-  // const globalIndexOffset = {...};
 
   return (
     <div style={{ 
@@ -687,17 +686,16 @@ function MatchSection({
       
       {expanded && (
         <div style={{ padding: '8px' }}>
-          {results.map((result, idx) => (
+          {results.map((result) => (
             <MatchResultRow
-              key={idx}
+              key={result.row.rowIndex}
               result={result}
-              resultIndex={idx}
-              onUpdate={(updates) => onUpdate(results.indexOf(result), updates)}
+              onUpdate={(updates) => onUpdate(result.originalIndex, updates)}
               _profiles={_profiles}
               allTasks={allTasks}
               showSuggestions={showSuggestions}
               isCreateNew={isCreateNew}
-              onCreateNew={onCreateNew}
+              onCreateNew={onCreateNew ? () => onCreateNew(result.originalIndex) : undefined}
             />
           ))}
         </div>
@@ -708,16 +706,15 @@ function MatchSection({
 
 interface MatchResultRowProps {
   result: MatchResult;
-  resultIndex: number;
   onUpdate: (updates: Partial<MatchResult>) => void;
   _profiles: Profile[];
   allTasks?: TaskItem[];
   showSuggestions?: boolean;
   isCreateNew?: boolean;
-  onCreateNew?: (resultIndex: number) => void;
+  onCreateNew?: (originalIndex: number) => void;
 }
 
-function MatchResultRow({ result, resultIndex, onUpdate, _profiles: _unusedProfiles, allTasks, showSuggestions, isCreateNew, onCreateNew }: MatchResultRowProps) {
+function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, allTasks, showSuggestions, isCreateNew, onCreateNew }: MatchResultRowProps) {
   const { row, matchedTask, suggestedTasks, matchedAssignees, parsedStatus, confirmed, action } = result;
   
   const statusConfig = parsedStatus ? STATUS_META[parsedStatus] : null;
@@ -831,7 +828,7 @@ function MatchResultRow({ result, resultIndex, onUpdate, _profiles: _unusedProfi
             <button
               onClick={() => {
                 if (isCreateNew && onCreateNew) {
-                  onCreateNew(resultIndex);
+                  onCreateNew(result.originalIndex);
                 } else {
                   onUpdate({ action: 'create', confirmed: true });
                 }
