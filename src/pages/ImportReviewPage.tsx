@@ -54,6 +54,10 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   'In Progress': 'in_progress',
   'New': 'todo',
   'Waiting': 'todo',
+  'Focus': 'focus',
+  'Day 2': 'focus',
+  'Day2': 'focus',
+  'Priority': 'focus',
 };
 
 // Parse status from XLS
