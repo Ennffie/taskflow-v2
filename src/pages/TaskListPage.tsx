@@ -446,6 +446,9 @@ export function TaskListPage() {
 // Import Modal Component
 function ImportModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
+  const [availableSheets, setAvailableSheets] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
+  const [workbook, setWorkbook] = useState<any>(null);
   const [previewData, setPreviewData] = useState<ImportRow[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -467,42 +470,132 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     setError(null);
     
     try {
-      const text = await file.text();
-      const rows = text.split('\n').filter(r => r.trim());
+      const buffer = await file.arrayBuffer();
+      const XLSX = await import('xlsx');
+      const wb = XLSX.read(buffer, { type: 'array' });
+      setWorkbook(wb);
       
-      // Parse CSV/XLS format: Date | Member | Task ID | Task Name | Update | Status
-      const parsed: ImportRow[] = [];
-      let hasHeader = true;
+      const sheets = wb.SheetNames;
+      setAvailableSheets(sheets);
       
-      for (let i = hasHeader ? 1 : 0; i < rows.length; i++) {
-        const cols = rows[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
-        
-        if (cols.length >= 5) {
-          const taskName = cols[3] || '';
-          const update = cols[4] || '';
-          const status = cols[5] || 'New';
-          
-          parsed.push({
-            rowIndex: i,
-            taskId: null,
-            title: taskName,
-            status: status,
-            assigneeNames: cols[1] ? [cols[1]] : [],
-            dueDate: null,
-            description: update,
-          });
-        }
-      }
-      
-      if (parsed.length === 0) {
-        setError('No valid data found in file. Expected format: Date, Member, Task ID, Task Name, Update, Status');
+      if (sheets.length === 1) {
+        // Only one sheet, auto-select
+        setSelectedSheet(sheets[0]);
+        parseSheet(wb, sheets[0]);
       } else {
-        setPreviewData(parsed);
+        // Multiple sheets, wait for user selection
+        setParsing(false);
       }
     } catch (err) {
       setError('Failed to parse file: ' + (err instanceof Error ? err.message : 'Unknown error'));
-    } finally {
       setParsing(false);
+    }
+  };
+
+  const parseSheet = (wb: any, sheetName: string) => {
+    setParsing(true);
+    
+    import('xlsx').then(XLSX => {
+      const worksheet = wb.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      // Parse rows
+      const parsed: ImportRow[] = [];
+      let startRow = 0;
+      
+      // Detect header row
+      for (let i = 0; i < Math.min(data.length, 10); i++) {
+        const row = data[i] as any[];
+        if (row && row.length >= 5) {
+          const firstCol = String(row[0] || '').toLowerCase();
+          if (firstCol.includes('date') || firstCol.includes('member') || firstCol.includes('task')) {
+            startRow = i + 1;
+            break;
+          }
+        }
+      }
+      
+      for (let i = startRow; i < data.length; i++) {
+        const row = data[i] as any[];
+        if (!row || row.length < 4) continue;
+        
+        const date = String(row[0] || '').trim();
+        const member = String(row[1] || '').trim();
+        const taskId = String(row[2] || '').trim();
+        const taskName = String(row[3] || '').trim();
+        const update = String(row[4] || '').trim();
+        const status = String(row[5] || 'New').trim();
+        
+        // Skip empty rows
+        if (!taskName && !update) continue;
+        
+        parsed.push({
+          rowIndex: i,
+          taskId: taskId || null,
+          title: taskName || taskId || 'Untitled',
+          status: status,
+          assigneeNames: member ? [member] : [],
+          dueDate: date ? parseDate(date) : null,
+          description: update,
+        });
+      }
+      
+      if (parsed.length === 0) {
+        setError('No valid data found in sheet. Expected format: Date, Member, Task ID, Task Name, Update, Status');
+        setPreviewData(null);
+      } else {
+        setPreviewData(parsed);
+        setError(null);
+      }
+      setParsing(false);
+    }).catch(err => {
+      setError('Failed to parse sheet: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setParsing(false);
+    });
+  };
+
+  const parseDate = (dateStr: string): string | null => {
+    // Try to parse various date formats
+    const formats = [
+      // DD-MMM (e.g., 20-Apr)
+      /^(\d{1,2})-([A-Za-z]{3})/,
+      // DD/MM/YYYY
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})/,
+      // YYYY-MM-DD
+      /^(\d{4})-(\d{2})-(\d{2})/,
+    ];
+    
+    for (const format of formats) {
+      const match = dateStr.match(format);
+      if (match) {
+        try {
+          const date = new Date(dateStr);
+          if (!isNaN(date.getTime())) {
+            return date.toISOString().slice(0, 10);
+          }
+        } catch {
+          // Continue to next format
+        }
+      }
+    }
+    
+    // Default: try direct parsing
+    try {
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().slice(0, 10);
+      }
+    } catch {
+      return null;
+    }
+    
+    return null;
+  };
+
+  const handleSheetSelect = (sheetName: string) => {
+    setSelectedSheet(sheetName);
+    if (workbook) {
+      parseSheet(workbook, sheetName);
     }
   };
 
@@ -549,8 +642,8 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         
         {/* Content */}
         <div style={{ padding: '20px 24px' }}>
-          {/* Upload Area */}
-          {!previewData && (
+          {/* Upload Area - Initial State */}
+          {!previewData && availableSheets.length === 0 && (
             <div
               style={{
                 border: '2px dashed #cbd5e1',
@@ -594,6 +687,46 @@ function ImportModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
           
+          {/* Sheet Selection */}
+          {!previewData && availableSheets.length > 1 && (
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: '#374151', margin: '0 0 12px 0' }}>
+                📑 This file has {availableSheets.length} sheets. Please select one:
+              </p>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                {availableSheets.map((sheetName) => (
+                  <button
+                    key={sheetName}
+                    onClick={() => handleSheetSelect(sheetName)}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '10px',
+                      border: selectedSheet === sheetName ? '2px solid #7c3aed' : '1px solid #e2e8f0',
+                      background: selectedSheet === sheetName ? '#faf5ff' : '#fff',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: selectedSheet === sheetName ? 600 : 500,
+                      color: selectedSheet === sheetName ? '#6d28d9' : '#374151',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span>{sheetName}</span>
+                    {selectedSheet === sheetName && <CheckCircle2 size={18} color="#7c3aed" />}
+                  </button>
+                ))}
+              </div>
+              
+              {selectedSheet && parsing && (
+                <div style={{ marginTop: '16px', textAlign: 'center', color: '#64748b' }}>
+                  <p>Parsing sheet "{selectedSheet}"...</p>
+                </div>
+              )}
+            </div>
+          )}
+          
           {/* Error */}
           {error && (
             <div style={{ 
@@ -617,10 +750,15 @@ function ImportModal({ onClose }: { onClose: () => void }) {
                 marginBottom: '12px' 
               }}>
                 <span style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>
-                  Preview ({previewData.length} tasks found)
+                  📄 Sheet: {selectedSheet} ({previewData.length} tasks)
                 </span>
                 <button
-                  onClick={() => { setPreviewData(null); setError(null); }}
+                  onClick={() => { 
+                    setPreviewData(null); 
+                    setSelectedSheet(null);
+                    setAvailableSheets([]);
+                    setError(null); 
+                  }}
                   style={{
                     fontSize: '13px',
                     color: '#64748b',
