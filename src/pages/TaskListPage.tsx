@@ -566,8 +566,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         const row = data[i] as any[];
         if (!row || row.length < 4) continue;
         
-        const dateCell = row[0];
-        const date = dateCell instanceof Date ? dateCell.toISOString().slice(0, 10) : parseDate(String(dateCell || '').trim());
+        const date = parseDate(row[0]);
         const member = String(row[1] || '').trim();
         const taskId = String(row[2] || '').trim();
         const taskName = String(row[3] || '').trim();
@@ -614,7 +613,28 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     });
   };
 
-  const parseDate = (dateStr: string): string | null => {
+  const parseDate = (dateVal: any): string | null => {
+    // Handle Date object (from XLSX cellDates)
+    if (dateVal instanceof Date) {
+      if (!isNaN(dateVal.getTime())) {
+        return dateVal.toISOString().slice(0, 10);
+      }
+      return null;
+    }
+    
+    // Handle Excel serial number (number of days since 1899-12-30)
+    if (typeof dateVal === 'number') {
+      const excelEpoch = new Date(1899, 11, 30);
+      const date = new Date(excelEpoch.getTime() + dateVal * 24 * 60 * 60 * 1000);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().slice(0, 10);
+      }
+      return null;
+    }
+    
+    const dateStr = String(dateVal || '').trim();
+    if (!dateStr) return null;
+    
     // Try to parse various date formats
     const formats = [
       // DD-MMM (e.g., 20-Apr)
