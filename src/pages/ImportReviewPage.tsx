@@ -239,14 +239,15 @@ export function ImportReviewPage() {
     // Track newly created tasks during this batch by Task ID
     const createdTasksMap = new Map<string, TaskItem>();
     let created = 0, updated = 0, logsAdded = 0, skipped = 0;
+    const failures: { row: number; title: string; error: string }[] = [];
     
-    try {
-      for (const result of resultsToProcess) {
-        if (!result.confirmed || result.action === 'skip') {
-          skipped++;
-          continue;
-        }
-        
+    for (const result of resultsToProcess) {
+      if (!result.confirmed || result.action === 'skip') {
+        skipped++;
+        continue;
+      }
+      
+      try {
         if (result.action === 'update' && result.matchedTask) {
           if (result.matchType === 'duplicate') {
             // For duplicates with new description, only add log
@@ -334,16 +335,36 @@ export function ImportReviewPage() {
             }
           }
         }
+      } catch (error) {
+        console.error(`Failed to process row ${result.row.rowIndex}:`, error);
+        failures.push({
+          row: result.row.rowIndex,
+          title: result.row.title,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
-      
-      alert(`Import complete!\nCreated: ${created} tasks\nUpdated: ${updated} tasks\nLogs added: ${logsAdded}\nSkipped: ${skipped} duplicates`);
-      navigate('/');
-    } catch (error) {
-      console.error('Failed to execute imports:', error);
-      alert('Some imports failed. Please try again.');
-    } finally {
-      setProcessing(false);
     }
+    
+    // Build detailed report
+    let report = `Import Results:\n\n`;
+    report += `✅ Created: ${created} tasks\n`;
+    report += `📝 Updated: ${updated} tasks\n`;
+    report += `📋 Logs added: ${logsAdded}\n`;
+    report += `⏭️ Skipped: ${skipped} duplicates\n`;
+    
+    if (failures.length > 0) {
+      report += `\n❌ Failed: ${failures.length} items\n`;
+      failures.slice(0, 5).forEach(f => {
+        report += `  Row ${f.row}: ${f.title} - ${f.error}\n`;
+      });
+      if (failures.length > 5) {
+        report += `  ...and ${failures.length - 5} more\n`;
+      }
+    }
+    
+    alert(report);
+    navigate('/');
+    setProcessing(false);
   };
 
   const toggleSection = (section: string) => {
