@@ -18,7 +18,7 @@ interface ImportRow {
 
 interface MatchResult {
   row: ImportRow;
-  matchType: 'exact' | 'suggested' | 'none';
+  matchType: 'exact' | 'suggested' | 'none' | 'duplicate';
   matchedTask: TaskItem | null;
   suggestedTasks: TaskItem[];
   matchedAssignees: Profile[];
@@ -26,6 +26,20 @@ interface MatchResult {
   confirmed: boolean;
   action: 'update' | 'create' | 'skip';
   originalIndex: number; // Track original index in matchResults
+}
+
+// Check if imported row is exact duplicate of existing task
+function isDuplicate(row: ImportRow, task: TaskItem, parsedStatus: TaskStatus | null): boolean {
+  if (!parsedStatus || task.status !== parsedStatus) return false;
+  
+  // Compare title (including Task ID)
+  const importTitle = row.taskId && row.taskId !== '-' ? `${row.taskId} - ${row.title}` : row.title;
+  if (importTitle !== task.title) return false;
+  
+  // Compare due date
+  if (row.dueDate !== task.due_date) return false;
+  
+  return true;
 }
 
 // Status mapping from XLS to TaskStatus
@@ -100,6 +114,7 @@ export function ImportReviewPage() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     exact: true,
     suggested: true,
+    duplicate: true,
     none: true,
   });
   
@@ -182,6 +197,21 @@ export function ImportReviewPage() {
       
       const matchedAssignees = findAssigneesByName(row.assigneeNames, profs);
       
+      // Check if exact match is actually a duplicate (same title, status, due date)
+      if (matchedTask && isDuplicate(row, matchedTask, parsedStatus)) {
+        return {
+          row,
+          matchType: 'duplicate',
+          matchedTask,
+          suggestedTasks,
+          matchedAssignees,
+          parsedStatus,
+          confirmed: false,
+          action: 'skip',
+          originalIndex: rowIndex,
+        };
+      }
+      
       return {
         row,
         matchType,
@@ -204,6 +234,7 @@ export function ImportReviewPage() {
     return {
       exact: matchResults.filter(r => r.matchType === 'exact'),
       suggested: matchResults.filter(r => r.matchType === 'suggested'),
+      duplicate: matchResults.filter(r => r.matchType === 'duplicate'),
       none: matchResults.filter(r => r.matchType === 'none'),
     };
   }, [matchResults]);
@@ -470,6 +501,12 @@ export function ImportReviewPage() {
             icon={<Search size={20} />}
           />
           <StatCard 
+            label="Duplicate" 
+            count={groupedResults.duplicate.length} 
+            color="#6b7280" 
+            icon={<AlertCircle size={20} />}
+          />
+          <StatCard 
             label="Create New" 
             count={groupedResults.none.length} 
             color="#3b82f6" 
@@ -504,6 +541,19 @@ export function ImportReviewPage() {
             _profiles={profiles}
             allTasks={_existingTasks}
             showSuggestions
+          />
+          
+          {/* Duplicate */}
+          <MatchSection
+            title="Duplicate (Will Skip)"
+            subtitle="Identical records found - will be skipped"
+            color="#6b7280"
+            expanded={expandedSections.duplicate}
+            onToggle={() => toggleSection('duplicate')}
+            results={groupedResults.duplicate}
+            onUpdate={updateMatchResult}
+            _profiles={profiles}
+            allTasks={_existingTasks}
           />
           
           {/* No Match - Create New */}
@@ -808,59 +858,74 @@ function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, allTasks
 
           {/* Action selector */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: showSuggestions && suggestedTasks.length > 0 ? '12px' : 0 }}>
-            {!isCreateNew && (
-              <button
-                onClick={() => onUpdate({ action: 'update', confirmed: true })}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: action === 'update' ? '1px solid #10b981' : '1px solid #e2e8f0',
-                  background: action === 'update' ? '#f0fdf4' : '#fff',
-                  color: action === 'update' ? '#047857' : '#64748b',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                Update Existing
-              </button>
+            {result.matchType === 'duplicate' ? (
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                background: '#f3f4f6',
+                color: '#6b7280',
+                fontSize: '12px',
+                fontWeight: 500,
+              }}>
+                Duplicate - Will Skip
+              </span>
+            ) : (
+              <>
+                {!isCreateNew && (
+                  <button
+                    onClick={() => onUpdate({ action: 'update', confirmed: true })}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: action === 'update' ? '1px solid #10b981' : '1px solid #e2e8f0',
+                      background: action === 'update' ? '#f0fdf4' : '#fff',
+                      color: action === 'update' ? '#047857' : '#64748b',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Update Existing
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (isCreateNew && onCreateNew) {
+                      onCreateNew(result.originalIndex);
+                    } else {
+                      onUpdate({ action: 'create', confirmed: true });
+                    }
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: action === 'create' ? '1px solid #3b82f6' : '1px solid #e2e8f0',
+                    background: action === 'create' ? '#eff6ff' : '#fff',
+                    color: action === 'create' ? '#1d4ed8' : '#64748b',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {isCreateNew && onCreateNew ? 'Create New Task +' : 'Create New'}
+                </button>
+                <button
+                  onClick={() => onUpdate({ action: 'skip', confirmed: false })}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: action === 'skip' ? '1px solid #ef4444' : '1px solid #e2e8f0',
+                    background: action === 'skip' ? '#fef2f2' : '#fff',
+                    color: action === 'skip' ? '#dc2626' : '#64748b',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Skip
+                </button>
+              </>
             )}
-            <button
-              onClick={() => {
-                if (isCreateNew && onCreateNew) {
-                  onCreateNew(result.originalIndex);
-                } else {
-                  onUpdate({ action: 'create', confirmed: true });
-                }
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: action === 'create' ? '1px solid #3b82f6' : '1px solid #e2e8f0',
-                background: action === 'create' ? '#eff6ff' : '#fff',
-                color: action === 'create' ? '#1d4ed8' : '#64748b',
-                fontSize: '12px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              {isCreateNew && onCreateNew ? 'Create New Task +' : 'Create New'}
-            </button>
-            <button
-              onClick={() => onUpdate({ action: 'skip', confirmed: false })}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: action === 'skip' ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                background: action === 'skip' ? '#fef2f2' : '#fff',
-                color: action === 'skip' ? '#dc2626' : '#64748b',
-                fontSize: '12px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Skip
-            </button>
           </div>
 
           {/* Suggested matches */}
