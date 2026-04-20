@@ -576,21 +576,13 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         // Skip empty rows
         if (!taskName && !update) continue;
         
-        // If status is Day 2, set due date to the day after
-        let dueDate = date ? parseDate(date) : null;
-        if (status === 'Day 2' && dueDate) {
-          const d = new Date(dueDate);
-          d.setDate(d.getDate() + 1);
-          dueDate = d.toISOString().slice(0, 10);
-        }
-        
         parsed.push({
           rowIndex: i,
           taskId: taskId || null,
           title: taskName || taskId || 'Untitled',
           status: status,
           assigneeNames: member ? [member] : [],
-          dueDate: dueDate,
+          dueDate: date ? parseDate(date) : null,
           description: update,
         });
       }
@@ -599,6 +591,17 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         setError('No valid data found in sheet. Expected format: Date, Member, Task ID, Task Name, Update, Status');
         setPreviewData(null);
       } else {
+        // Auto-detect Day 2: compare all dates, later dates = Day 2 (focus)
+        const allDates = [...new Set(parsed.map(r => r.dueDate).filter(Boolean) as string[])].sort();
+        if (allDates.length >= 2) {
+          const day1Date = allDates[0]; // earliest date
+          parsed.forEach(row => {
+            if (row.dueDate && row.dueDate !== day1Date) {
+              row.status = 'focus'; // Later dates = Day 2 = focus
+            }
+          });
+        }
+        
         setPreviewData(parsed);
         setError(null);
       }

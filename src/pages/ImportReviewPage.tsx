@@ -55,8 +55,6 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   'New': 'todo',
   'Waiting': 'todo',
   'Focus': 'focus',
-  'Day 2': 'focus',
-  'Day2': 'focus',
   'Priority': 'focus',
 };
 
