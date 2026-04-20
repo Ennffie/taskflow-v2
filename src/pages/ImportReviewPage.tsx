@@ -199,6 +199,9 @@ export function ImportReviewPage() {
       
       // Check if exact match is actually a duplicate (same title, status, due date)
       if (matchedTask && isDuplicate(row, matchedTask, parsedStatus)) {
+        // Check if description is also the same
+        const hasNewDescription = row.description && row.description.trim().length > 0;
+        
         return {
           row,
           matchType: 'duplicate',
@@ -206,8 +209,8 @@ export function ImportReviewPage() {
           suggestedTasks,
           matchedAssignees,
           parsedStatus,
-          confirmed: false,
-          action: 'skip',
+          confirmed: !hasNewDescription, // Auto-skip if no new description, otherwise let user decide
+          action: hasNewDescription ? 'update' : 'skip', // If has description, allow adding log
           originalIndex: rowIndex,
         };
       }
@@ -249,18 +252,30 @@ export function ImportReviewPage() {
     try {
       for (const result of confirmedResults) {
         if (result.action === 'update' && result.matchedTask) {
-          // Update existing task status
-          await updateTask(result.matchedTask.id, {
-            status: result.parsedStatus || result.matchedTask.status,
-          });
-          // Create log entry for the update
-          if (result.row.description) {
-            await createLog({
-              task_id: result.matchedTask.id,
-              date: result.row.dueDate || new Date().toISOString().slice(0, 10),
-              event: result.row.description,
-              category: 'other',
+          if (result.matchType === 'duplicate') {
+            // For duplicates with new description, only add log
+            if (result.row.description) {
+              await createLog({
+                task_id: result.matchedTask.id,
+                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+                event: result.row.description,
+                category: 'other',
+              });
+            }
+          } else {
+            // Normal update - update task status
+            await updateTask(result.matchedTask.id, {
+              status: result.parsedStatus || result.matchedTask.status,
             });
+            // Create log entry for the update
+            if (result.row.description) {
+              await createLog({
+                task_id: result.matchedTask.id,
+                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+                event: result.row.description,
+                category: 'other',
+              });
+            }
           }
         } else if (result.action === 'create') {
           // Create new task
@@ -545,8 +560,8 @@ export function ImportReviewPage() {
           
           {/* Duplicate */}
           <MatchSection
-            title="Duplicate (Will Skip)"
-            subtitle="Identical records found - will be skipped"
+            title="Duplicate"
+            subtitle="Same task found - can add new log if description differs"
             color="#6b7280"
             expanded={expandedSections.duplicate}
             onToggle={() => toggleSection('duplicate')}
@@ -859,16 +874,51 @@ function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, allTasks
           {/* Action selector */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: showSuggestions && suggestedTasks.length > 0 ? '12px' : 0 }}>
             {result.matchType === 'duplicate' ? (
-              <span style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                background: '#f3f4f6',
-                color: '#6b7280',
-                fontSize: '12px',
-                fontWeight: 500,
-              }}>
-                Duplicate - Will Skip
-              </span>
+              <>
+                {row.description ? (
+                  <button
+                    onClick={() => onUpdate({ action: 'update', confirmed: true })}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: action === 'update' ? '1px solid #10b981' : '1px solid #e2e8f0',
+                      background: action === 'update' ? '#f0fdf4' : '#fff',
+                      color: action === 'update' ? '#047857' : '#64748b',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Add Log Entry
+                  </button>
+                ) : (
+                  <span style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    background: '#f3f4f6',
+                    color: '#6b7280',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                  }}>
+                    Duplicate - Will Skip
+                  </span>
+                )}
+                <button
+                  onClick={() => onUpdate({ action: 'skip', confirmed: false })}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: action === 'skip' ? '1px solid #ef4444' : '1px solid #e2e8f0',
+                    background: action === 'skip' ? '#fef2f2' : '#fff',
+                    color: action === 'skip' ? '#dc2626' : '#64748b',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Skip
+                </button>
+              </>
             ) : (
               <>
                 {!isCreateNew && (
