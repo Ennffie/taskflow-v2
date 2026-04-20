@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Upload } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Upload, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { formatDate } from '../lib/date';
@@ -417,6 +417,14 @@ export function TaskListPage() {
                       ) : (
                         <div style={{ height: '28px' }} />
                       )}
+
+                      {/* Log Count */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <MessageSquare size={12} color="#94a3b8" />
+                        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                          {task.log_count}
+                        </span>
+                      </div>
 
                       {/* Due Date - using formatDate helper */}
                       <span style={{ 
