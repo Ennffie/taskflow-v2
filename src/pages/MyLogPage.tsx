@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, FileText, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, FileText, Trash2 } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { fetchMyLogs, fetchTasks, createLog, updateTask, updateLog } from '../lib/api';
+import { fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import type { LogEntry, TaskItem, LogCategory, TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
@@ -28,6 +28,7 @@ export function MyLogPage() {
   const [todayWork, setTodayWork] = useState('');
   const [tomorrowWork, setTomorrowWork] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deletingLog, setDeletingLog] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -130,6 +131,27 @@ export function MyLogPage() {
       alert(`Update log failed: ${error?.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogDelete = async () => {
+    if (!editingLog) return;
+    setDeletingLog(true);
+    try {
+      await deleteLog(editingLog.id);
+      const updatedLogs = await fetchMyLogs();
+      setLogs(updatedLogs);
+      setShowEditModal(false);
+      setEditingLog(null);
+      setEditEvent('');
+      setEditCategory('design');
+      setEditDate('');
+      setEditTimeSpent('');
+      setEditFileName('');
+    } catch (error: any) {
+      alert(`Delete log failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setDeletingLog(false);
     }
   };
 
@@ -419,20 +441,23 @@ export function MyLogPage() {
                   </div>
                 </div>
                 <button 
-                  onClick={() => setShowEditModal(false)}
+                  onClick={handleLogDelete}
+                  disabled={deletingLog}
                   style={{ 
                     width: '36px', 
                     height: '36px', 
                     borderRadius: '50%', 
                     border: 'none', 
-                    background: '#f3f4f6', 
+                    background: '#fef2f2', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    cursor: 'pointer'
+                    cursor: deletingLog ? 'not-allowed' : 'pointer',
+                    opacity: deletingLog ? 0.6 : 1,
                   }}
+                  title="Delete Log"
                 >
-                  <X size={20} color="#374151" />
+                  <Trash2 size={20} color="#dc2626" />
                 </button>
               </div>
 
