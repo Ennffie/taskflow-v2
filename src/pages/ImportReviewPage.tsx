@@ -770,7 +770,7 @@ function MatchResultRow({ result, onUpdate, _profiles: _unusedProfiles, allTasks
               </span>
             )}
             <span style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>
-              {cleanTitle(row.title)}
+              {row.taskId && row.taskId !== '-' ? `${row.taskId} - ${row.title}` : row.title}
             </span>
             {statusConfig && (
               <span style={{ 
