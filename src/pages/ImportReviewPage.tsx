@@ -28,18 +28,20 @@ interface MatchResult {
   originalIndex: number; // Track original index in matchResults
 }
 
-// Check if imported row is exact duplicate of existing task
-function isDuplicate(row: ImportRow, task: TaskItem, parsedStatus: TaskStatus | null): boolean {
-  if (!parsedStatus || task.status !== parsedStatus) return false;
+// Check if imported row matches existing task (by Task ID or title)
+function isDuplicate(row: ImportRow, task: TaskItem): boolean {
+  // Use Task ID if available
+  const rowTaskId = row.taskId || extractTaskId(row.title);
+  const taskTaskId = extractTaskId(task.title);
   
-  // Compare title (including Task ID)
+  if (rowTaskId && taskTaskId && rowTaskId === taskTaskId) return true;
+  
+  // Or compare full title
   const importTitle = row.taskId && row.taskId !== '-' ? `${row.taskId} - ${row.title}` : row.title;
-  if (importTitle !== task.title) return false;
+  if (importTitle === task.title) return true;
+  if (row.title === task.title) return true;
   
-  // Compare due date
-  if (row.dueDate !== task.due_date) return false;
-  
-  return true;
+  return false;
 }
 
 // Status mapping from XLS to TaskStatus
@@ -147,17 +149,17 @@ export function ImportReviewPage() {
   const performMatching = (rows: ImportRow[], tasks: TaskItem[], profs: Profile[]): MatchResult[] => {
     return rows.map((row, rowIndex) => {
       const parsedStatus = parseStatus(row.status);
-      const extractedId = extractTaskId(row.title);
+      const rowTaskId = row.taskId || extractTaskId(row.title);
       const cleanTitleStr = cleanTitle(row.title);
       
-      // Try exact match by Task ID
+      // Try exact match by Task ID (from row.taskId or extracted from title)
       let matchedTask: TaskItem | null = null;
       let matchType: 'exact' | 'suggested' | 'none' = 'none';
       
-      if (extractedId) {
+      if (rowTaskId) {
         matchedTask = tasks.find(t => {
           const taskExtractedId = extractTaskId(t.title);
-          return taskExtractedId === extractedId;
+          return taskExtractedId === rowTaskId;
         }) || null;
         
         if (matchedTask) {
@@ -176,14 +178,21 @@ export function ImportReviewPage() {
         
         if (scoredTasks.length > 0) {
           suggestedTasks.push(...scoredTasks.map(t => t.task));
-          matchType = 'suggested';
+          
+          // If perfect match (score === 1), treat as exact
+          if (scoredTasks[0].score === 1) {
+            matchedTask = scoredTasks[0].task;
+            matchType = 'exact';
+          } else {
+            matchType = 'suggested';
+          }
         }
       }
       
       const matchedAssignees = findAssigneesByName(row.assigneeNames, profs);
       
-      // Check if exact match is actually a duplicate (same title, status, due date)
-      if (matchedTask && isDuplicate(row, matchedTask, parsedStatus)) {
+      // Check if this is a duplicate (same task already exists)
+      if (matchedTask && isDuplicate(row, matchedTask)) {
         // Check if description is also the same
         const hasNewDescription = row.description && row.description.trim().length > 0;
         
@@ -194,7 +203,7 @@ export function ImportReviewPage() {
           suggestedTasks,
           matchedAssignees,
           parsedStatus,
-          confirmed: !hasNewDescription, // Auto-skip if no new description, otherwise let user decide
+          confirmed: !hasNewDescription, // Auto-skip if no new description
           action: hasNewDescription ? 'update' : 'skip', // If has description, allow adding log
           originalIndex: rowIndex,
         };
