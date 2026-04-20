@@ -576,13 +576,21 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         // Skip empty rows
         if (!taskName && !update) continue;
         
+        // If status is Day 2, set due date to the day after
+        let dueDate = date ? parseDate(date) : null;
+        if (status === 'Day 2' && dueDate) {
+          const d = new Date(dueDate);
+          d.setDate(d.getDate() + 1);
+          dueDate = d.toISOString().slice(0, 10);
+        }
+        
         parsed.push({
           rowIndex: i,
           taskId: taskId || null,
           title: taskName || taskId || 'Untitled',
           status: status,
           assigneeNames: member ? [member] : [],
-          dueDate: date ? parseDate(date) : null,
+          dueDate: dueDate,
           description: update,
         });
       }
