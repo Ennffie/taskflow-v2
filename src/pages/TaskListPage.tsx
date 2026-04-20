@@ -519,7 +519,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     try {
       const buffer = await file.arrayBuffer();
       const XLSX = await import('xlsx');
-      const wb = XLSX.read(buffer, { type: 'array' });
+      const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
       setWorkbook(wb);
       
       const sheets = wb.SheetNames;
@@ -566,12 +566,14 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         const row = data[i] as any[];
         if (!row || row.length < 4) continue;
         
-        const date = String(row[0] || '').trim();
+        const dateCell = row[0];
+        const date = dateCell instanceof Date ? dateCell.toISOString().slice(0, 10) : parseDate(String(dateCell || '').trim());
         const member = String(row[1] || '').trim();
         const taskId = String(row[2] || '').trim();
         const taskName = String(row[3] || '').trim();
         const update = String(row[4] || '').trim();
-        const status = String(row[5] || 'New').trim();
+        const statusCell = row[5];
+        const status = String(statusCell !== undefined ? statusCell : 'New').trim();
         
         // Skip empty rows
         if (!taskName && !update) continue;
@@ -582,7 +584,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           title: taskName || taskId || 'Untitled',
           status: status,
           assigneeNames: member ? [member] : [],
-          dueDate: date ? parseDate(date) : null,
+          dueDate: date || null,
           description: update,
         });
       }
