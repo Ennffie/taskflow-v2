@@ -487,6 +487,7 @@ export function ImportReviewPage() {
             results={groupedResults.exact}
             onUpdate={updateMatchResult}
             _profiles={profiles}
+            allTasks={_existingTasks}
           />
           
           {/* Suggested Matches */}
@@ -499,6 +500,7 @@ export function ImportReviewPage() {
             results={groupedResults.suggested}
             onUpdate={updateMatchResult}
             _profiles={profiles}
+            allTasks={_existingTasks}
             showSuggestions
           />
           
@@ -512,6 +514,7 @@ export function ImportReviewPage() {
             results={groupedResults.none}
             onUpdate={updateMatchResult}
             _profiles={profiles}
+            allTasks={_existingTasks}
             isCreateNew
             onCreateNew={openCreateModal}
           />
@@ -625,14 +628,15 @@ interface MatchSectionProps {
   onToggle: () => void;
   results: MatchResult[];
   onUpdate: (index: number, updates: Partial<MatchResult>) => void;
-  _profiles: Profile[];  // Available for future use
+  _profiles: Profile[];
+  allTasks?: TaskItem[];  // All existing tasks for manual selection
   showSuggestions?: boolean;
   isCreateNew?: boolean;
   onCreateNew?: (resultIndex: number) => void;
 }
 
 function MatchSection({ 
-  title, subtitle, color, expanded, onToggle, results, onUpdate, _profiles, showSuggestions, isCreateNew, onCreateNew
+  title, subtitle, color, expanded, onToggle, results, onUpdate, _profiles, allTasks, showSuggestions, isCreateNew, onCreateNew
 }: MatchSectionProps) {
   if (results.length === 0) return null;
 
@@ -690,6 +694,7 @@ function MatchSection({
               resultIndex={idx}
               onUpdate={(updates) => onUpdate(results.indexOf(result), updates)}
               _profiles={_profiles}
+              allTasks={allTasks}
               showSuggestions={showSuggestions}
               isCreateNew={isCreateNew}
               onCreateNew={onCreateNew}
@@ -705,17 +710,24 @@ interface MatchResultRowProps {
   result: MatchResult;
   resultIndex: number;
   onUpdate: (updates: Partial<MatchResult>) => void;
-  _profiles: Profile[];  // Available for future use
+  _profiles: Profile[];
+  allTasks?: TaskItem[];
   showSuggestions?: boolean;
   isCreateNew?: boolean;
   onCreateNew?: (resultIndex: number) => void;
 }
 
-function MatchResultRow({ result, resultIndex, onUpdate, _profiles: _unusedProfiles, showSuggestions, isCreateNew, onCreateNew }: MatchResultRowProps) {
+function MatchResultRow({ result, resultIndex, onUpdate, _profiles: _unusedProfiles, allTasks, showSuggestions, isCreateNew, onCreateNew }: MatchResultRowProps) {
   const { row, matchedTask, suggestedTasks, matchedAssignees, parsedStatus, confirmed, action } = result;
   
   const statusConfig = parsedStatus ? STATUS_META[parsedStatus] : null;
   const extractedId = extractTaskId(row.title);
+  const [showOtherTasks, setShowOtherTasks] = useState(false);
+  
+  // Filter other tasks (excluding already suggested ones)
+  const otherTasks = (allTasks || []).filter(task => 
+    !suggestedTasks.find(st => st.id === task.id)
+  );
 
   return (
     <div style={{ 
@@ -882,6 +894,53 @@ function MatchResultRow({ result, resultIndex, onUpdate, _profiles: _unusedProfi
                   </span>
                 </div>
               ))}
+              
+              {/* Other Tasks Option */}
+              {otherTasks.length > 0 && (
+                <div style={{ marginTop: '8px', borderTop: '1px solid #fde68a', paddingTop: '8px' }}>
+                  <button
+                    onClick={() => setShowOtherTasks(!showOtherTasks)}
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#7c3aed',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    {showOtherTasks ? '▲' : '▼'} Other Tasks ({otherTasks.length})
+                  </button>
+                  
+                  {showOtherTasks && (
+                    <div style={{ marginTop: '8px', display: 'grid', gap: '4px' }}>
+                      {otherTasks.map((task) => (
+                        <div 
+                          key={task.id}
+                          onClick={() => onUpdate({ matchedTask: task, action: 'update', confirmed: true })}
+                          style={{
+                            padding: '8px 12px',
+                            background: matchedTask?.id === task.id ? '#f0fdf4' : '#fff',
+                            border: matchedTask?.id === task.id ? '1px solid #10b981' : '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            color: matchedTask?.id === task.id ? '#047857' : '#374151',
+                          }}
+                        >
+                          {task.title}
+                          <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '8px' }}>
+                            Current: {STATUS_META[task.status].label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
