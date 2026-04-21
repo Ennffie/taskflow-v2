@@ -58,11 +58,27 @@ export function MyLogPage() {
     return logs.filter(log => log.date === selectedDate);
   }, [logs, selectedDate]);
 
-  // Filter logs for tomorrow
-  const tomorrowDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-  const tomorrowLogs = useMemo(() => {
-    return logs.filter(log => log.date === tomorrowDate);
-  }, [logs, tomorrowDate]);
+  // Get tomorrow's date
+  const tomorrowDate = useMemo(() => {
+    return new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  }, []);
+
+  // For Tomorrow tab: get focus tasks with their latest log content
+  const tomorrowData = useMemo(() => {
+    const focusTasks = tasks.filter(t => t.status === 'focus');
+    return focusTasks.map(task => {
+      // Find latest log for this task
+      const taskLogs = logs.filter(l => l.task_id === task.id).sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const latestLog = taskLogs[0];
+      return {
+        task,
+        latestLog,
+        content: latestLog?.event || task.description || ''
+      };
+    });
+  }, [tasks, logs]);
 
   // Task name lookup map
   const taskMap = useMemo(() => {
@@ -641,39 +657,28 @@ export function MyLogPage() {
           <section style={{ display: 'grid', gap: '14px' }}>
             <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>
               <Target size={16} style={{ display: 'inline', marginRight: '8px', color: '#7c3aed' }} />
-              {tomorrowLogs.length} task{tomorrowLogs.length !== 1 ? 's' : ''} for tomorrow
+              {tomorrowData.length} task{tomorrowData.length !== 1 ? 's' : ''} for tomorrow
             </h2>
-            {loading ? <div style={panelStyle}>Loading...</div> : tomorrowLogs.length === 0 ? (
+            {loading ? <div style={panelStyle}>Loading...</div> : tomorrowData.length === 0 ? (
               <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}>
                 <p>No tasks planned for tomorrow.</p>
-                <p style={{ fontSize: '14px', marginTop: '8px' }}>Add a daily log with "What I will focus on tomorrow" to create tomorrow tasks.</p>
+                <p style={{ fontSize: '14px', marginTop: '8px' }}>Import tomorrow's tasks to see them here.</p>
               </div>
-            ) : tomorrowLogs.map((log) => (
+            ) : tomorrowData.map(({ task, content }) => (
               <article 
-                key={log.id}
-                onClick={() => handleEditClick(log)}
+                key={task.id}
                 style={{ 
                   ...panelStyle,
                   borderLeft: '4px solid #7c3aed',
                   background: '#faf5ff',
-                  cursor: 'pointer',
-                  transition: 'transform 0.1s ease, box-shadow 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Task Name */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
-                        {taskMap.get(log.task_id) || 'Unknown Task'}
+                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
+                        {task.title}
                       </span>
                       <span style={{ 
                         fontSize: '12px', 
@@ -686,13 +691,18 @@ export function MyLogPage() {
                         Focus
                       </span>
                     </div>
-                    {/* Log Content */}
-                    <div style={{ fontSize: '15px', color: '#374151', marginTop: '10px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                      {log.event}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>
-                    {formatDateTime(log.created_at)}
+                    {/* Log Content / Description */}
+                    {content && (
+                      <div style={{ fontSize: '15px', color: '#374151', marginTop: '10px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                        {content}
+                      </div>
+                    )}
+                    {/* Assignees */}
+                    {task.assignees.length > 0 && (
+                      <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px' }}>
+                        {task.assignees.map(a => a.name).join(', ')}
+                      </div>
+                    )}
                   </div>
                 </div>
               </article>
