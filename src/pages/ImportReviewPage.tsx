@@ -481,6 +481,13 @@ function MatchResultRow({ result }: { result: MatchResult }) {
           <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>
             {reason}
           </div>
+          
+          {/* Description / Detailed Progress */}
+          {row.description && row.description !== row.title && (
+            <div style={{ fontSize: '13px', color: '#374151', background: '#f8fafc', padding: '6px 10px', borderRadius: '6px', marginBottom: '8px', border: '1px solid #e2e8f0' }}>
+              📝 {row.description}
+            </div>
+          )}
 
           {/* Details */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

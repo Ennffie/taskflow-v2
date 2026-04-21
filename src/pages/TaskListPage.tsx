@@ -610,12 +610,13 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         let status = 'New';
         
         if (format === 'B') {
-          // Format B: Date, Member, Task ID, Task Name, Status
+          // Format B: Date, Member, Task ID, Task Name, Status, [Detailed Progress / Milestone]
           const dateCell = row[0];
           member = String(row[1] || '').trim();
           taskId = String(row[2] || '').trim();
           taskName = String(row[3] || '').trim();
           const statusCell = row[4];
+          const detailCell = row[5]; // Detailed Progress / Milestone (optional)
           
           if (dateCell instanceof Date) {
             date = dateCell.toISOString().slice(0, 10);
@@ -627,8 +628,8 @@ function ImportModal({ onClose }: { onClose: () => void }) {
             status = String(statusCell).trim() || 'New';
           }
           
-          // Update = task name (no separate update column in format B)
-          update = taskName;
+          // Update = detailed progress if available, else task name
+          update = detailCell !== undefined ? String(detailCell || '').trim() : taskName;
         } else {
           // Format A: Member, Date, Task Name, Update, Size
           member = String(row[0] || '').trim();
