@@ -549,83 +549,144 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       // Parse rows
       const parsed: ImportRow[] = [];
       let startRow = 0;
-      let lastMember = ''; // Track member across merged cell rows
+      let lastMember = '';
+      let format: 'A' | 'B' | null = null; // A = Member,Date; B = Date,Member
       
-      // Detect header row
-      for (let i = 0; i < Math.min(data.length, 10); i++) {
+      // Detect header row and format
+      for (let i = 0; i < Math.min(data.length, 15); i++) {
         const row = data[i] as any[];
-        if (row && row.length >= 5) {
-          const firstCol = String(row[0] || '').toLowerCase();
-          if (firstCol.includes('name') || firstCol.includes('date') || firstCol.includes('task')) {
-            startRow = i + 1;
+        if (!row || row.length < 3) continue;
+        
+        const col0 = String(row[0] || '').toLowerCase().trim();
+        const col1 = String(row[1] || '').toLowerCase().trim();
+        
+        // Format B: Date, Member, Task ID, Task Name, Status
+        if (col0.includes('date') && (col1.includes('member') || col1.includes('name'))) {
+          startRow = i + 1;
+          format = 'B';
+          break;
+        }
+        
+        // Format A: Member/Name, Date, Task Name, Update
+        if ((col0.includes('name') || col0.includes('member')) && col1.includes('date')) {
+          startRow = i + 1;
+          format = 'A';
+          break;
+        }
+        
+        // Also detect by data pattern if no clear header
+        if (i > 2 && !format) {
+          const prevRow = data[i-1] as any[];
+          if (prevRow && prevRow[0] != null && prevRow[0] instanceof Date) {
+            format = 'B'; // First col is date
+            startRow = i - 1;
             break;
+          }
+          if (prevRow && prevRow[0] != null && typeof prevRow[0] === 'string' && prevRow[0].length > 0) {
+            // Could be member name in format A
+            if (prevRow[1] != null && (prevRow[1] instanceof Date || String(prevRow[1] || '').match(/^\d{4}-/))) {
+              format = 'A';
+              startRow = i - 1;
+              break;
+            }
           }
         }
       }
+      
+      // Default to format B if not detected
+      if (!format) format = 'B';
+      
+      console.log('Detected format:', format, 'starting at row', startRow);
       
       for (let i = startRow; i < data.length; i++) {
         const row = data[i] as any[];
         if (!row || row.length < 3) continue;
         
-        // Excel format: Member, Date, Task Name, Update, Size
-        const member = String(row[0] || '').trim();
-        const dateCell = row[1];
-        const taskName = String(row[2] || '').trim();
-        const update = String(row[3] || '').trim();
+        let date: string | null = null;
+        let member = '';
+        let taskId = '';
+        let taskName = '';
+        let update = '';
+        let status = 'New';
+        
+        if (format === 'B') {
+          // Format B: Date, Member, Task ID, Task Name, Status
+          const dateCell = row[0];
+          member = String(row[1] || '').trim();
+          taskId = String(row[2] || '').trim();
+          taskName = String(row[3] || '').trim();
+          const statusCell = row[4];
+          
+          if (dateCell instanceof Date) {
+            date = dateCell.toISOString().slice(0, 10);
+          } else {
+            date = parseDate(dateCell);
+          }
+          
+          if (statusCell !== undefined) {
+            status = String(statusCell).trim() || 'New';
+          }
+          
+          // Update = task name (no separate update column in format B)
+          update = taskName;
+        } else {
+          // Format A: Member, Date, Task Name, Update, Size
+          member = String(row[0] || '').trim();
+          const dateCell = row[1];
+          taskName = String(row[2] || '').trim();
+          update = String(row[3] || '').trim();
+          
+          if (dateCell instanceof Date) {
+            date = dateCell.toISOString().slice(0, 10);
+          } else if (String(dateCell || '').toLowerCase().includes('today')) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            date = tomorrow.toISOString().slice(0, 10);
+          } else {
+            date = parseDate(dateCell);
+          }
+          
+          // Extract Task ID from task name
+          taskId = extractTaskId(taskName) || '';
+          
+          // Infer status from update text
+          const updateLower = update.toLowerCase();
+          if (updateLower.includes('completed') || updateLower.includes('done') || updateLower.includes('finish')) {
+            status = 'Done';
+          } else if (updateLower.includes('progress') || updateLower.includes('working') || updateLower.includes('wip')) {
+            status = 'In Progress';
+          } else if (updateLower.includes('waiting') || updateLower.includes('pending') || updateLower.includes('hold')) {
+            status = 'Waiting';
+          }
+          
+          // Merged cells: use previous member
+          const currentMember = member || lastMember;
+          if (member) lastMember = member;
+          member = currentMember;
+        }
         
         // Skip empty rows
         if (!taskName && !update) continue;
-        
-        // Extract Task ID from task name (e.g., CRCE-2523, CR-109)
-        const taskId = extractTaskId(taskName);
-        
-        // Parse date - handle Date objects, "Today" text, or regular dates
-        let date: string | null = null;
-        const dateStr = String(dateCell || '').trim().toLowerCase();
-        
-        if (dateCell instanceof Date) {
-          date = dateCell.toISOString().slice(0, 10);
-        } else if (dateStr === 'today' || dateStr === 'tdoay' || dateStr === 'tday') {
-          // "Today" means tomorrow's work → set to tomorrow's date
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          date = tomorrow.toISOString().slice(0, 10);
-        } else {
-          date = parseDate(dateCell);
-        }
-        
-        // Infer status from update text
-        let status = 'New';
-        const updateLower = update.toLowerCase();
-        if (updateLower.includes('completed') || updateLower.includes('done') || updateLower.includes('finish')) {
-          status = 'Done';
-        } else if (updateLower.includes('progress') || updateLower.includes('working') || updateLower.includes('wip')) {
-          status = 'In Progress';
-        } else if (updateLower.includes('waiting') || updateLower.includes('pending') || updateLower.includes('hold')) {
-          status = 'Waiting';
-        }
-        
-        // Use previous member if current row has no member (merged cells)
-        const currentMember = member || lastMember;
-        if (member) lastMember = member;
+        if (!taskName) taskName = taskId || 'Untitled';
         
         parsed.push({
           rowIndex: i,
           taskId: taskId || null,
-          title: taskName || taskId || 'Untitled',
+          title: taskName,
           status: status,
-          assigneeNames: currentMember ? [currentMember] : [],
+          assigneeNames: member ? [member] : [],
           dueDate: date || null,
-          description: update,
+          description: update || taskName,
         });
       }
       
       if (parsed.length === 0) {
-        setError('No valid data found in sheet. Expected format: Member, Date, Task Name, Update');
+        setError('No valid data found in sheet. Expected format: Date, Member, Task ID, Task Name, Status OR Member, Date, Task Name, Update');
         setPreviewData(null);
       } else {
         // Auto-detect Day 2: compare all dates, later dates = Day 2 (focus)
         const allDates = [...new Set(parsed.map(r => r.dueDate).filter(Boolean) as string[])].sort();
+        console.log('All dates:', allDates);
         if (allDates.length >= 2) {
           const day1Date = allDates[0]; // earliest date
           parsed.forEach(row => {
@@ -932,7 +993,10 @@ function ImportModal({ onClose }: { onClose: () => void }) {
               Expected format:
             </p>
             <code style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>
-              Member, Date, Task Name, Update
+              Date, Member, Task ID, Task Name, Status
+            </code>
+            <code style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '4px' }}>
+              or: Member, Date, Task Name, Update
             </code>
           </div>
         </div>
