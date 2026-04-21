@@ -126,8 +126,14 @@ export function ImportReviewPage() {
     profs: Profile[],
     taskLogMap: Map<string, Set<string>>
   ): MatchResult[] => {
+    // Detect Day 2: all unique dates, earliest = Day 1, others = Day 2
+    const allDates = [...new Set(rows.map(r => r.dueDate).filter(Boolean) as string[])].sort();
+    const day1Date = allDates.length > 0 ? allDates[0] : null;
+    
     return rows.map((row) => {
-      const parsedStatus = parseStatus(row.status);
+      const isDay2 = day1Date && row.dueDate && row.dueDate !== day1Date;
+      // Day 2 rows force focus status
+      const parsedStatus = isDay2 ? 'focus' : parseStatus(row.status);
       const rowTaskId = row.taskId || extractTaskId(row.title);
       const cleanTitleStr = cleanTitle(row.title);
       const matchedAssignees = findAssigneesByName(row.assigneeNames, profs);
@@ -160,7 +166,7 @@ export function ImportReviewPage() {
           matchedTask: null,
           matchedAssignees,
           parsedStatus,
-          reason: 'New task',
+          reason: isDay2 ? 'New task (Day 2 → Focus)' : 'New task',
         };
       }
       
@@ -201,6 +207,19 @@ export function ImportReviewPage() {
 
   const handleExecute = async () => {
     setProcessing(true);
+    
+    // Step 0: Pre-import — reset all focus tasks to in_progress
+    try {
+      const allTasks = await fetchTasks();
+      const focusTasks = allTasks.filter(t => t.status === 'focus');
+      for (const focusTask of focusTasks) {
+        await updateTask(focusTask.id, { status: 'in_progress' });
+      }
+      console.log(`Reset ${focusTasks.length} focus tasks to in_progress`);
+    } catch (error) {
+      console.error('Failed to reset focus tasks:', error);
+    }
+    
     const createdTasksMap = new Map<string, TaskItem>();
     let created = 0, updated = 0, logsAdded = 0, skipped = 0;
     const failures: { row: number; title: string; error: string }[] = [];
