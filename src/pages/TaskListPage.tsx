@@ -81,9 +81,9 @@ export function TaskListPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
   
-  // Section expand/collapse state - default: Only Focus expanded
+  // Section expand/collapse state - default: Only Tomorrow expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    "Today's Focus": true,
+    'Tomorrow': true,
     'Overdue': false,
     'Other': false,
     'Done': false,
@@ -119,13 +119,13 @@ export function TaskListPage() {
   }), [tasks, query, statusFilter]);
 
   const groupedTasks = useMemo(() => {
-    const focusTasks = filtered.filter(t => t.status === 'focus').sort(sortByDueDate);
+    const tomorrowTasks = filtered.filter(t => t.status === 'focus').sort(sortByDueDate);
     const overdueTasks = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
     const otherTasks = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
     const doneTasks = filtered.filter(t => t.status === 'done').sort(sortByDueDate);
     
     const groups: Record<string, TaskItem[]> = {};
-    if (focusTasks.length > 0) groups["Today's Focus"] = focusTasks;
+    if (tomorrowTasks.length > 0) groups['Tomorrow'] = tomorrowTasks;
     if (overdueTasks.length > 0) groups['Overdue'] = overdueTasks;
     if (otherTasks.length > 0) groups['Other'] = otherTasks;
     if (doneTasks.length > 0) groups['Done'] = doneTasks;
@@ -134,7 +134,7 @@ export function TaskListPage() {
   }, [filtered]);
 
   // Stats for compact cards - use filtered tasks to match list
-  const focusCount = filtered.filter(t => t.status === 'focus').length;
+  const tomorrowCount = filtered.filter(t => t.status === 'focus').length;
   const overdueCount = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
   const otherCount = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
 
@@ -191,12 +191,12 @@ export function TaskListPage() {
         }}>
           <CompactCard 
             icon={<AlertTriangle size={20} color="#7c3aed" />}
-            label="Today's Focus" 
-            count={focusCount}
+            label="Tomorrow" 
+            count={tomorrowCount}
             bgColor="#ede9fe"
             iconBgColor="#ddd6fe"
-            active={expandedSections["Today's Focus"]}
-            onToggle={() => toggleSection("Today's Focus")}
+            active={expandedSections['Tomorrow']}
+            onToggle={() => toggleSection('Tomorrow')}
           />
           <CompactCard 
             icon={<AlertTriangle size={20} color="#ef4444" />}
@@ -270,7 +270,7 @@ export function TaskListPage() {
           ) : (
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
               const isExpanded = expandedSections[groupName] ?? true;
-              const isFocusSection = groupName === "Today's Focus";
+              const isFocusSection = groupName === 'Tomorrow';
               
               return (
                 <div key={groupName} style={isFocusSection ? { 
