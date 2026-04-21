@@ -728,10 +728,23 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     const dateStr = String(dateVal || '').trim();
     if (!dateStr) return null;
     
+    // Handle DD-MMM format (e.g., "21-Apr", "20-Apr")
+    const dddMmmMatch = dateStr.match(/^(\d{1,2})-([A-Za-z]{3})$/);
+    if (dddMmmMatch) {
+      const day = parseInt(dddMmmMatch[1], 10);
+      const monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      const monthIndex = monthNames.indexOf(dddMmmMatch[2].toLowerCase());
+      if (monthIndex >= 0 && day >= 1 && day <= 31) {
+        const year = new Date().getFullYear(); // Use current year
+        const date = new Date(year, monthIndex, day);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString().slice(0, 10);
+        }
+      }
+    }
+    
     // Try to parse various date formats
     const formats = [
-      // DD-MMM (e.g., 20-Apr)
-      /^(\d{1,2})-([A-Za-z]{3})/,
       // DD/MM/YYYY
       /^(\d{1,2})\/(\d{1,2})\/(\d{4})/,
       // YYYY-MM-DD
