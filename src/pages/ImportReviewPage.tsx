@@ -23,6 +23,7 @@ interface MatchResult {
   matchedAssignees: Profile[];
   parsedStatus: TaskStatus | null;
   reason: string;
+  logExists?: boolean;
 }
 
 // Status mapping from XLS to TaskStatus
@@ -174,6 +175,22 @@ export function ImportReviewPage() {
       const existingLogs = taskLogMap.get(matchedTask.id);
       const logExists = existingLogs?.has(row.description.trim().toLowerCase());
       
+      // Day 2: always update status to Focus, skip log only if same log exists
+      if (isDay2) {
+        return {
+          row,
+          action: 'update',
+          matchedTask,
+          matchedAssignees,
+          parsedStatus,
+          reason: logExists 
+            ? 'Day 2 → Focus (log exists, update status only)' 
+            : 'Day 2 → Focus + add log',
+          logExists: !!logExists,
+        };
+      }
+      
+      // Day 1: skip if same log exists
       if (logExists) {
         return {
           row,
@@ -185,7 +202,7 @@ export function ImportReviewPage() {
         };
       }
       
-      // Task exists + new log → update
+      // Day 1 + new log → update
       return {
         row,
         action: 'update',
@@ -195,6 +212,7 @@ export function ImportReviewPage() {
         reason: parsedStatus !== matchedTask.status 
           ? `Status: ${STATUS_META[matchedTask.status].label} → ${parsedStatus ? STATUS_META[parsedStatus].label : '?'}`
           : 'Add new log',
+        logExists: false,
       };
     });
   };
@@ -229,8 +247,8 @@ export function ImportReviewPage() {
             await updateTask(result.matchedTask.id, { status: result.parsedStatus });
             updated++;
           }
-          // Add log
-          if (result.row.description) {
+          // Add log only if it's new (not existing)
+          if (result.row.description && !result.logExists) {
             await createLog({
               task_id: result.matchedTask.id,
               date: result.row.dueDate || new Date().toISOString().slice(0, 10),
@@ -244,13 +262,13 @@ export function ImportReviewPage() {
           const existingCreatedTask = createdTasksMap.get(taskKey);
           
           if (existingCreatedTask) {
-            // Same task in batch → update status + add log
+            // Same task in batch → update status + add log (if new)
             importedTaskIds.add(existingCreatedTask.id);
             if (result.parsedStatus && result.parsedStatus !== existingCreatedTask.status) {
               await updateTask(existingCreatedTask.id, { status: result.parsedStatus });
               updated++;
             }
-            if (result.row.description) {
+            if (result.row.description && !result.logExists) {
               await createLog({
                 task_id: existingCreatedTask.id,
                 date: result.row.dueDate || new Date().toISOString().slice(0, 10),
@@ -369,7 +387,7 @@ export function ImportReviewPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <MatchSection title="Create New" subtitle="New tasks" color="#3b82f6" expanded={expandedSections.create} onToggle={() => setExpandedSections(p => ({...p, create: !p.create}))} results={grouped.create} />
           <MatchSection title="Update" subtitle="Existing tasks with new logs" color="#10b981" expanded={expandedSections.update} onToggle={() => setExpandedSections(p => ({...p, update: !p.update}))} results={grouped.update} />
-          <MatchSection title="Skip" subtitle="Same task + same log already exists" color="#6b7280" expanded={expandedSections.skip} onToggle={() => setExpandedSections(p => ({...p, skip: !p.skip}))} results={grouped.skip} />
+          <MatchSection title="Skip" subtitle="Day 1 only: same task + same log" color="#6b7280" expanded={expandedSections.skip} onToggle={() => setExpandedSections(p => ({...p, skip: !p.skip}))} results={grouped.skip} />
         </div>
       </div>
     </AppShell>
