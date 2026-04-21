@@ -549,13 +549,14 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       // Parse rows
       const parsed: ImportRow[] = [];
       let startRow = 0;
+      let lastMember = ''; // Track member across merged cell rows
       
       // Detect header row
       for (let i = 0; i < Math.min(data.length, 10); i++) {
         const row = data[i] as any[];
         if (row && row.length >= 5) {
           const firstCol = String(row[0] || '').toLowerCase();
-          if (firstCol.includes('date') || firstCol.includes('member') || firstCol.includes('task')) {
+          if (firstCol.includes('name') || firstCol.includes('date') || firstCol.includes('task')) {
             startRow = i + 1;
             break;
           }
@@ -564,32 +565,63 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       
       for (let i = startRow; i < data.length; i++) {
         const row = data[i] as any[];
-        if (!row || row.length < 4) continue;
+        if (!row || row.length < 3) continue;
         
-        const date = parseDate(row[0]);
-        const member = String(row[1] || '').trim();
-        const taskId = String(row[2] || '').trim();
-        const taskName = String(row[3] || '').trim();
-        const update = String(row[4] || '').trim();
-        const statusCell = row[5];
-        const status = String(statusCell !== undefined ? statusCell : 'New').trim();
+        // Excel format: Member, Date, Task Name, Update, Size
+        const member = String(row[0] || '').trim();
+        const dateCell = row[1];
+        const taskName = String(row[2] || '').trim();
+        const update = String(row[3] || '').trim();
         
         // Skip empty rows
         if (!taskName && !update) continue;
+        
+        // Extract Task ID from task name (e.g., CRCE-2523, CR-109)
+        const taskId = extractTaskId(taskName);
+        
+        // Parse date - handle Date objects, "Today" text, or regular dates
+        let date: string | null = null;
+        const dateStr = String(dateCell || '').trim().toLowerCase();
+        
+        if (dateCell instanceof Date) {
+          date = dateCell.toISOString().slice(0, 10);
+        } else if (dateStr === 'today' || dateStr === 'tdoay' || dateStr === 'tday') {
+          // "Today" means tomorrow's work → set to tomorrow's date
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          date = tomorrow.toISOString().slice(0, 10);
+        } else {
+          date = parseDate(dateCell);
+        }
+        
+        // Infer status from update text
+        let status = 'New';
+        const updateLower = update.toLowerCase();
+        if (updateLower.includes('completed') || updateLower.includes('done') || updateLower.includes('finish')) {
+          status = 'Done';
+        } else if (updateLower.includes('progress') || updateLower.includes('working') || updateLower.includes('wip')) {
+          status = 'In Progress';
+        } else if (updateLower.includes('waiting') || updateLower.includes('pending') || updateLower.includes('hold')) {
+          status = 'Waiting';
+        }
+        
+        // Use previous member if current row has no member (merged cells)
+        const currentMember = member || lastMember;
+        if (member) lastMember = member;
         
         parsed.push({
           rowIndex: i,
           taskId: taskId || null,
           title: taskName || taskId || 'Untitled',
           status: status,
-          assigneeNames: member ? [member] : [],
+          assigneeNames: currentMember ? [currentMember] : [],
           dueDate: date || null,
           description: update,
         });
       }
       
       if (parsed.length === 0) {
-        setError('No valid data found in sheet. Expected format: Date, Member, Task ID, Task Name, Update, Status');
+        setError('No valid data found in sheet. Expected format: Member, Date, Task Name, Update');
         setPreviewData(null);
       } else {
         // Auto-detect Day 2: compare all dates, later dates = Day 2 (focus)
@@ -670,6 +702,12 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     }
     
     return null;
+  };
+
+  // Extract Task ID from title (e.g., CRCE-2523, CR-109)
+  const extractTaskId = (title: string): string | null => {
+    const match = title.match(/^([A-Z]{2,6}-\d{2,6})/i);
+    return match ? match[1].toUpperCase() : null;
   };
 
   const handleSheetSelect = (sheetName: string) => {
@@ -894,7 +932,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
               Expected format:
             </p>
             <code style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>
-              Date, Member, Task ID, Task Name, Update, Status
+              Member, Date, Task Name, Update
             </code>
           </div>
         </div>
