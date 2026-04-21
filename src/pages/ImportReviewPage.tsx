@@ -102,11 +102,11 @@ export function ImportReviewPage() {
           fetchAllLogs()
         ]);
         
-        // Build map: task_id -> Set of log descriptions
+        // Build map: task_id -> Set of "event_date" keys
         const taskLogMap = new Map<string, Set<string>>();
         for (const log of logs) {
           if (!taskLogMap.has(log.task_id)) taskLogMap.set(log.task_id, new Set());
-          taskLogMap.get(log.task_id)!.add(log.event.trim().toLowerCase());
+          taskLogMap.get(log.task_id)!.add(`${log.event.trim().toLowerCase()}_${log.date}`);
         }
         
         const results = performMatching(importData, tasks, profs, taskLogMap);
@@ -171,9 +171,10 @@ export function ImportReviewPage() {
         };
       }
       
-      // Task exists → check if log already exists
+      // Task exists → check if log (event + date) already exists
       const existingLogs = taskLogMap.get(matchedTask.id);
-      const logExists = existingLogs?.has(row.description.trim().toLowerCase());
+      const logKey = `${row.description.trim().toLowerCase()}_${row.dueDate}`;
+      const logExists = existingLogs?.has(logKey);
       
       // Day 2: always update status to Focus, skip log only if same log exists
       if (isDay2) {
