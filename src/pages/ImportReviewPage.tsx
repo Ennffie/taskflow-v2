@@ -208,19 +208,8 @@ export function ImportReviewPage() {
   const handleExecute = async () => {
     setProcessing(true);
     
-    // Step 0: Pre-import — reset all focus tasks to in_progress
-    try {
-      const allTasks = await fetchTasks();
-      const focusTasks = allTasks.filter(t => t.status === 'focus');
-      for (const focusTask of focusTasks) {
-        await updateTask(focusTask.id, { status: 'in_progress' });
-      }
-      console.log(`Reset ${focusTasks.length} focus tasks to in_progress`);
-    } catch (error) {
-      console.error('Failed to reset focus tasks:', error);
-    }
-    
     const createdTasksMap = new Map<string, TaskItem>();
+    const importedTaskIds = new Set<string>(); // Track which tasks were touched in this import
     let created = 0, updated = 0, logsAdded = 0, skipped = 0;
     const failures: { row: number; title: string; error: string }[] = [];
     
@@ -232,6 +221,9 @@ export function ImportReviewPage() {
         }
         
         if (result.action === 'update' && result.matchedTask) {
+          // Track this task was imported
+          importedTaskIds.add(result.matchedTask.id);
+          
           // Update status if changed
           if (result.parsedStatus && result.parsedStatus !== result.matchedTask.status) {
             await updateTask(result.matchedTask.id, { status: result.parsedStatus });
@@ -253,6 +245,7 @@ export function ImportReviewPage() {
           
           if (existingCreatedTask) {
             // Same task in batch → update status + add log
+            importedTaskIds.add(existingCreatedTask.id);
             if (result.parsedStatus && result.parsedStatus !== existingCreatedTask.status) {
               await updateTask(existingCreatedTask.id, { status: result.parsedStatus });
               updated++;
@@ -284,6 +277,7 @@ export function ImportReviewPage() {
             
             created++;
             createdTasksMap.set(taskKey, newTask as TaskItem);
+            importedTaskIds.add(newTask.id);
             
             if (result.row.description) {
               await createLog({
@@ -304,6 +298,18 @@ export function ImportReviewPage() {
           error: error instanceof Error ? error.message : 'Unknown',
         });
       }
+    }
+    
+    // Step: Post-import — reset old focus tasks that were NOT in this import to in_progress
+    try {
+      const allTasks = await fetchTasks();
+      const oldFocusTasks = allTasks.filter(t => t.status === 'focus' && !importedTaskIds.has(t.id));
+      for (const task of oldFocusTasks) {
+        await updateTask(task.id, { status: 'in_progress' });
+      }
+      console.log(`Reset ${oldFocusTasks.length} old focus tasks to in_progress`);
+    } catch (error) {
+      console.error('Failed to reset old focus tasks:', error);
     }
     
     alert(
