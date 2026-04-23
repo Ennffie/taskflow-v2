@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download, MessageSquare } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
-import { formatDate } from '../lib/date';
-import { STATUS_CONFIG, type TaskItem } from '../types';
+import { STATUS_CONFIG, type TaskItem, type TaskStatus } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
+import { TaskCard } from '../components/TaskCard';
 import { useAuth } from '../contexts/AuthContext';
-import type { TaskStatus } from '../types';
 
 export const panelStyle = {
   background: '#fff',
@@ -26,15 +25,7 @@ interface ImportRow {
   description: string;
 }
 
-function isDueSoon(dueDate: string | null): boolean {
-  if (!dueDate) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
-  return diff >= 0 && diff <= 3;
-}
+
 
 function isOverdue(dueDate: string | null): boolean {
   if (!dueDate) return false;
@@ -71,7 +62,6 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 }
 
 export function TaskListPage() {
-  const navigate = useNavigate();
   const { profile } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -304,144 +294,15 @@ export function TaskListPage() {
                     {isFocusSection && <span style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 8px', background: '#7c3aed', color: '#fff', borderRadius: '10px', fontWeight: 600 }}>FOCUS</span>}
                   </div>
                   
-                  {isExpanded && groupTasks.map((task, taskIndex) => {
-                    // Alternate background colors for tasks within the same group
-                    const isEvenIndex = taskIndex % 2 === 0;
-                    const baseBgColor = isFocusSection 
-                      ? (isEvenIndex ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)')
-                      : (isEvenIndex ? '#ffffff' : '#f8fafc');
-                    const hoverBgColor = isFocusSection 
-                      ? (isEvenIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)')
-                      : (isEvenIndex ? '#f1f5f9' : '#e2e8f0');
-                    
-                    return (
-                    <div 
+                  {isExpanded && groupTasks.map((task, taskIndex) => (
+                    <TaskCard 
                       key={task.id}
-                      onClick={() => navigate(`/tasks/${task.id}`)}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: '12px', 
-                        padding: '14px 20px', 
-                        borderBottom: '1px solid #f1f5f9', 
-                        cursor: 'pointer',
-                        background: baseBgColor,
-                        transition: 'background 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = hoverBgColor}
-                      onMouseLeave={(e) => e.currentTarget.style.background = baseBgColor}
-                    >
-                    <div style={{ marginTop: '2px' }}>
-                      <StatusIcon status={task.status} />
-                    </div>
-                    
-                    {/* Middle: Title + Tags + Log Count */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* Task Title + Log Count inline */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <p style={{ 
-                          fontSize: '14px', 
-                          fontWeight: 500, 
-                          color: '#111827', 
-                          margin: 0, 
-                          lineHeight: 1.4,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          flex: 1,
-                        }}>
-                          {task.title}
-                        </p>
-                        {/* Log Count - inline with title */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                          <MessageSquare size={14} color="#94a3b8" />
-                          <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
-                            {task.log_count}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Tags - below title, left aligned */}
-                      {task.tags.length > 0 && (
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-                          {task.tags.slice(0, 3).map((tag) => (
-                            <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                              {tag}
-                            </span>
-                          ))}
-                          {task.tags.length > 3 && (
-                            <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                              +{task.tags.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right side: Assignees + Due Date */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '80px' }}>
-                      {/* Assignees */}
-                      {task.assignees.length > 0 ? (
-                        <div style={{ display: 'flex' }}>
-                          {task.assignees.slice(0, 2).map((a, i) => (
-                            <div 
-                              key={a.id} 
-                              style={{ 
-                                width: '28px', 
-                                height: '28px', 
-                                borderRadius: '50%', 
-                                background: ['#7c3aed', '#ec4899', '#f59e0b', '#10b981'][i % 4], 
-                                color: '#fff', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                fontSize: '11px', 
-                                fontWeight: 600, 
-                                marginLeft: i === 0 ? 0 : '-6px', 
-                                border: '2px solid #fff',
-                                zIndex: task.assignees.length - i
-                              }}
-                              title={a.name}
-                            >
-                              {a.name.split(' ').map(n => n[0]).join('')}
-                            </div>
-                          ))}
-                          {task.assignees.length > 2 && (
-                            <div style={{ 
-                              width: '28px', 
-                              height: '28px', 
-                              borderRadius: '50%', 
-                              background: '#e2e8f0', 
-                              color: '#64748b', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              fontSize: '10px', 
-                              fontWeight: 600, 
-                              marginLeft: '-6px', 
-                              border: '2px solid #fff' 
-                            }}>
-                              +{task.assignees.length - 2}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div style={{ height: '28px' }} />
-                      )}
-
-                      {/* Due Date */}
-                      <span style={{ 
-                        fontSize: '12px', 
-                        fontWeight: 500,
-                        color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
-                      }}>
-                        {formatDate(task.due_date)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                      task={task}
+                      showAssignees={true}
+                      isFocusSection={isFocusSection}
+                      isEvenIndex={taskIndex % 2 === 0}
+                    />
+                  ))}
                 </div>
               );
             })

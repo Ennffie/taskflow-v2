@@ -1,36 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
-import { formatDate } from '../lib/date';
-import { STATUS_CONFIG, type TaskItem } from '../types';
+import { STATUS_CONFIG, type TaskItem, type TaskStatus } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
+import { TaskCard } from '../components/TaskCard';
 import { useAuth } from '../contexts/AuthContext';
-import type { TaskStatus } from '../types';
-
-function isDueSoon(dueDate: string | null): boolean {
-  if (!dueDate) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
-  return diff >= 0 && diff <= 3;
-}
-
-function isOverdue(dueDate: string | null): boolean {
-  if (!dueDate) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  return due < today;
-}
 
 function StatusIcon({ status }: { status: TaskStatus }) {
   const iconStyle = { width: '16px', height: '16px', borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-  
+
   switch (status) {
     case 'done':
       return <div style={{ ...iconStyle, borderColor: '#10b981', background: '#10b981' }}><CheckCircle2 size={12} color="#fff" /></div>;
@@ -45,6 +24,15 @@ function StatusIcon({ status }: { status: TaskStatus }) {
   }
 }
 
+function isOverdue(dueDate: string | null): boolean {
+  if (!dueDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
+}
+
 // Sort by due date (nulls last, then by date)
 function sortByDueDate(a: TaskItem, b: TaskItem): number {
   if (!a.due_date && !b.due_date) return 0;
@@ -54,7 +42,6 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 }
 
 export function MyTasksPage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +49,7 @@ export function MyTasksPage() {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [showModal, setShowModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
-  
+
   // Section expand/collapse state - default: Other collapsed, others expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     "Today's Focus": true,
@@ -70,7 +57,7 @@ export function MyTasksPage() {
     'Other': false,
     'Done': true,
   });
-  
+
   // Selected tasks for logging
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
 
@@ -79,7 +66,7 @@ export function MyTasksPage() {
     try {
       const allTasks = await fetchTasks();
       // Filter to only show tasks assigned to current user
-      const myTasks = allTasks.filter(t => 
+      const myTasks = allTasks.filter(t =>
         t.assignees.some(a => a.id === user?.id)
       );
       setTasks(myTasks);
@@ -110,8 +97,8 @@ export function MyTasksPage() {
     });
   };
 
-  useEffect(() => { 
-    if (user) void loadTasks(); 
+  useEffect(() => {
+    if (user) void loadTasks();
   }, [user]);
 
   const filtered = useMemo(() => tasks.filter((task) => {
@@ -125,13 +112,13 @@ export function MyTasksPage() {
     const overdueTasks = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
     const otherTasks = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
     const doneTasks = filtered.filter(t => t.status === 'done').sort(sortByDueDate);
-    
+
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups["Today's Focus"] = focusTasks;
     if (overdueTasks.length > 0) groups['Overdue'] = overdueTasks;
     if (otherTasks.length > 0) groups['Other'] = otherTasks;
     if (doneTasks.length > 0) groups['Done'] = doneTasks;
-    
+
     return groups;
   }, [filtered]);
 
@@ -146,15 +133,15 @@ export function MyTasksPage() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>My Tasks</h1>
-          
+
           {/* Selected count badge */}
           {selectedTasks.size > 0 && (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              padding: '8px 16px', 
-              background: '#7c3aed', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: '#7c3aed',
               borderRadius: '20px',
               color: '#fff',
               fontSize: '14px',
@@ -167,35 +154,35 @@ export function MyTasksPage() {
         </div>
 
         {/* Horizontal Scrollable Compact Cards - 3 cards */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '12px', 
-          overflowX: 'auto', 
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          overflowX: 'auto',
           paddingBottom: '12px',
           marginBottom: '24px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
         }}>
-          <CompactCard 
+          <CompactCard
             icon={<AlertTriangle size={20} color="#7c3aed" />}
-            label="Today's Focus" 
+            label="Today's Focus"
             count={focusCount}
             subLabel="priority"
             bgColor="#ede9fe"
             iconBgColor="#ddd6fe"
             active
           />
-          <CompactCard 
+          <CompactCard
             icon={<AlertTriangle size={20} color="#ef4444" />}
-            label="Overdue" 
+            label="Overdue"
             count={overdueCount}
             subLabel="needs attention"
             bgColor="#fef2f2"
             iconBgColor="#fee2e2"
           />
-          <CompactCard 
+          <CompactCard
             icon={<Inbox size={20} color="#3b82f6" />}
-            label="Other" 
+            label="Other"
             count={otherCount}
             subLabel="remaining"
             bgColor="#eff6ff"
@@ -207,16 +194,16 @@ export function MyTasksPage() {
         <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input 
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
-              placeholder="Search my tasks..." 
-              style={{ width: '100%', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '12px 14px 12px 42px', fontSize: '14px', outline: 'none', background: '#fff' }} 
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search my tasks..."
+              style={{ width: '100%', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '12px 14px 12px 42px', fontSize: '14px', outline: 'none', background: '#fff' }}
             />
           </div>
 
           <div style={{ position: 'relative' }}>
-            <button 
+            <button
               onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
             >
@@ -227,8 +214,8 @@ export function MyTasksPage() {
             {openDropdown === 'status' && (
               <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', minWidth: '180px', zIndex: 20, padding: '8px' }}>
                 {(['all', 'todo', 'in_progress', 'review', 'done', 'cancelled', 'focus'] as const).map((s) => (
-                  <button 
-                    key={s} 
+                  <button
+                    key={s}
                     onClick={() => { setStatusFilter(s); setOpenDropdown(null); }}
                     style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', border: 'none', background: 'transparent', fontSize: '14px', color: '#475569', cursor: 'pointer', fontWeight: 500 }}
                     onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
@@ -256,134 +243,52 @@ export function MyTasksPage() {
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
               const isExpanded = expandedSections[groupName] ?? true;
               const isFocusSection = groupName === "Today's Focus";
-              
+
               return (
-                <div key={groupName} style={isFocusSection ? { 
+                <div key={groupName} style={isFocusSection ? {
                   background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
                   borderLeft: '4px solid #7c3aed'
                 } : {}}>
-                  <div 
+                  <div
                     onClick={() => toggleSection(groupName)}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px', 
-                      padding: '12px 20px', 
-                      background: isFocusSection ? 'rgba(124, 58, 237, 0.08)' : '#f8fafc', 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px 20px',
+                      background: isFocusSection ? 'rgba(124, 58, 237, 0.08)' : '#f8fafc',
                       borderBottom: '1px solid #e2e8f0',
                       cursor: 'pointer',
                       userSelect: 'none'
                     }}
                   >
                     {isExpanded ? <ChevronUp size={16} color="#64748b" /> : <ChevronDown size={16} color="#64748b" />}
-                    <span style={{ 
-                      fontSize: '13px', 
-                      fontWeight: 700, 
-                      color: isFocusSection ? '#6d28d9' : '#64748b', 
-                      textTransform: 'uppercase', 
-                      letterSpacing: '0.5px' 
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: isFocusSection ? '#6d28d9' : '#64748b',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
                     }}>
                       {groupName}
                     </span>
                     <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
                     {isFocusSection && <span style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 8px', background: '#7c3aed', color: '#fff', borderRadius: '10px', fontWeight: 600 }}>FOCUS</span>}
                   </div>
-                  
-                  {isExpanded && groupTasks.map((task) => {
+
+                  {isExpanded && groupTasks.map((task, taskIndex) => {
                     const isSelected = selectedTasks.has(task.id);
                     return (
-                      <div 
+                      <TaskCard 
                         key={task.id}
-                        onClick={() => navigate(`/tasks/${task.id}`)}
-                        style={{ 
-                          display: 'flex', 
-                          alignItems: 'flex-start', 
-                          gap: '12px', 
-                          padding: '14px 20px', 
-                          borderBottom: '1px solid #f1f5f9', 
-                          cursor: 'pointer',
-                          background: isFocusSection ? 'rgba(255,255,255,0.5)' : 'transparent'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = isFocusSection ? 'rgba(255,255,255,0.8)' : '#f8fafc'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = isFocusSection ? 'rgba(255,255,255,0.5)' : 'transparent'}
-                      >
-                        {/* Large Checkbox for logging */}
-                        <div 
-                          onClick={(e) => toggleTaskSelection(task.id, e)}
-                          style={{
-                            width: '44px',
-                            height: '44px',
-                            minWidth: '44px',
-                            borderRadius: '12px',
-                            background: isSelected ? '#7c3aed' : '#f3e8ff',
-                            border: `2px solid ${isSelected ? '#7c3aed' : '#ddd6fe'}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            marginTop: '2px'
-                          }}
-                          title={isSelected ? 'Click to deselect' : 'Click to select for logging'}
-                        >
-                          {isSelected ? (
-                            <CheckCircle2 size={24} color="#fff" />
-                          ) : (
-                            <div style={{
-                              width: '20px',
-                              height: '20px',
-                              borderRadius: '50%',
-                              background: '#ddd6fe'
-                            }} />
-                          )}
-                        </div>
-                        
-                        {/* Middle: Title + Tags */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          {/* Task Title - 2 lines */}
-                          <p style={{ 
-                            fontSize: '14px', 
-                            fontWeight: 500, 
-                            color: '#111827', 
-                            margin: 0, 
-                            lineHeight: 1.4,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}>
-                            {task.title}
-                          </p>
-                          
-                          {/* Tags - below title, left aligned */}
-                          {task.tags.length > 0 && (
-                            <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-                              {task.tags.slice(0, 3).map((tag) => (
-                                <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                                  {tag}
-                                </span>
-                              ))}
-                              {task.tags.length > 3 && (
-                                <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                                  +{task.tags.length - 3}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Right side: Due Date */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '80px' }}>
-                          {/* Due Date */}
-                          <span style={{ 
-                            fontSize: '12px', 
-                            fontWeight: 500,
-                            color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b'
-                          }}>
-                            {formatDate(task.due_date)}
-                          </span>
-                        </div>
-                      </div>
+                        task={task}
+                        showCheckbox={true}
+                        isSelected={isSelected}
+                        onToggleSelect={toggleTaskSelection}
+                        showAssignees={false}
+                        isFocusSection={isFocusSection}
+                        isEvenIndex={taskIndex % 2 === 0}
+                      />
                     );
                   })}
                 </div>
@@ -411,7 +316,7 @@ interface CompactCardProps {
 
 function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, active }: CompactCardProps) {
   return (
-    <div style={{ 
+    <div style={{
       background: active ? bgColor : '#f8fafc',
       borderRadius: '16px',
       padding: '16px',
@@ -425,10 +330,10 @@ function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, activ
       flexShrink: 0,
       border: active ? '2px solid #7c3aed' : '2px solid transparent',
     }}>
-      <div style={{ 
-        width: '32px', 
-        height: '32px', 
-        borderRadius: '8px', 
+      <div style={{
+        width: '32px',
+        height: '32px',
+        borderRadius: '8px',
         background: iconBgColor,
         display: 'flex',
         alignItems: 'center',
