@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, FileText, Trash2, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Trash2, Target } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
@@ -279,30 +279,12 @@ export function MyLogPage() {
   };
 
   return (
-    <AppShell>
+    <AppShell onAddTask={() => setShowTaskSelector(true)}>
       <div style={{ display: 'grid', gap: '18px' }}>
         {/* Header */}
         <section style={panelStyle}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '4px' }}>
             <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>My logs</div>
-            <button
-              onClick={() => setShowTaskSelector(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '10px 16px',
-                borderRadius: '10px',
-                border: 'none',
-                background: '#7c3aed',
-                color: '#fff',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <FileText size={18} /> Daily Log
-            </button>
           </div>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0' }}>
             A clean list of updates you have posted across the workspace.

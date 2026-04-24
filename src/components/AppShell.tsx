@@ -1,5 +1,5 @@
 import { CheckSquare, ScrollText, Settings, Home, Plus } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 
@@ -24,6 +24,8 @@ export function notifyModalClose() {
 
 export function AppShell({ children, onAddTask }: AppShellProps) {
   const { profile } = useAuth();
+  const location = useLocation();
+  const isLogPage = location.pathname === '/my-log';
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -124,14 +126,14 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              background: '#7c3aed',
+              background: isLogPage ? '#3b82f6' : '#7c3aed',
               border: 'none',
               color: '#fff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(124, 58, 237, 0.4)',
+              boxShadow: isLogPage ? '0 4px 16px rgba(59, 130, 246, 0.4)' : '0 4px 16px rgba(124, 58, 237, 0.4)',
             }}
           >
             <Plus size={28} strokeWidth={2.5} />
