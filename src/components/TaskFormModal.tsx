@@ -142,7 +142,7 @@ function ModalFrame({ title, onClose, isFocus, onToggleFocus, children }: { titl
                 transition: 'all 0.2s ease',
               }}
             >
-              <span style={{ fontSize: '16px' }}>{isFocus ? '🎯' : '○'}</span>
+              <span style={{ fontSize: '16px' }}>🎯</span>
               Focus
             </button>
             <button onClick={onClose} style={{ border: 'none', background: '#f3f4f6', width: '42px', height: '42px', borderRadius: '14px', cursor: 'pointer' }}><X size={18} /></button>

@@ -175,7 +175,7 @@ export function TaskListPage() {
           gap: '12px', 
           overflowX: 'auto', 
           paddingBottom: '12px',
-          marginBottom: '24px',
+          marginBottom: '12px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
         }}>
