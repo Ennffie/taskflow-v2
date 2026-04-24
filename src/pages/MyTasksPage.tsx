@@ -52,7 +52,7 @@ export function MyTasksPage() {
 
   // Section expand/collapse state - default: Other collapsed, others expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    "Today's Focus": true,
+    "Focus": true,
     'Overdue': true,
     'Other': false,
     'Done': true,
@@ -114,7 +114,7 @@ export function MyTasksPage() {
     const doneTasks = filtered.filter(t => t.status === 'done').sort(sortByDueDate);
 
     const groups: Record<string, TaskItem[]> = {};
-    if (focusTasks.length > 0) groups["Today's Focus"] = focusTasks;
+    if (focusTasks.length > 0) groups["Focus"] = focusTasks;
     if (overdueTasks.length > 0) groups['Overdue'] = overdueTasks;
     if (otherTasks.length > 0) groups['Other'] = otherTasks;
     if (doneTasks.length > 0) groups['Done'] = doneTasks;
@@ -165,7 +165,7 @@ export function MyTasksPage() {
         }}>
           <CompactCard
             icon={<AlertTriangle size={20} color="#7c3aed" />}
-            label="Today's Focus"
+            label="Focus"
             count={focusCount}
             subLabel="priority"
             bgColor="#ede9fe"
@@ -242,7 +242,7 @@ export function MyTasksPage() {
           ) : (
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
               const isExpanded = expandedSections[groupName] ?? true;
-              const isFocusSection = groupName === "Today's Focus";
+              const isFocusSection = groupName === "Focus";
 
               return (
                 <div key={groupName} style={isFocusSection ? {
