@@ -132,7 +132,7 @@ export function TaskListPage() {
     <AppShell onAddTask={() => setShowModal(true)}>
       <div style={{ maxWidth: '1200px' }}>
         {/* Header with User */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>All Tasks</h1>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -174,8 +174,8 @@ export function TaskListPage() {
           display: 'flex', 
           gap: '12px', 
           overflowX: 'auto', 
-          paddingBottom: '12px',
-          marginBottom: '12px',
+          paddingBottom: '6px',
+          marginBottom: '8px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
         }}>
@@ -209,7 +209,7 @@ export function TaskListPage() {
         </div>
 
         {/* Search & Filters */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
