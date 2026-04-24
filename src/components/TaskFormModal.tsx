@@ -14,6 +14,7 @@ export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onC
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isFocus, setIsFocus] = useState(false);
 
   useEffect(() => {
     fetchProfiles().then(setProfiles).catch(console.error);
@@ -32,7 +33,7 @@ export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onC
       await createTask({
         title: title.trim(),
         description,
-        status,
+        status: isFocus ? 'focus' : status,
         priority,
         due_date: dueDate || undefined,
         assignee_ids: assigneeIds,
@@ -48,12 +49,12 @@ export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onC
   };
 
   return (
-    <ModalFrame title="Create task" onClose={onClose}>
+    <ModalFrame title="Create task" onClose={onClose} isFocus={isFocus} onToggleFocus={() => setIsFocus(!isFocus)}>
       <div style={{ display: 'grid', gap: '18px' }}>
         <Field label="Title"><input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder="e.g. PMC portal redesign" /></Field>
         <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="Context, scope, handoff details" /></Field>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }} className="form-grid-3">
-          <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}><option value="todo">Todo</option><option value="focus">Focus</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
+          <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}><option value="todo">Todo</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
           <Field label="Priority"><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
           <Field label="Due date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={inputStyle} /></Field>
         </div>
@@ -112,16 +113,38 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>{label}{children}</label>;
 }
 
-function ModalFrame({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function ModalFrame({ title, onClose, isFocus, onToggleFocus, children }: { title: string; onClose: () => void; isFocus?: boolean; onToggleFocus?: () => void; children: React.ReactNode }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: '24px', zIndex: 300 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '85vh', overflow: 'auto', background: '#fff', borderRadius: '28px', padding: '28px', boxShadow: '0 28px 80px rgba(15,23,42,0.22)', zIndex: 301, marginBottom: '80px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
             <div style={{ fontSize: '24px', fontWeight: 800, color: '#111827' }}>{title}</div>
-            <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Keep it clear, practical, and easy for the team to follow.</div>
           </div>
-          <button onClick={onClose} style={{ border: 'none', background: '#f3f4f6', width: '42px', height: '42px', borderRadius: '14px', cursor: 'pointer' }}><X size={18} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Focus Toggle */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleFocus?.(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 14px',
+                borderRadius: '20px',
+                border: isFocus ? '2px solid #7c3aed' : '2px solid #e5e7eb',
+                background: isFocus ? '#ede9fe' : '#fff',
+                color: isFocus ? '#7c3aed' : '#6b7280',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>{isFocus ? '🎯' : '○'}</span>
+              Focus
+            </button>
+            <button onClick={onClose} style={{ border: 'none', background: '#f3f4f6', width: '42px', height: '42px', borderRadius: '14px', cursor: 'pointer' }}><X size={18} /></button>
+          </div>
         </div>
         {children}
       </div>
