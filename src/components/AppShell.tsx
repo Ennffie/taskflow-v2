@@ -126,14 +126,14 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              background: isLogPage ? '#3b82f6' : '#7c3aed',
+              background: isLogPage ? '#22c55e' : '#7c3aed',
               border: 'none',
               color: '#fff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: isLogPage ? '0 4px 16px rgba(59, 130, 246, 0.4)' : '0 4px 16px rgba(124, 58, 237, 0.4)',
+              boxShadow: isLogPage ? '0 4px 16px rgba(34, 197, 94, 0.4)' : '0 4px 16px rgba(124, 58, 237, 0.4)',
             }}
           >
             <Plus size={28} strokeWidth={2.5} />
