@@ -58,10 +58,8 @@ export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onC
           <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}><option value="todo">Todo</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
           <Field label="Priority"><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         </div>
-        {/* Due date - smaller */}
-        <div style={{ maxWidth: '200px' }}>
-          <Field label="Due date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={inputStyle} /></Field>
-        </div>
+        {/* Due date - full width, same height as other fields */}
+        <Field label="Due date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={inputStyle} /></Field>
         <Field label="Assignees">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {profiles.map((profile) => (
