@@ -170,23 +170,13 @@ export function TaskCard({
           }}>
             {dueDateLabel === '—' ? 'No due date' : dueDateLabel}
           </span>
+
+          {task.tags.length > 0 && (
+            <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: '999px', background: '#f1f5f9', color: '#64748b', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {task.tags[0]}{task.tags.length > 1 ? ` +${task.tags.length - 1}` : ''}
+            </span>
+          )}
         </div>
-        
-        {/* Tags - below title */}
-        {task.tags.length > 0 && (
-          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-            {task.tags.slice(0, 3).map((tag) => (
-              <span key={tag} style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                {tag}
-              </span>
-            ))}
-            {task.tags.length > 3 && (
-              <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b' }}>
-                +{task.tags.length - 3}
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Right side: Log Count + Assignees + Due Date */}
