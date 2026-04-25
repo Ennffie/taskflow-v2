@@ -49,6 +49,10 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     setAssigneeIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
   };
 
+  const setDueDateToToday = () => {
+    setDueDate(new Date().toISOString().slice(0, 10));
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) return;
     try {
@@ -119,8 +123,59 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}><option value="todo">Todo</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
           <Field label="Priority"><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         </div>
-        {/* Due date - full width, same height as other fields */}
-        <Field label="Due date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ ...inputStyle, WebkitAppearance: 'none', appearance: 'none' }} /></Field>
+        <Field label="Due date">
+          <div style={{ display: 'grid', gap: '10px' }}>
+            <div style={{ position: 'relative' }}>
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ ...inputStyle, WebkitAppearance: 'none', appearance: 'none', paddingRight: dueDate ? '54px' : '16px' }} />
+              {dueDate && (
+                <button
+                  type="button"
+                  onClick={() => setDueDate('')}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: '#f3f4f6',
+                    color: '#6b7280',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    fontWeight: 700,
+                  }}
+                  aria-label="Clear due date"
+                  title="Clear due date"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <button
+                type="button"
+                onClick={setDueDateToToday}
+                style={{
+                  borderRadius: '999px',
+                  border: '1px solid #e5e7eb',
+                  background: '#fff',
+                  color: '#374151',
+                  padding: '8px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Today
+              </button>
+            </div>
+          </div>
+        </Field>
         <Field label="Assignees">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {profiles.map((profile) => (
