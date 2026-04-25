@@ -1,26 +1,33 @@
 import { useNavigate } from 'react-router-dom';
 import { formatDate } from '../lib/date';
-import { type TaskItem, type TaskStatus } from '../types';
+import { type TaskItem } from '../types';
 
-// Status to Emoji mapping
-const STATUS_EMOJI: Record<TaskStatus, string> = {
-  todo: '⭕',
-  planning: '📝',
-  in_progress: '🔄',
-  done: '✅',
-  review: '👀',
-  cancelled: '❌',
-};
+const AVATAR_COLOR_PALETTE = [
+  '#6366F1', // indigo
+  '#EC4899', // pink
+  '#F59E0B', // amber
+  '#10B981', // emerald
+  '#3B82F6', // blue
+  '#8B5CF6', // violet
+  '#EF4444', // red
+  '#14B8A6', // teal
+];
 
-// Status color for emoji background
-const STATUS_EMOJI_BG: Record<TaskStatus, string> = {
-  todo: '#f1f5f9',
-  planning: '#ccfbf1',
-  in_progress: '#fef3c7',
-  done: '#d1fae5',
-  review: '#ede9fe',
-  cancelled: '#fee2e2',
-};
+function getAvatarColor(name: string, id?: string) {
+  const normalized = `${id ?? ''}:${name}`.toLowerCase();
+
+  if (normalized.includes('enfield')) {
+    return '#6366F1';
+  }
+
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = ((hash << 5) - hash) + normalized.charCodeAt(i);
+    hash |= 0;
+  }
+
+  return AVATAR_COLOR_PALETTE[Math.abs(hash) % AVATAR_COLOR_PALETTE.length];
+}
 
 interface TaskCardProps {
   task: TaskItem;
@@ -72,6 +79,7 @@ export function TaskCard({
 
   const dueDateLabel = formatDate(task.due_date);
   const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const primaryAssignee = task.assignees[0];
 
   return (
     <div 
@@ -114,19 +122,22 @@ export function TaskCard({
         </div>
       )}
 
-      {/* Status Emoji */}
+      {/* Primary Assignee Avatar */}
       <div style={{ 
         width: '30px', 
         height: '30px', 
         borderRadius: '50%', 
-        background: STATUS_EMOJI_BG[task.status],
+        background: primaryAssignee ? getAvatarColor(primaryAssignee.name, primaryAssignee.id) : '#E2E8F0',
+        color: '#fff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '16px',
+        fontSize: primaryAssignee ? '11px' : '14px',
+        fontWeight: 700,
         flexShrink: 0,
+        border: '2px solid #fff',
       }}>
-        {STATUS_EMOJI[task.status]}
+        {primaryAssignee ? initials(primaryAssignee.name) : '—'}
       </div>
       
       {/* Middle: Title + Tags */}
@@ -197,7 +208,7 @@ export function TaskCard({
                   width: '28px', 
                   height: '28px', 
                   borderRadius: '50%', 
-                  background: ['#7c3aed', '#ec4899', '#f59e0b', '#10b981'][i % 4], 
+                  background: getAvatarColor(a.name, a.id), 
                   color: '#fff', 
                   display: 'flex', 
                   alignItems: 'center', 
