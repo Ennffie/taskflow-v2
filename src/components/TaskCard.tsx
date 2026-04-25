@@ -161,7 +161,7 @@ export function TaskCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{ fontSize: '13px' }}>💬</span>
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
-              {task.log_count} log{task.log_count === 1 ? '' : 's'}
+              {task.log_count} log{task.log_count <= 1 ? '' : 's'}
             </span>
           </div>
 
