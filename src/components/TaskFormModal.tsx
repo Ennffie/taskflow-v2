@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { createTask, fetchProfiles } from '../lib/api';
-import type { Profile, TaskPriority, TaskStatus } from '../types';
+import { createTask, fetchProfiles, updateTask } from '../lib/api';
+import { supabase } from '../lib/supabase';
+import type { Profile, TaskItem, TaskPriority, TaskStatus } from '../types';
 import { notifyModalOpen, notifyModalClose } from './AppShell';
 
-export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitle }: { onClose: () => void; onCreated: () => Promise<void> | void; parentTaskId?: string; parentTaskTitle?: string }) {
+interface TaskFormModalProps {
+  onClose: () => void;
+  onCreated: () => Promise<void> | void;
+  parentTaskId?: string;
+  parentTaskTitle?: string;
+  mode?: 'create' | 'edit';
+  initialTask?: TaskItem | null;
+}
+
+export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitle, mode = 'create', initialTask }: TaskFormModalProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -22,6 +32,19 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     return () => notifyModalClose();
   }, []);
 
+  useEffect(() => {
+    if (!initialTask) return;
+    const cleanDescription = initialTask.description?.split(/\n\n\[\d{4}-\d{2}-\d{2}\]/)[0] || '';
+    setTitle(initialTask.title);
+    setDescription(cleanDescription);
+    setStatus(initialTask.status === 'focus' ? 'todo' : initialTask.status);
+    setPriority(initialTask.priority);
+    setDueDate(initialTask.due_date || '');
+    setAssigneeIds(initialTask.assignees.map(a => a.id));
+    setTagInput(initialTask.tags.join(', '));
+    setIsFocus(initialTask.status === 'focus');
+  }, [initialTask]);
+
   const toggleAssignee = (id: string) => {
     setAssigneeIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
   };
@@ -30,27 +53,59 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     if (!title.trim()) return;
     try {
       setSaving(true);
-      await createTask({
-        title: title.trim(),
-        description,
-        status: isFocus ? 'focus' : status,
-        priority,
-        due_date: dueDate || undefined,
-        assignee_ids: assigneeIds,
-        tags: tagInput.split(',').map((tag) => tag.trim()).filter(Boolean),
-        parent_id: parentTaskId ?? null,
-      });
+      const finalStatus = isFocus ? 'focus' : status;
+      const nextTags = tagInput.split(',').map((tag) => tag.trim()).filter(Boolean);
+
+      if (mode === 'edit' && initialTask) {
+        const logMatch = initialTask.description?.match(/\n\n(\[\d{4}-\d{2}-\d{2}\].*)/s);
+        const logEntries = logMatch ? '\n\n' + logMatch[1] : '';
+        const finalDescription = description.trim() + logEntries;
+
+        await updateTask(initialTask.id, {
+          title: title.trim(),
+          description: finalDescription,
+          status: finalStatus,
+          priority,
+          due_date: dueDate || null,
+        });
+
+        await supabase.from('task_assignees').delete().eq('task_id', initialTask.id);
+        if (assigneeIds.length > 0) {
+          await supabase.from('task_assignees').insert(
+            assigneeIds.map((uid) => ({ task_id: initialTask.id, user_id: uid }))
+          );
+        }
+
+        await supabase.from('tags').delete().eq('task_id', initialTask.id);
+        if (nextTags.length > 0) {
+          await supabase.from('tags').insert(
+            nextTags.map((name) => ({ task_id: initialTask.id, name }))
+          );
+        }
+      } else {
+        await createTask({
+          title: title.trim(),
+          description,
+          status: finalStatus,
+          priority,
+          due_date: dueDate || undefined,
+          assignee_ids: assigneeIds,
+          tags: nextTags,
+          parent_id: parentTaskId ?? null,
+        });
+      }
+
       await onCreated();
       onClose();
     } catch (error: any) {
-      alert(`Create task failed: ${error?.message || 'Unknown error'}`);
+      alert(`${mode === 'edit' ? 'Update' : 'Create'} task failed: ${error?.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <ModalFrame title={parentTaskId ? 'Create sub-task' : 'Create task'} onClose={onClose} isFocus={isFocus} onToggleFocus={() => setIsFocus(!isFocus)}>
+    <ModalFrame title={mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task'} onClose={onClose} isFocus={isFocus} onToggleFocus={() => setIsFocus(!isFocus)}>
       <div style={{ display: 'grid', gap: '18px' }}>
         {parentTaskId && parentTaskTitle && (
           <div style={{ padding: '12px 14px', borderRadius: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
@@ -76,7 +131,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
         <Field label="Tags"><input value={tagInput} onChange={(e) => setTagInput(e.target.value)} style={inputStyle} placeholder="comma separated, e.g. UX, PMC, urgent" /></Field>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
           <button onClick={onClose} style={ghostButton}>Cancel</button>
-          <button onClick={handleSubmit} disabled={saving} style={primaryButton}>{saving ? 'Creating...' : 'Create task'}</button>
+          <button onClick={handleSubmit} disabled={saving} style={primaryButton}>{saving ? (mode === 'edit' ? 'Saving...' : 'Creating...') : (mode === 'edit' ? 'Save Changes' : 'Create task')}</button>
         </div>
       </div>
     </ModalFrame>

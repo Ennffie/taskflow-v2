@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, X, User, FileText, GitBranch } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, User, FileText, GitBranch } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
-import { fetchLogs, fetchTask, updateTask, deleteTask, fetchProfiles, updateLog, deleteLog, fetchSubtasks } from '../lib/api';
+import { fetchLogs, fetchTask, deleteTask, fetchProfiles, updateLog, deleteLog, fetchSubtasks } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { useAuth } from '../contexts/AuthContext';
-import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem, type Profile, type TaskStatus, type TaskPriority, type LogCategory } from '../types';
+import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem, type LogCategory } from '../types';
 import { panelStyle } from './TaskListPage';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
@@ -22,20 +22,10 @@ export function LogBookPage() {
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [subtasks, setSubtasks] = useState<TaskItem[]>([]);
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
   const [parentTask, setParentTask] = useState<TaskItem | null>(null);
   
-  // Task Edit form state
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editStatus, setEditStatus] = useState<TaskStatus>('todo');
-  const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
-  const [editDueDate, setEditDueDate] = useState('');
-  const [editAssigneeIds, setEditAssigneeIds] = useState<string[]>([]);
-  const [editTags, setEditTags] = useState('');
-  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   // Log Edit state
@@ -52,14 +42,13 @@ export function LogBookPage() {
     if (!taskId) return;
     setLoading(true);
     try {
-      const [nextTask, nextLogs, allProfiles] = await Promise.all([
+      const [nextTask, nextLogs] = await Promise.all([
         fetchTask(taskId), 
         fetchLogs(taskId),
         fetchProfiles()
       ]);
       setTask(nextTask);
       setLogs(nextLogs);
-      setProfiles(allProfiles);
       setSubtasks(nextTask ? await fetchSubtasks(nextTask.id) : []);
       setParentTask(nextTask?.parent_id ? await fetchTask(nextTask.parent_id) : null);
     } catch (error: any) {
@@ -80,53 +69,8 @@ export function LogBookPage() {
 
   const handleEditClick = () => {
     if (!task) return;
-    const cleanDescription = task.description?.split(/\n\n\[\d{4}-\d{2}-\d{2}\]/)[0] || '';
-    setEditTitle(task.title);
-    setEditDescription(cleanDescription);
-    setEditStatus(task.status);
-    setEditPriority(task.priority);
-    setEditDueDate(task.due_date || '');
-    setEditAssigneeIds(task.assignees.map(a => a.id));
-    setEditTags(task.tags.join(', '));
     setShowMenu(false);
     setShowEditModal(true);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!task) return;
-    setSaving(true);
-    try {
-      const logMatch = task.description?.match(/\n\n(\[\d{4}-\d{2}-\d{2}\].*)/s);
-      const logEntries = logMatch ? '\n\n' + logMatch[1] : '';
-      const finalDescription = editDescription.trim() + logEntries;
-      await updateTask(task.id, {
-        title: editTitle.trim(),
-        description: finalDescription,
-        status: editStatus,
-        priority: editPriority,
-        due_date: editDueDate || null,
-      });
-      const { supabase } = await import('../lib/supabase');
-      await supabase.from('task_assignees').delete().eq('task_id', task.id);
-      if (editAssigneeIds.length > 0) {
-        await supabase.from('task_assignees').insert(
-          editAssigneeIds.map((uid) => ({ task_id: task.id, user_id: uid }))
-        );
-      }
-      await supabase.from('tags').delete().eq('task_id', task.id);
-      const newTags = editTags.split(',').map(t => t.trim()).filter(Boolean);
-      if (newTags.length > 0) {
-        await supabase.from('tags').insert(
-          newTags.map((name) => ({ task_id: task.id, name }))
-        );
-      }
-      await loadData();
-      setShowEditModal(false);
-    } catch (error: any) {
-      alert(`Update task failed: ${error?.message || 'Unknown error'}`);
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleDelete = async () => {
@@ -401,60 +345,13 @@ export function LogBookPage() {
         </section>
       </div>
 
-      {showEditModal && (
-        <div onClick={() => setShowEditModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 800 }}>Edit Task</div>
-              <button onClick={() => setShowEditModal(false)} style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <X size={20} color="#374151" />
-              </button>
-            </div>
-            <div style={{ display: 'grid', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Title *</label>
-                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Task title..." style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Description</label>
-                <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Task description..." rows={3} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Status</label>
-                  <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as TaskStatus)} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', background: '#fff' }}>
-                    {Object.entries(STATUS_META).map(([key, meta]) => (<option key={key} value={key}>{meta.label}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Priority</label>
-                  <select value={editPriority} onChange={(e) => setEditPriority(e.target.value as TaskPriority)} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', background: '#fff' }}>
-                    {Object.entries(PRIORITY_META).map(([key, meta]) => (<option key={key} value={key}>{meta.label}</option>))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Assignees</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                  {profiles.map((profile) => (
-                    <label key={profile.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: editAssigneeIds.includes(profile.id) ? '#ede9fe' : '#f3f4f6', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={editAssigneeIds.includes(profile.id)} onChange={(e) => { if (e.target.checked) { setEditAssigneeIds([...editAssigneeIds, profile.id]); } else { setEditAssigneeIds(editAssigneeIds.filter(id => id !== profile.id)); } }} style={{ cursor: 'pointer' }} />
-                      <span style={{ fontSize: '13px', fontWeight: 500, color: editAssigneeIds.includes(profile.id) ? '#6d28d9' : '#374151' }}>{profile.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Tags (comma separated)</label>
-                <input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="design, urgent, frontend..." style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSaveEdit} disabled={saving || !editTitle.trim()} style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', fontWeight: 600, opacity: (saving || !editTitle.trim()) ? 0.6 : 1, cursor: (saving || !editTitle.trim()) ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
-            </div>
-          </div>
-        </div>
+      {showEditModal && task && (
+        <TaskFormModal
+          mode="edit"
+          initialTask={task}
+          onClose={() => setShowEditModal(false)}
+          onCreated={loadData}
+        />
       )}
 
       {showLogEditModal && editingLog && (
