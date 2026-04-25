@@ -25,6 +25,7 @@ export function LogBookPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [subtasks, setSubtasks] = useState<TaskItem[]>([]);
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
+  const [parentTask, setParentTask] = useState<TaskItem | null>(null);
   
   // Task Edit form state
   const [editTitle, setEditTitle] = useState('');
@@ -60,6 +61,7 @@ export function LogBookPage() {
       setLogs(nextLogs);
       setProfiles(allProfiles);
       setSubtasks(nextTask ? await fetchSubtasks(nextTask.id) : []);
+      setParentTask(nextTask?.parent_id ? await fetchTask(nextTask.parent_id) : null);
     } catch (error: any) {
       alert(`Load log book failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -246,6 +248,18 @@ export function LogBookPage() {
           <ArrowLeft size={16} /> Back to tasks
         </Link>
 
+        {parentTask && (
+          <div style={{ padding: '12px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
+            This is a sub-task under{' '}
+            <button
+              onClick={() => navigate(`/tasks/${parentTask.id}`)}
+              style={{ border: 'none', background: 'transparent', padding: 0, color: '#7c3aed', fontWeight: 700, cursor: 'pointer' }}
+            >
+              {parentTask.title}
+            </button>
+          </div>
+        )}
+
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '16px 20px', position: 'relative' }}>
           <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
             <button onClick={() => setShowMenu(!showMenu)} style={{ width: '40px', height: '40px', borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title="Task Options">
@@ -308,29 +322,31 @@ export function LogBookPage() {
           <Plus size={18} /> Add Log
         </button>
 
-        <section style={{ ...panelStyle, display: 'grid', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <GitBranch size={16} color="#7c3aed" />
-              Sub-tasks ({subtasks.length})
-            </h2>
-            <button onClick={() => setShowSubtaskModal(true)} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', color: '#374151', padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>
-              + Add sub-task
-            </button>
-          </div>
+        {!task.parent_id && (
+          <section style={{ ...panelStyle, display: 'grid', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <GitBranch size={16} color="#7c3aed" />
+                Sub-tasks ({subtasks.length})
+              </h2>
+              <button onClick={() => setShowSubtaskModal(true)} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', color: '#374151', padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>
+                + Add sub-task
+              </button>
+            </div>
 
-          {subtasks.length === 0 ? (
-            <div style={{ padding: '20px', borderRadius: '12px', background: '#f8fafc', color: '#64748b', fontSize: '14px', textAlign: 'center' }}>
-              No sub-tasks yet. Break this task into smaller actions when it helps execution.
-            </div>
-          ) : (
-            <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-              {subtasks.map((subtask, index) => (
-                <TaskCard key={subtask.id} task={subtask} showAssignees={true} isEvenIndex={index % 2 === 0} />
-              ))}
-            </div>
-          )}
-        </section>
+            {subtasks.length === 0 ? (
+              <div style={{ padding: '20px', borderRadius: '12px', background: '#f8fafc', color: '#64748b', fontSize: '14px', textAlign: 'center' }}>
+                No sub-tasks yet. Break this task into smaller actions when it helps execution.
+              </div>
+            ) : (
+              <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                {subtasks.map((subtask, index) => (
+                  <TaskCard key={subtask.id} task={subtask} showAssignees={true} isEvenIndex={index % 2 === 0} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         <section style={{ display: 'grid', gap: '12px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: '8px 0 4px 0' }}>Activity ({logs.length})</h2>
