@@ -225,7 +225,8 @@ export function LogBookPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px', paddingRight: '50px' }}>
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111827', margin: 0 }}>{task.title}</h1>
             <div style={{ display: 'flex', gap: '6px' }}>
-              <Badge bg={status.bg} color={status.color} text={status.label} />
+              {task.status === 'focus' && <Badge bg={STATUS_META.focus.bg} color={STATUS_META.focus.color} text={STATUS_META.focus.label} />}
+              {task.status !== 'focus' && <Badge bg={status.bg} color={status.color} text={status.label} />}
               <Badge bg={priority.bg} color={priority.color} text={priority.label} />
             </div>
           </div>
