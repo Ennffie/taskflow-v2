@@ -316,33 +316,36 @@ export function LogBookPage() {
               </div>
             </div>
           </div>
+
+          {!task.parent_id && (
+            <>
+              <div style={{ height: '1px', background: '#e2e8f0', margin: '18px -20px 0' }} />
+              <div style={{ display: 'grid', gap: '12px', paddingTop: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                  <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <GitBranch size={16} color="#7c3aed" />
+                    Sub-tasks ({subtasks.length})
+                  </h2>
+                  <button onClick={() => setShowSubtaskModal(true)} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', color: '#374151', padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>
+                    + Add sub-task
+                  </button>
+                </div>
+
+                {subtasks.length === 0 ? (
+                  <div style={{ padding: '20px', borderRadius: '12px', background: '#f8fafc', color: '#64748b', fontSize: '14px', textAlign: 'center' }}>
+                    No sub-tasks yet. Break this task into smaller actions when it helps execution.
+                  </div>
+                ) : (
+                  <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                    {subtasks.map((subtask, index) => (
+                      <TaskCard key={subtask.id} task={subtask} showAssignees={true} isEvenIndex={index % 2 === 0} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
-
-        {!task.parent_id && (
-          <section style={{ ...panelStyle, display: 'grid', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-              <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <GitBranch size={16} color="#7c3aed" />
-                Sub-tasks ({subtasks.length})
-              </h2>
-              <button onClick={() => setShowSubtaskModal(true)} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', color: '#374151', padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>
-                + Add sub-task
-              </button>
-            </div>
-
-            {subtasks.length === 0 ? (
-              <div style={{ padding: '20px', borderRadius: '12px', background: '#f8fafc', color: '#64748b', fontSize: '14px', textAlign: 'center' }}>
-                No sub-tasks yet. Break this task into smaller actions when it helps execution.
-              </div>
-            ) : (
-              <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                {subtasks.map((subtask, index) => (
-                  <TaskCard key={subtask.id} task={subtask} showAssignees={true} isEvenIndex={index % 2 === 0} />
-                ))}
-              </div>
-            )}
-          </section>
-        )}
 
         <button onClick={() => setShowModal(true)} style={{ width: '100%', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', padding: '14px 20px', fontWeight: 600, fontSize: '15px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
           <Plus size={18} /> Add Log
