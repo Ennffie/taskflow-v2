@@ -231,19 +231,6 @@ export function LogBookPage() {
             </div>
           </div>
 
-          {(() => {
-            const cleanDesc = task.description?.split(/\n\n\[\d{4}-\d{2}-\d{2}\]/)[0] || '';
-            const lines = cleanDesc.split('\n').map(line => line.trim()).filter(Boolean);
-            const statusLabel = STATUS_META[task.status].label.toLowerCase();
-            const normalizedDesc = lines.length > 0 && lines[0].toLowerCase() === statusLabel
-              ? lines.slice(1).join('\n')
-              : cleanDesc;
-
-            return normalizedDesc && (
-              <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.6, margin: '0 0 14px 0', whiteSpace: 'pre-wrap' }}>{normalizedDesc}</p>
-            );
-          })()}
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Calendar size={14} color="#7c3aed" />
