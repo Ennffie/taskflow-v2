@@ -262,7 +262,7 @@ export function LogBookPage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                   <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <GitBranch size={16} color="#7c3aed" />
-                    Sub-tasks ({subtasks.length})
+                    {subtasks.length === 0 ? 'No Sub-task' : subtasks.length === 1 ? '1 Sub-task' : `${subtasks.length} Sub-tasks`}
                   </h2>
                   <button onClick={() => setShowSubtaskModal(true)} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', color: '#374151', padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>
                     + Add sub-task
