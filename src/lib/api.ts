@@ -53,6 +53,7 @@ export async function fetchTasks(): Promise<TaskItem[]> {
   return tasks.map((t) => ({
     id: t.id,
     parent_id: t.parent_id ?? null,
+    is_focus: t.is_focus ?? false,
     title: t.title,
     description: t.description,
     status: t.status,
@@ -94,6 +95,7 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
   return {
     id: task.id,
     parent_id: task.parent_id ?? null,
+    is_focus: task.is_focus ?? false,
     title: task.title,
     description: task.description,
     status: task.status,
@@ -146,6 +148,7 @@ export async function createTask(payload: {
   assignee_ids: string[];
   tags: string[];
   parent_id?: string | null;
+  is_focus?: boolean;
 }) {
   // Get current user
   const { data: userData } = await supabase.auth.getUser();
@@ -160,6 +163,7 @@ export async function createTask(payload: {
       priority: payload.priority,
       due_date: payload.due_date ?? null,
       parent_id: payload.parent_id ?? null,
+      is_focus: payload.is_focus ?? false,
       created_by: userId,
       updated_by: userId,
     })
@@ -192,6 +196,7 @@ export async function updateTask(
     priority: TaskPriority;
     due_date: string | null;
     parent_id: string | null;
+    is_focus: boolean;
   }>
 ) {
   // Get current user

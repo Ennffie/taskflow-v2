@@ -65,7 +65,7 @@ export function MyLogPage() {
 
   // For Tomorrow tab: get focus tasks with their latest log content
   const tomorrowData = useMemo(() => {
-    const focusTasks = tasks.filter(t => t.status === 'focus');
+    const focusTasks = tasks.filter(t => t.is_focus);
     return focusTasks.map(task => {
       // Find latest log for this task
       const taskLogs = logs.filter(l => l.task_id === task.id).sort((a, b) => 
@@ -196,7 +196,7 @@ export function MyLogPage() {
         });
       }
 
-      // 2. Create log for tomorrow's work and update task status to focus
+      // 2. Create log for tomorrow's work and mark task as focus
       if (tomorrowWork.trim()) {
         await createLog({
           task_id: selectedTask.id,
@@ -205,8 +205,9 @@ export function MyLogPage() {
           category: 'other',
           time_spent: '',
           file_name: '',
-          next_status: 'focus'
+          next_status: ''
         });
+        await updateTask(selectedTask.id, { is_focus: true });
       }
 
       // 3. Update task description
@@ -391,7 +392,7 @@ export function MyLogPage() {
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What I will focus on tomorrow:</label>
                   <textarea value={tomorrowWork} onChange={(e) => setTomorrowWork(e.target.value)} placeholder={`Example:\n- Start on Dashboard\n- Client meeting at 2pm`} style={{ width: '100%', minHeight: '120px', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
-                  <p style={{ fontSize: '12px', color: '#7c3aed', marginTop: '6px' }}>💡 What I will focus on will automatically set task status to Focus</p>
+                  <p style={{ fontSize: '12px', color: '#7c3aed', marginTop: '6px' }}>💡 What I will focus on will automatically mark this task as Focus</p>
                 </div>
               </div>
 
@@ -532,7 +533,7 @@ export function MyLogPage() {
                     >
                       <option value="">No change</option>
                       <option value="todo">Todo</option>
-                      <option value="focus">Focus</option>
+                      <option value="planning">Planning</option>
                       <option value="in_progress">In Progress</option>
                       <option value="review">Review</option>
                       <option value="done">Done</option>

@@ -6,7 +6,7 @@ import { LogFormModal } from '../components/LogFormModal';
 import { fetchLogs, fetchTask, deleteTask, fetchProfiles, updateLog, deleteLog, fetchSubtasks } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { useAuth } from '../contexts/AuthContext';
-import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem, type LogCategory } from '../types';
+import { PRIORITY_META, STATUS_META, FOCUS_META, type LogEntry, type TaskItem, type LogCategory } from '../types';
 import { panelStyle } from './TaskListPage';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
@@ -225,8 +225,8 @@ export function LogBookPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px', paddingRight: '50px' }}>
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111827', margin: 0 }}>{task.title}</h1>
             <div style={{ display: 'flex', gap: '6px' }}>
-              {task.status === 'focus' && <Badge bg={STATUS_META.focus.bg} color={STATUS_META.focus.color} text={STATUS_META.focus.label} />}
-              {task.status !== 'focus' && <Badge bg={status.bg} color={status.color} text={status.label} />}
+              {task.is_focus && <Badge bg={FOCUS_META.bg} color={FOCUS_META.color} text={FOCUS_META.label} />}
+              <Badge bg={status.bg} color={status.color} text={status.label} />
               <Badge bg={priority.bg} color={priority.color} text={priority.label} />
             </div>
           </div>

@@ -1,5 +1,5 @@
 export type Role = 'admin' | 'member' | 'viewer';
-export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled' | 'focus';
+export type TaskStatus = 'todo' | 'planning' | 'in_progress' | 'review' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'other';
 
@@ -13,6 +13,7 @@ export interface Profile {
 export interface TaskItem {
   id: string;
   parent_id?: string | null;
+  is_focus?: boolean;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -44,12 +45,14 @@ export interface LogEntry {
 
 export const STATUS_META: Record<TaskStatus, { label: string; color: string; bg: string }> = {
   todo: { label: 'Todo', color: '#6b7280', bg: '#f3f4f6' },
+  planning: { label: 'Planning', color: '#0f766e', bg: '#ccfbf1' },
   in_progress: { label: 'In Progress', color: '#6d28d9', bg: '#f3e8ff' },
   review: { label: 'Review', color: '#1d4ed8', bg: '#dbeafe' },
   done: { label: 'Done', color: '#047857', bg: '#d1fae5' },
   cancelled: { label: 'Cancelled', color: '#b91c1c', bg: '#fee2e2' },
-  focus: { label: 'Focus', color: '#7c3aed', bg: '#ede9fe' },
 };
+
+export const FOCUS_META = { label: 'Focus', color: '#7c3aed', bg: '#ede9fe' };
 
 export const PRIORITY_META: Record<TaskPriority, { label: string; color: string; bg: string }> = {
   low: { label: 'Low', color: '#6b7280', bg: '#f3f4f6' },

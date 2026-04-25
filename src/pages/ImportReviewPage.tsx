@@ -31,13 +31,15 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   '完成': 'done',
   '進行中': 'in_progress',
   '新開始': 'todo',
+  '計劃中': 'planning',
   '等待中': 'todo',
   'Done': 'done',
   'In Progress': 'in_progress',
+  'Planning': 'planning',
   'New': 'todo',
   'Waiting': 'todo',
-  'Focus': 'focus',
-  'Priority': 'focus',
+  'Focus': 'in_progress',
+  'Priority': 'in_progress',
 };
 
 function parseStatus(statusStr: string): TaskStatus | null {
@@ -133,8 +135,8 @@ export function ImportReviewPage() {
     
     return rows.map((row) => {
       const isDay2 = day1Date && row.dueDate && row.dueDate !== day1Date;
-      // Day 2 rows force focus status
-      const parsedStatus = isDay2 ? 'focus' : parseStatus(row.status);
+      // Day 2 rows force focus flag while keeping a normal status
+      const parsedStatus = isDay2 ? 'in_progress' : parseStatus(row.status);
       const rowTaskId = row.taskId || extractTaskId(row.title);
       const cleanTitleStr = cleanTitle(row.title);
       const matchedAssignees = findAssigneesByName(row.assigneeNames, profs);
@@ -176,7 +178,7 @@ export function ImportReviewPage() {
       const logKey = `${row.description.trim().toLowerCase()}_${row.dueDate}`;
       const logExists = existingLogs?.has(logKey);
       
-      // Day 2: always update status to Focus, skip log only if same log exists
+      // Day 2: always update focus flag, skip log only if same log exists
       if (isDay2) {
         return {
           row,
@@ -185,7 +187,7 @@ export function ImportReviewPage() {
           matchedAssignees,
           parsedStatus,
           reason: logExists 
-            ? 'Day 2 → Focus (log exists, update status only)' 
+            ? 'Day 2 → Focus (log exists, update flag only)' 
             : 'Day 2 → Focus + add log',
           logExists: !!logExists,
         };
@@ -319,14 +321,14 @@ export function ImportReviewPage() {
       }
     }
     
-    // Step: Post-import — reset old focus tasks that were NOT in this import to in_progress
+    // Step: Post-import — clear focus on old tasks that were NOT in this import
     try {
       const allTasks = await fetchTasks();
-      const oldFocusTasks = allTasks.filter(t => t.status === 'focus' && !importedTaskIds.has(t.id));
+      const oldFocusTasks = allTasks.filter(t => t.is_focus && !importedTaskIds.has(t.id));
       for (const task of oldFocusTasks) {
-        await updateTask(task.id, { status: 'in_progress' });
+        await updateTask(task.id, { is_focus: false });
       }
-      console.log(`Reset ${oldFocusTasks.length} old focus tasks to in_progress`);
+      console.log(`Cleared focus on ${oldFocusTasks.length} old focus tasks`);
     } catch (error) {
       console.error('Failed to reset old focus tasks:', error);
     }

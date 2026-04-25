@@ -5,21 +5,21 @@ import { type TaskItem, type TaskStatus } from '../types';
 // Status to Emoji mapping
 const STATUS_EMOJI: Record<TaskStatus, string> = {
   todo: '⭕',
+  planning: '📝',
   in_progress: '🔄',
   done: '✅',
   review: '👀',
   cancelled: '❌',
-  focus: '🎯',
 };
 
 // Status color for emoji background
 const STATUS_EMOJI_BG: Record<TaskStatus, string> = {
   todo: '#f1f5f9',
+  planning: '#ccfbf1',
   in_progress: '#fef3c7',
   done: '#d1fae5',
   review: '#ede9fe',
   cancelled: '#fee2e2',
-  focus: '#ede9fe',
 };
 
 interface TaskCardProps {

@@ -18,8 +18,8 @@ function StatusIcon({ status }: { status: TaskStatus }) {
       return <div style={{ ...iconStyle, borderColor: '#f59e0b', background: '#fef3c7' }}><Clock size={12} color="#f59e0b" /></div>;
     case 'review':
       return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={12} color="#7c3aed" /></div>;
-    case 'focus':
-      return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#7c3aed' }}><AlertCircle size={12} color="#fff" /></div>;
+    case 'planning':
+      return <div style={{ ...iconStyle, borderColor: '#0f766e', background: '#ccfbf1' }}><AlertCircle size={12} color="#0f766e" /></div>;
     default:
       return <div style={{ ...iconStyle, borderColor: '#94a3b8', background: 'transparent' }}><Circle size={12} color="#94a3b8" /></div>;
   }
@@ -123,9 +123,9 @@ export function MyTasksPage() {
 
   const groupedTasks = useMemo(() => {
     const rootTasks = filtered.filter(t => !t.parent_id);
-    const focusTasks = rootTasks.filter(t => t.status === 'focus').sort(sortByDueDate);
-    const overdueTasks = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
-    const otherTasks = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
+    const focusTasks = rootTasks.filter(t => t.is_focus).sort(sortByDueDate);
+    const overdueTasks = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
+    const otherTasks = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
     const doneTasks = rootTasks.filter(t => t.status === 'done').sort(sortByDueDate);
 
     const groups: Record<string, TaskItem[]> = {};
@@ -139,9 +139,9 @@ export function MyTasksPage() {
 
   // Stats for compact cards
   const rootTasks = filtered.filter(t => !t.parent_id);
-  const focusCount = rootTasks.filter(t => t.status === 'focus').length;
-  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
-  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+  const focusCount = rootTasks.filter(t => t.is_focus).length;
+  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -229,7 +229,7 @@ export function MyTasksPage() {
             </button>
             {openDropdown === 'status' && (
               <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', minWidth: '180px', zIndex: 20, padding: '8px' }}>
-                {(['all', 'todo', 'in_progress', 'review', 'done', 'cancelled', 'focus'] as const).map((s) => (
+                {(['all', 'todo', 'planning', 'in_progress', 'review', 'done', 'cancelled'] as const).map((s) => (
                   <button
                     key={s}
                     onClick={() => { setStatusFilter(s); setOpenDropdown(null); }}

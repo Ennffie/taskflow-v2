@@ -37,12 +37,12 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     const cleanDescription = initialTask.description?.split(/\n\n\[\d{4}-\d{2}-\d{2}\]/)[0] || '';
     setTitle(initialTask.title);
     setDescription(cleanDescription);
-    setStatus(initialTask.status === 'focus' ? 'todo' : initialTask.status);
+    setStatus(initialTask.status);
     setPriority(initialTask.priority);
     setDueDate(initialTask.due_date || '');
     setAssigneeIds(initialTask.assignees.map(a => a.id));
     setTagInput(initialTask.tags.join(', '));
-    setIsFocus(initialTask.status === 'focus');
+    setIsFocus(initialTask.is_focus ?? false);
   }, [initialTask]);
 
   const toggleAssignee = (id: string) => {
@@ -57,7 +57,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     if (!title.trim()) return;
     try {
       setSaving(true);
-      const finalStatus = isFocus ? 'focus' : status;
+      const finalStatus = status;
       const nextTags = tagInput.split(',').map((tag) => tag.trim()).filter(Boolean);
 
       if (mode === 'edit' && initialTask) {
@@ -71,6 +71,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           status: finalStatus,
           priority,
           due_date: dueDate || null,
+          is_focus: isFocus,
         });
 
         await supabase.from('task_assignees').delete().eq('task_id', initialTask.id);
@@ -96,6 +97,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           assignee_ids: assigneeIds,
           tags: nextTags,
           parent_id: parentTaskId ?? null,
+          is_focus: isFocus,
         });
       }
 
@@ -120,7 +122,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
         <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="Context, scope, handoff details" /></Field>
         {/* Status + Priority in one row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}><option value="todo">Todo</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
+          <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}><option value="todo">Todo</option><option value="planning">Planning</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
           <Field label="Priority"><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         </div>
         <Field label="Due date">
