@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, X, User, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, X, User, FileText, GitBranch } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
-import { fetchLogs, fetchTask, updateTask, deleteTask, fetchProfiles, updateLog, deleteLog } from '../lib/api';
+import { fetchLogs, fetchTask, updateTask, deleteTask, fetchProfiles, updateLog, deleteLog, fetchSubtasks } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { useAuth } from '../contexts/AuthContext';
 import { PRIORITY_META, STATUS_META, type LogEntry, type TaskItem, type Profile, type TaskStatus, type TaskPriority, type LogCategory } from '../types';
 import { panelStyle } from './TaskListPage';
+import { TaskFormModal } from '../components/TaskFormModal';
+import { TaskCard } from '../components/TaskCard';
 
 export function LogBookPage() {
   const { taskId = '' } = useParams();
@@ -21,6 +23,8 @@ export function LogBookPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [subtasks, setSubtasks] = useState<TaskItem[]>([]);
+  const [showSubtaskModal, setShowSubtaskModal] = useState(false);
   
   // Task Edit form state
   const [editTitle, setEditTitle] = useState('');
@@ -55,6 +59,7 @@ export function LogBookPage() {
       setTask(nextTask);
       setLogs(nextLogs);
       setProfiles(allProfiles);
+      setSubtasks(nextTask ? await fetchSubtasks(nextTask.id) : []);
     } catch (error: any) {
       alert(`Load log book failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -303,6 +308,30 @@ export function LogBookPage() {
           <Plus size={18} /> Add Log
         </button>
 
+        <section style={{ ...panelStyle, display: 'grid', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <GitBranch size={16} color="#7c3aed" />
+              Sub-tasks ({subtasks.length})
+            </h2>
+            <button onClick={() => setShowSubtaskModal(true)} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', color: '#374151', padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>
+              + Add sub-task
+            </button>
+          </div>
+
+          {subtasks.length === 0 ? (
+            <div style={{ padding: '20px', borderRadius: '12px', background: '#f8fafc', color: '#64748b', fontSize: '14px', textAlign: 'center' }}>
+              No sub-tasks yet. Break this task into smaller actions when it helps execution.
+            </div>
+          ) : (
+            <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+              {subtasks.map((subtask, index) => (
+                <TaskCard key={subtask.id} task={subtask} showAssignees={true} isEvenIndex={index % 2 === 0} />
+              ))}
+            </div>
+          )}
+        </section>
+
         <section style={{ display: 'grid', gap: '12px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: '8px 0 4px 0' }}>Activity ({logs.length})</h2>
           {logs.length === 0 ? (
@@ -488,6 +517,14 @@ export function LogBookPage() {
       )}
 
       {showModal && <LogFormModal taskId={taskId} onClose={() => setShowModal(false)} onCreated={loadData} />}
+      {showSubtaskModal && task && (
+        <TaskFormModal
+          onClose={() => setShowSubtaskModal(false)}
+          onCreated={loadData}
+          parentTaskId={task.id}
+          parentTaskTitle={task.title}
+        />
+      )}
     </AppShell>
   );
 }

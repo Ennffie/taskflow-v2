@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { STATUS_CONFIG, type TaskItem, type TaskStatus } from '../types';
 import { AppShell } from '../components/AppShell';
@@ -43,6 +44,7 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 
 export function MyTasksPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -97,6 +99,18 @@ export function MyTasksPage() {
     });
   };
 
+  const clearFilters = () => {
+    setQuery('');
+    setStatusFilter('all');
+  };
+
+  const handleLogSelected = () => {
+    const firstSelectedTaskId = Array.from(selectedTasks)[0];
+    if (firstSelectedTaskId) {
+      navigate(`/tasks/${firstSelectedTaskId}`);
+    }
+  };
+
   useEffect(() => {
     if (user) void loadTasks();
   }, [user]);
@@ -108,10 +122,11 @@ export function MyTasksPage() {
   }), [tasks, query, statusFilter]);
 
   const groupedTasks = useMemo(() => {
-    const focusTasks = filtered.filter(t => t.status === 'focus').sort(sortByDueDate);
-    const overdueTasks = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
-    const otherTasks = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
-    const doneTasks = filtered.filter(t => t.status === 'done').sort(sortByDueDate);
+    const rootTasks = filtered.filter(t => !t.parent_id);
+    const focusTasks = rootTasks.filter(t => t.status === 'focus').sort(sortByDueDate);
+    const overdueTasks = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
+    const otherTasks = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
+    const doneTasks = rootTasks.filter(t => t.status === 'done').sort(sortByDueDate);
 
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups["Focus"] = focusTasks;
@@ -123,9 +138,10 @@ export function MyTasksPage() {
   }, [filtered]);
 
   // Stats for compact cards
-  const focusCount = filtered.filter(t => t.status === 'focus').length;
-  const overdueCount = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
-  const otherCount = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+  const rootTasks = filtered.filter(t => !t.parent_id);
+  const focusCount = rootTasks.filter(t => t.status === 'focus').length;
+  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -230,14 +246,28 @@ export function MyTasksPage() {
           </div>
         </div>
 
+        {(query || statusFilter !== 'all') && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>
+              {filtered.length} result{filtered.length === 1 ? '' : 's'} found
+            </span>
+            <button
+              onClick={clearFilters}
+              style={{ border: 'none', background: 'transparent', color: '#7c3aed', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
         {/* Task List */}
         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
           {loading ? (
             <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Loading tasks...</div>
           ) : filtered.length === 0 ? (
             <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-              <p style={{ fontSize: '16px', marginBottom: '8px' }}>No tasks assigned to you</p>
-              <p style={{ fontSize: '14px', color: '#94a3b8' }}>Tasks assigned to you will appear here</p>
+              <p style={{ fontSize: '16px', marginBottom: '8px' }}>{query || statusFilter !== 'all' ? 'No matching tasks' : 'No tasks assigned to you'}</p>
+              <p style={{ fontSize: '14px', color: '#94a3b8' }}>{query || statusFilter !== 'all' ? 'Try clearing filters or search with another keyword' : 'Tasks assigned to you will appear here'}</p>
             </div>
           ) : (
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
@@ -297,6 +327,66 @@ export function MyTasksPage() {
           )}
         </div>
       </div>
+
+      {selectedTasks.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          left: '16px',
+          right: '16px',
+          bottom: '92px',
+          zIndex: 90,
+          display: 'flex',
+          justifyContent: 'center',
+        }}>
+          <div style={{
+            width: 'min(560px, 100%)',
+            background: '#111827',
+            color: '#fff',
+            borderRadius: '18px',
+            boxShadow: '0 16px 40px rgba(15, 23, 42, 0.22)',
+            padding: '14px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 700 }}>{selectedTasks.size} task{selectedTasks.size === 1 ? '' : 's'} selected</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', marginTop: '2px' }}>Open the first selected task and add your log</div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
+              <button
+                onClick={() => setSelectedTasks(new Set())}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  background: 'transparent',
+                  color: '#fff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleLogSelected}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: '#8b5cf6',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Add log
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} />}
     </AppShell>

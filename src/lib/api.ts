@@ -52,6 +52,7 @@ export async function fetchTasks(): Promise<TaskItem[]> {
 
   return tasks.map((t) => ({
     id: t.id,
+    parent_id: t.parent_id ?? null,
     title: t.title,
     description: t.description,
     status: t.status,
@@ -64,6 +65,7 @@ export async function fetchTasks(): Promise<TaskItem[]> {
     assignees: assigneeMap.get(t.id) ?? [],
     tags: tagMap.get(t.id) ?? [],
     log_count: logCounts.get(t.id) ?? 0,
+    subtask_count: tasks.filter(st => st.parent_id === t.id).length,
   })) as TaskItem[];
 }
 
@@ -91,6 +93,7 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
 
   return {
     id: task.id,
+    parent_id: task.parent_id ?? null,
     title: task.title,
     description: task.description,
     status: task.status,
@@ -103,6 +106,7 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
     assignees: taskAssignees,
     tags: (tags ?? []).map((t: any) => t.name),
     log_count: (logs ?? []).length,
+    subtask_count: 0,
   } as TaskItem;
 }
 
@@ -141,6 +145,7 @@ export async function createTask(payload: {
   due_date?: string;
   assignee_ids: string[];
   tags: string[];
+  parent_id?: string | null;
 }) {
   // Get current user
   const { data: userData } = await supabase.auth.getUser();
@@ -154,6 +159,7 @@ export async function createTask(payload: {
       status: payload.status,
       priority: payload.priority,
       due_date: payload.due_date ?? null,
+      parent_id: payload.parent_id ?? null,
       created_by: userId,
       updated_by: userId,
     })
@@ -185,6 +191,7 @@ export async function updateTask(
     status: TaskStatus;
     priority: TaskPriority;
     due_date: string | null;
+    parent_id: string | null;
   }>
 ) {
   // Get current user
@@ -196,6 +203,11 @@ export async function updateTask(
     .update({ ...payload, updated_at: new Date().toISOString(), updated_by: userId })
     .eq('id', taskId);
   if (error) throw error;
+}
+
+export async function fetchSubtasks(parentTaskId: string): Promise<TaskItem[]> {
+  const allTasks = await fetchTasks();
+  return allTasks.filter(task => task.parent_id === parentTaskId);
 }
 
 export async function deleteTask(taskId: string) {
@@ -306,4 +318,3 @@ export async function updateLog(
     .eq('id', logId);
   if (error) throw error;
 }
-

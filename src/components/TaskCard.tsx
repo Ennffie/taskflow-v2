@@ -70,14 +70,17 @@ export function TaskCard({
     ? (isEvenIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)')
     : (isEvenIndex ? '#f1f5f9' : '#e2e8f0');
 
+  const dueDateLabel = formatDate(task.due_date);
+  const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
   return (
     <div 
       onClick={() => navigate(`/tasks/${task.id}`)}
       style={{ 
         display: 'flex', 
-        alignItems: 'center', 
+        alignItems: 'flex-start', 
         gap: '12px', 
-        padding: '14px 20px', 
+        padding: '16px 18px', 
         borderBottom: '1px solid #f1f5f9', 
         cursor: 'pointer',
         background: baseBgColor,
@@ -113,8 +116,8 @@ export function TaskCard({
 
       {/* Status Emoji */}
       <div style={{ 
-        width: '28px', 
-        height: '28px', 
+        width: '30px', 
+        height: '30px', 
         borderRadius: '50%', 
         background: STATUS_EMOJI_BG[task.status],
         display: 'flex',
@@ -130,17 +133,44 @@ export function TaskCard({
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         {/* Task Title */}
         <p style={{ 
-          fontSize: '14px', 
-          fontWeight: 500, 
+          fontSize: '15px', 
+          fontWeight: 600, 
           color: '#111827', 
           margin: 0, 
           lineHeight: 1.4,
           overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
         }}>
           {task.title}
         </p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '13px' }}>💬</span>
+            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+              {task.log_count} log{task.log_count === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          {(task.subtask_count ?? 0) > 0 && (
+            <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600, background: '#eef2ff', padding: '4px 8px', borderRadius: '999px' }}>
+              {task.subtask_count} sub-task{task.subtask_count === 1 ? '' : 's'}
+            </span>
+          )}
+
+          <span style={{ 
+            fontSize: '12px', 
+            fontWeight: 600,
+            color: isOverdue(task.due_date) ? '#dc2626' : isDueSoon(task.due_date) ? '#d97706' : '#64748b',
+            background: isOverdue(task.due_date) ? '#fef2f2' : isDueSoon(task.due_date) ? '#fffbeb' : '#f8fafc',
+            padding: '4px 8px',
+            borderRadius: '999px',
+          }}>
+            {dueDateLabel === '—' ? 'No due date' : dueDateLabel}
+          </span>
+        </div>
         
         {/* Tags - below title */}
         {task.tags.length > 0 && (
@@ -163,17 +193,10 @@ export function TaskCard({
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: '12px',
+        gap: '8px',
         flexShrink: 0,
+        minHeight: '30px',
       }}>
-        {/* Log Count */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ fontSize: '14px' }}>💬</span>
-          <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
-            {task.log_count}
-          </span>
-        </div>
-
         {/* Assignees (All Tasks only) */}
         {showAssignees && task.assignees.length > 0 && (
           <div style={{ display: 'flex' }}>
@@ -199,7 +222,7 @@ export function TaskCard({
                 title={a.name}
                 onClick={(e) => e.stopPropagation()}
               >
-                {a.name.split(' ').map(n => n[0]).join('')}
+                {initials(a.name)}
               </div>
             ))}
             {task.assignees.length > 2 && (
@@ -225,17 +248,6 @@ export function TaskCard({
             )}
           </div>
         )}
-
-        {/* Due Date - rightmost */}
-        <span style={{ 
-          fontSize: '12px', 
-          fontWeight: 500,
-          color: isOverdue(task.due_date) ? '#ef4444' : isDueSoon(task.due_date) ? '#f59e0b' : '#64748b',
-          minWidth: '70px',
-          textAlign: 'right',
-        }}>
-          {formatDate(task.due_date)}
-        </span>
       </div>
     </div>
   );

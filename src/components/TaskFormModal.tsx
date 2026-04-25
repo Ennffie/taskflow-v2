@@ -4,7 +4,7 @@ import { createTask, fetchProfiles } from '../lib/api';
 import type { Profile, TaskPriority, TaskStatus } from '../types';
 import { notifyModalOpen, notifyModalClose } from './AppShell';
 
-export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => Promise<void> | void }) {
+export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitle }: { onClose: () => void; onCreated: () => Promise<void> | void; parentTaskId?: string; parentTaskTitle?: string }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -38,6 +38,7 @@ export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onC
         due_date: dueDate || undefined,
         assignee_ids: assigneeIds,
         tags: tagInput.split(',').map((tag) => tag.trim()).filter(Boolean),
+        parent_id: parentTaskId ?? null,
       });
       await onCreated();
       onClose();
@@ -49,8 +50,13 @@ export function TaskFormModal({ onClose, onCreated }: { onClose: () => void; onC
   };
 
   return (
-    <ModalFrame title="Create task" onClose={onClose} isFocus={isFocus} onToggleFocus={() => setIsFocus(!isFocus)}>
+    <ModalFrame title={parentTaskId ? 'Create sub-task' : 'Create task'} onClose={onClose} isFocus={isFocus} onToggleFocus={() => setIsFocus(!isFocus)}>
       <div style={{ display: 'grid', gap: '18px' }}>
+        {parentTaskId && parentTaskTitle && (
+          <div style={{ padding: '12px 14px', borderRadius: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
+            Parent task: <strong style={{ color: '#111827' }}>{parentTaskTitle}</strong>
+          </div>
+        )}
         <Field label="Title"><input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder="e.g. PMC portal redesign" /></Field>
         <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="Context, scope, handoff details" /></Field>
         {/* Status + Priority in one row */}

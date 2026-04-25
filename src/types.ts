@@ -12,6 +12,7 @@ export interface Profile {
 
 export interface TaskItem {
   id: string;
+  parent_id?: string | null;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -24,6 +25,8 @@ export interface TaskItem {
   assignees: Profile[];
   tags: string[];
   log_count: number;
+  subtask_count?: number;
+  subtasks?: TaskItem[];
 }
 
 export interface LogEntry {

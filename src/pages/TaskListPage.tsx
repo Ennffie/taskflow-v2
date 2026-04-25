@@ -100,6 +100,11 @@ export function TaskListPage() {
     }));
   };
 
+  const clearFilters = () => {
+    setQuery('');
+    setStatusFilter('all');
+  };
+
   useEffect(() => { void loadTasks(); }, []);
 
   const filtered = useMemo(() => tasks.filter((task) => {
@@ -109,10 +114,11 @@ export function TaskListPage() {
   }), [tasks, query, statusFilter]);
 
   const groupedTasks = useMemo(() => {
-    const focusTasks = filtered.filter(t => t.status === 'focus').sort(sortByDueDate);
-    const overdueTasks = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
-    const otherTasks = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
-    const doneTasks = filtered.filter(t => t.status === 'done').sort(sortByDueDate);
+    const rootTasks = filtered.filter(t => !t.parent_id);
+    const focusTasks = rootTasks.filter(t => t.status === 'focus').sort(sortByDueDate);
+    const overdueTasks = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
+    const otherTasks = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').sort(sortByDueDate);
+    const doneTasks = rootTasks.filter(t => t.status === 'done').sort(sortByDueDate);
     
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups['Focus'] = focusTasks;
@@ -124,9 +130,10 @@ export function TaskListPage() {
   }, [filtered]);
 
   // Stats for compact cards - use filtered tasks to match list
-  const focusCount = filtered.filter(t => t.status === 'focus').length;
-  const overdueCount = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
-  const otherCount = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+  const rootTasks = filtered.filter(t => !t.parent_id);
+  const focusCount = rootTasks.filter(t => t.status === 'focus').length;
+  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
+  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'focus').length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -248,14 +255,28 @@ export function TaskListPage() {
           </div>
         </div>
 
+        {(query || statusFilter !== 'all') && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>
+              {filtered.length} result{filtered.length === 1 ? '' : 's'} found
+            </span>
+            <button
+              onClick={clearFilters}
+              style={{ border: 'none', background: 'transparent', color: '#7c3aed', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
         {/* Task List */}
         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
           {loading ? (
             <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Loading tasks...</div>
           ) : filtered.length === 0 ? (
             <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-              <p style={{ fontSize: '16px', marginBottom: '8px' }}>No tasks found</p>
-              <p style={{ fontSize: '14px', color: '#94a3b8' }}>Create your first task to get started</p>
+              <p style={{ fontSize: '16px', marginBottom: '8px' }}>{query || statusFilter !== 'all' ? 'No matching tasks found' : 'No tasks found'}</p>
+              <p style={{ fontSize: '14px', color: '#94a3b8' }}>{query || statusFilter !== 'all' ? 'Try clearing filters or search with another keyword' : 'Create your first task to get started'}</p>
             </div>
           ) : (
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
