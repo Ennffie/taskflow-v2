@@ -1,6 +1,27 @@
 import { supabase } from './supabase';
 import type { LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
+async function attachProfilesToLogs(logs: LogEntry[]): Promise<LogEntry[]> {
+  if (!logs.length) return logs;
+
+  const userIds = [...new Set(logs.map(log => log.created_by).filter(Boolean))];
+  if (!userIds.length) return logs;
+
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, role')
+    .in('id', userIds);
+
+  if (error) throw error;
+
+  const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile as Profile]));
+
+  return logs.map((log) => ({
+    ...log,
+    created_by_profile: profileMap.get(log.created_by),
+  }));
+}
+
 export async function fetchProfiles(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
@@ -126,7 +147,7 @@ export async function fetchMyLogs(): Promise<LogEntry[]> {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as LogEntry[];
+  return attachProfilesToLogs((data ?? []) as LogEntry[]);
 }
 
 export async function fetchAllLogs(): Promise<LogEntry[]> {
@@ -136,7 +157,7 @@ export async function fetchAllLogs(): Promise<LogEntry[]> {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as LogEntry[];
+  return attachProfilesToLogs((data ?? []) as LogEntry[]);
 }
 
 export async function createTask(payload: {
@@ -267,7 +288,7 @@ export async function fetchLogs(taskId: string): Promise<LogEntry[]> {
     .order('date', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as LogEntry[];
+  return attachProfilesToLogs((data ?? []) as LogEntry[]);
 }
 
 export async function deleteLog(logId: string) {

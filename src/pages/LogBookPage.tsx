@@ -290,7 +290,7 @@ export function LogBookPage() {
         </button>
 
         <section style={{ display: 'grid', gap: '12px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: '8px 0 4px 0' }}>Activity ({logs.length})</h2>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: '8px 0 4px 0' }}>Logs ({logs.length})</h2>
           {logs.length === 0 ? (
             <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}>No logs yet. Add the first update for this task.</div>
           ) : logs.map((log) => (
