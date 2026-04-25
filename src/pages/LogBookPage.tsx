@@ -318,10 +318,6 @@ export function LogBookPage() {
           </div>
         </div>
 
-        <button onClick={() => setShowModal(true)} style={{ width: '100%', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', padding: '14px 20px', fontWeight: 600, fontSize: '15px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-          <Plus size={18} /> Add Log
-        </button>
-
         {!task.parent_id && (
           <section style={{ ...panelStyle, display: 'grid', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
@@ -347,6 +343,10 @@ export function LogBookPage() {
             )}
           </section>
         )}
+
+        <button onClick={() => setShowModal(true)} style={{ width: '100%', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', padding: '14px 20px', fontWeight: 600, fontSize: '15px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+          <Plus size={18} /> Add Log
+        </button>
 
         <section style={{ display: 'grid', gap: '12px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: '8px 0 4px 0' }}>Activity ({logs.length})</h2>
