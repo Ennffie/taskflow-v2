@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { formatDate } from '../lib/date';
-import { type TaskItem } from '../types';
+import { STATUS_META, type TaskItem } from '../types';
 
 function getAvatarColor(name: string, id?: string) {
   const normalized = `${id ?? ''}:${name}`.toLowerCase();
@@ -29,6 +29,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99 }: { subtasks: TaskIte
         const assignee = subtask.assignees[0];
         const progress = subtask.is_finished ? 100 : (subtask.progress_percent ?? 0);
         const due = formatDate(subtask.due_date);
+        const statusMeta = STATUS_META[subtask.status];
         const isOverdue = !!subtask.due_date && new Date(subtask.due_date) < new Date(new Date().setHours(0,0,0,0));
         return (
           <button
@@ -51,7 +52,12 @@ export function SubtaskPreviewList({ subtasks, limit = 99 }: { subtasks: TaskIte
               {assignee ? initials(assignee.name) : '—'}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{subtask.title}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15, minWidth: 0 }}>{subtask.title}</div>
+                <span style={{ fontSize: '8px', fontWeight: 700, color: statusMeta.color, background: statusMeta.bg, padding: '2px 5px', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {statusMeta.label}
+                </span>
+              </div>
               <div style={{ fontSize: '9px', color: isOverdue ? '#dc2626' : '#94a3b8', marginTop: '0px', lineHeight: 1.1 }}>{due === '—' ? 'No due date' : due}</div>
             </div>
             <div style={{ display: 'grid', gap: '2px', justifyItems: 'end', minWidth: '48px' }}>
