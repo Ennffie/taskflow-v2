@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type TaskItem, type TaskStatus } from '../types';
 import { AppShell } from '../components/AppShell';
@@ -51,7 +50,6 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 
 export function MyTasksPage() {
   const { user, session, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -68,7 +66,7 @@ export function MyTasksPage() {
   });
 
   // Selected tasks for logging
-  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
 
   const loadTasks = async () => {
     setLoading(true);
@@ -79,6 +77,20 @@ export function MyTasksPage() {
         t.assignees.some(a => a.id === user?.id)
       );
       setTasks(myTasks);
+      // Load checked state from localStorage
+      const savedChecked = localStorage.getItem('myTasks_checked');
+      if (savedChecked) {
+        try {
+          const parsed = JSON.parse(savedChecked);
+          const today = new Date().toISOString().slice(0, 10);
+          // Only keep checks from today
+          if (parsed.date === today) {
+            setCheckedTasks(new Set(parsed.tasks));
+          }
+        } catch (e) {
+          // ignore parse error
+        }
+      }
     } catch (error: any) {
       alert(`Load tasks failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -93,15 +105,18 @@ export function MyTasksPage() {
     }));
   };
 
-  const toggleTaskSelection = (taskId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent navigation
-    setSelectedTasks(prev => {
+  const toggleTaskCheck = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCheckedTasks(prev => {
       const newSet = new Set(prev);
       if (newSet.has(taskId)) {
         newSet.delete(taskId);
       } else {
         newSet.add(taskId);
       }
+      // Save to localStorage with date
+      const today = new Date().toISOString().slice(0, 10);
+      localStorage.setItem('myTasks_checked', JSON.stringify({ date: today, tasks: Array.from(newSet) }));
       return newSet;
     });
   };
@@ -109,13 +124,6 @@ export function MyTasksPage() {
   const clearFilters = () => {
     setQuery('');
     setStatusFilter('all');
-  };
-
-  const handleLogSelected = () => {
-    const firstSelectedTaskId = Array.from(selectedTasks)[0];
-    if (firstSelectedTaskId) {
-      navigate(`/tasks/${firstSelectedTaskId}`);
-    }
   };
 
   useEffect(() => {
@@ -157,24 +165,6 @@ export function MyTasksPage() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>My Tasks</h1>
-
-          {/* Selected count badge */}
-          {selectedTasks.size > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              background: '#7c3aed',
-              borderRadius: '20px',
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: 600
-            }}>
-              <CheckCircle2 size={16} />
-              {selectedTasks.size} selected for log
-            </div>
-          )}
         </div>
 
         {/* Horizontal Scrollable Compact Cards - 3 cards */}
@@ -315,14 +305,13 @@ export function MyTasksPage() {
                   </div>
 
                   {isExpanded && groupTasks.map((task, taskIndex) => {
-                    const isSelected = selectedTasks.has(task.id);
                     return (
                       <TaskCard 
                         key={task.id}
                         task={task}
                         showCheckbox={true}
-                        isSelected={isSelected}
-                        onToggleSelect={toggleTaskSelection}
+                        isSelected={checkedTasks.has(task.id)}
+                        onToggleSelect={toggleTaskCheck}
                         showAssignees={false}
                         isFocusSection={isFocusSection}
                         isEvenIndex={taskIndex % 2 === 0}
@@ -335,66 +324,6 @@ export function MyTasksPage() {
           )}
         </div>
       </div>
-
-      {selectedTasks.size > 0 && (
-        <div style={{
-          position: 'fixed',
-          left: '16px',
-          right: '16px',
-          bottom: '92px',
-          zIndex: 90,
-          display: 'flex',
-          justifyContent: 'center',
-        }}>
-          <div style={{
-            width: 'min(560px, 100%)',
-            background: '#111827',
-            color: '#fff',
-            borderRadius: '18px',
-            boxShadow: '0 16px 40px rgba(15, 23, 42, 0.22)',
-            padding: '14px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 700 }}>{selectedTasks.size} task{selectedTasks.size === 1 ? '' : 's'} selected</div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', marginTop: '2px' }}>Open the first selected task and add your log</div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-              <button
-                onClick={() => setSelectedTasks(new Set())}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255,255,255,0.18)',
-                  background: 'transparent',
-                  color: '#fff',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Clear
-              </button>
-              <button
-                onClick={handleLogSelected}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: '#8b5cf6',
-                  color: '#fff',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Add log
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} />}
     </AppShell>
