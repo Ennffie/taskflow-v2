@@ -44,7 +44,7 @@ export function TaskCard({
   showCheckbox = false,
   isSelected = false,
   onToggleSelect,
-  showAssignees = true,
+  showAssignees: _showAssignees = true,
   isFocusSection = false,
   isEvenIndex = true,
 }: TaskCardProps) {
@@ -190,66 +190,6 @@ export function TaskCard({
         </div>
       </div>
 
-      {/* Right side: Log Count + Assignees + Due Date */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px',
-        flexShrink: 0,
-        minHeight: '30px',
-      }}>
-        {/* Assignees (All Tasks only) */}
-        {showAssignees && task.assignees.length > 0 && (
-          <div style={{ display: 'flex' }}>
-            {task.assignees.slice(0, 2).map((a, i) => (
-              <div 
-                key={a.id} 
-                style={{ 
-                  width: '28px', 
-                  height: '28px', 
-                  borderRadius: '50%', 
-                  background: getAvatarColor(a.name, a.id), 
-                  color: '#fff', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  fontSize: '11px', 
-                  fontWeight: 600, 
-                  marginLeft: i === 0 ? 0 : '-6px', 
-                  border: '2px solid #fff',
-                  zIndex: task.assignees.length - i,
-                  cursor: 'default',
-                }}
-                title={a.name}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {initials(a.name)}
-              </div>
-            ))}
-            {task.assignees.length > 2 && (
-              <div style={{ 
-                width: '28px', 
-                height: '28px', 
-                borderRadius: '50%', 
-                background: '#e2e8f0', 
-                color: '#64748b', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '10px', 
-                fontWeight: 600, 
-                marginLeft: '-6px', 
-                border: '2px solid #fff',
-                cursor: 'default',
-              }}
-              onClick={(e) => e.stopPropagation()}
-              >
-                +{task.assignees.length - 2}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
