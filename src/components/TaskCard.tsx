@@ -89,10 +89,9 @@ export function TaskCard({
     <div 
       onClick={() => navigate(`/tasks/${task.id}`)}
       style={{ 
-        display: 'flex', 
-        alignItems: 'flex-start', 
-        gap: '12px', 
-        padding: '16px 18px', 
+        display: 'grid', 
+        gap: '8px', 
+        padding: '14px 16px', 
         borderBottom: '1px solid #f1f5f9', 
         cursor: 'pointer',
         background: baseBgColor,
@@ -101,55 +100,56 @@ export function TaskCard({
       onMouseEnter={(e) => e.currentTarget.style.background = hoverBgColor}
       onMouseLeave={(e) => e.currentTarget.style.background = baseBgColor}
     >
-      {/* Checkbox (My Tasks only) */}
-      {showCheckbox && (
-        <div 
-          onClick={(e) => onToggleSelect?.(task.id, e)}
-          style={{ 
-            width: '20px', 
-            height: '20px', 
-            borderRadius: '6px',
-            border: isSelected ? '2px solid #7c3aed' : '2px solid #e2e8f0',
-            background: isSelected ? '#7c3aed' : 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
-        >
-          {isSelected && (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          )}
-        </div>
-      )}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+        {/* Checkbox (My Tasks only) */}
+        {showCheckbox && (
+          <div 
+            onClick={(e) => onToggleSelect?.(task.id, e)}
+            style={{ 
+              width: '20px', 
+              height: '20px', 
+              borderRadius: '6px',
+              border: isSelected ? '2px solid #7c3aed' : '2px solid #e2e8f0',
+              background: isSelected ? '#7c3aed' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            {isSelected && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </div>
+        )}
 
-      {/* Primary Assignee Avatar */}
-      <div style={{ 
-        width: '36px', 
-        height: '36px', 
-        borderRadius: '50%', 
-        background: primaryAssignee ? getAvatarColor(primaryAssignee.name, primaryAssignee.id) : '#E2E8F0',
-        color: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: primaryAssignee ? '13px' : '16px',
-        fontWeight: 700,
-        flexShrink: 0,
-        border: '2px solid #fff',
-      }}>
-        {primaryAssignee ? initials(primaryAssignee.name) : '—'}
-      </div>
-      
-      {/* Middle: Title + Tags */}
-      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        {/* Primary Assignee Avatar */}
+        <div style={{ 
+          width: '36px', 
+          height: '36px', 
+          borderRadius: '50%', 
+          background: primaryAssignee ? getAvatarColor(primaryAssignee.name, primaryAssignee.id) : '#E2E8F0',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: primaryAssignee ? '13px' : '16px',
+          fontWeight: 700,
+          flexShrink: 0,
+          border: '2px solid #fff',
+        }}>
+          {primaryAssignee ? initials(primaryAssignee.name) : '—'}
+        </div>
+        
+        {/* Middle: Title + Tags */}
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         {/* Task Title */}
         <p style={{ 
-          fontSize: '17px', 
-          fontWeight: 600, 
+          fontSize: '16px', 
+          fontWeight: 700, 
           color: '#111827', 
           margin: 0, 
           lineHeight: 1.4,
@@ -161,7 +161,7 @@ export function TaskCard({
           {task.title}
         </p>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', fontWeight: 700, color: progress >= 100 ? '#10b981' : '#7c3aed', background: progress >= 100 ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
             {progress}%
           </span>
@@ -195,11 +195,12 @@ export function TaskCard({
             </span>
           )}
         </div>
+        </div>
       </div>
 
       {subtasks.length > 0 && (
-        <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', marginLeft: showCheckbox ? '32px' : '0' }}>
-          <SubtaskPreviewList subtasks={subtasks} />
+        <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: showCheckbox ? '32px' : '48px' }}>
+          <SubtaskPreviewList parentTitle={task.title} subtasks={subtasks} />
         </div>
       )}
     </div>
