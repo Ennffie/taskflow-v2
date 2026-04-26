@@ -94,6 +94,20 @@ export interface TodayLogDraft {
 export async function generateTodayLogs(userId?: string): Promise<TodayLogDraft> {
   const today = new Date().toISOString().slice(0, 10);
 
+  // Load checked tasks from localStorage
+  let checkedTaskIds: string[] = [];
+  try {
+    const savedChecked = localStorage.getItem('myTasks_checked');
+    if (savedChecked) {
+      const parsed = JSON.parse(savedChecked);
+      if (parsed.date === today) {
+        checkedTaskIds = parsed.tasks || [];
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
   // Fetch all tasks with subtasks for this user
   const { data: allTasks, error: tasksError } = await supabase
     .from('tasks')
@@ -129,6 +143,12 @@ export async function generateTodayLogs(userId?: string): Promise<TodayLogDraft>
     // Check if task was updated today
     const taskUpdatedToday = task.updated_at && task.updated_at.startsWith(today);
 
+    // Check if task was ticked today (from localStorage)
+    const taskTickedToday = checkedTaskIds.includes(task.id);
+
+    // Check if any subtask was ticked today
+    const subtasksTickedToday = subtasks.filter(st => checkedTaskIds.includes(st.id));
+
     // Check if any subtask was updated/finished today
     const subtasksUpdatedToday = subtasks.filter(st =>
       (st.updated_at && st.updated_at.startsWith(today)) ||
@@ -136,24 +156,26 @@ export async function generateTodayLogs(userId?: string): Promise<TodayLogDraft>
     );
 
     // Section A: What have I done today
-    // 1. Subtasks with tick/finished
-    const finishedSubtasks = subtasks.filter(st =>
-      st.is_finished && (st.updated_at?.startsWith(today) || st.created_at?.startsWith(today))
-    );
-    for (const st of finishedSubtasks) {
+    // 1. Tasks ticked today (from My Tasks checklist)
+    if (taskTickedToday) {
+      todayUpdates.push(`${task.title} is finished`);
+    }
+
+    // 2. Subtasks ticked today
+    for (const st of subtasksTickedToday) {
       todayUpdates.push(`${st.title} is finished`);
     }
 
-    // 2. Subtasks with progress/status change (not finished)
+    // 3. Subtasks with progress/status change (not finished)
     const updatedSubtasks = subtasksUpdatedToday.filter(st =>
-      !st.is_finished && (st.updated_at?.startsWith(today))
+      !st.is_finished && !checkedTaskIds.includes(st.id) && (st.updated_at?.startsWith(today))
     );
     for (const st of updatedSubtasks) {
       todayUpdates.push(`${st.title} is updated`);
     }
 
-    // 3. Main task itself updated (no subtasks)
-    if (!hasSubtasks && taskUpdatedToday && !taskCreatedToday) {
+    // 4. Main task itself updated (no subtasks)
+    if (!hasSubtasks && taskUpdatedToday && !taskCreatedToday && !taskTickedToday) {
       if (task.is_finished) {
         todayUpdates.push(`${task.title} is finished`);
       } else {
@@ -161,20 +183,20 @@ export async function generateTodayLogs(userId?: string): Promise<TodayLogDraft>
       }
     }
 
-    // 4. New task added today
+    // 5. New task added today
     if (taskCreatedToday) {
       todayUpdates.push(`${task.title}, New task added`);
     }
 
     // Section B: What I will focus on tomorrow
     // Items not finished/closed today
-    const isDoneToday = task.is_finished && task.updated_at?.startsWith(today);
+    const isDoneToday = (task.is_finished && task.updated_at?.startsWith(today)) || taskTickedToday;
     if (!isDoneToday) {
       // If has unfinished subtasks
-      const unfinishedSubtasks = subtasks.filter(st => !st.is_finished);
+      const unfinishedSubtasks = subtasks.filter(st => !st.is_finished && !checkedTaskIds.includes(st.id));
       if (unfinishedSubtasks.length > 0 || !hasSubtasks) {
         // Only add if there's something to do tomorrow
-        const hasActivityToday = taskUpdatedToday || taskCreatedToday || subtasksUpdatedToday.length > 0;
+        const hasActivityToday = taskUpdatedToday || taskCreatedToday || taskTickedToday || subtasksUpdatedToday.length > 0 || subtasksTickedToday.length > 0;
         if (hasActivityToday || task.is_focus) {
           tomorrowItems.push(task.title);
         }
