@@ -292,6 +292,11 @@ export function LogBookPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px', paddingRight: '50px' }}>
+            {task.parent_id && (
+              <span style={{ fontSize: '12px', fontWeight: 800, color: '#fff', background: '#7c3aed', padding: '6px 10px', borderRadius: '999px', letterSpacing: '0.3px' }}>
+                SUB-TASK
+              </span>
+            )}
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111827', margin: 0 }}>{task.title}</h1>
             <span style={{ fontSize: '12px', fontWeight: 700, color: task.is_finished ? '#10b981' : '#7c3aed', background: task.is_finished ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
               {task.is_finished ? '100% Finished' : `${task.progress_percent ?? 0}%`}
