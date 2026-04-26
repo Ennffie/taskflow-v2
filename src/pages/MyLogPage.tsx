@@ -27,6 +27,7 @@ export function MyLogPage() {
   const [todayWork, setTodayWork] = useState('');
   const [tomorrowWork, setTomorrowWork] = useState('');
   const [genLoading, setGenLoading] = useState(false);
+  const [genSummary, setGenSummary] = useState<{todayCount: number; tomorrowCount: number} | null>(null);
 
   const handleGenTodayLogs = async () => {
     setGenLoading(true);
@@ -34,7 +35,9 @@ export function MyLogPage() {
       const draft = await generateTodayLogs();
       setTodayWork(draft.todayWork);
       setTomorrowWork(draft.tomorrowWork);
-      setShowDailyLogModal(true);
+      const todayCount = draft.todayWork ? draft.todayWork.split('\n').filter(Boolean).length : 0;
+      const tomorrowCount = draft.tomorrowWork ? draft.tomorrowWork.split('\n').filter(Boolean).length : 0;
+      setGenSummary({ todayCount, tomorrowCount });
     } catch (error: any) {
       alert(`Generate today's logs failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -406,6 +409,34 @@ export function MyLogPage() {
                 ))}
               </div>
               <button onClick={() => setShowTaskSelector(false)} style={{ width: '100%', marginTop: '16px', padding: '12px', borderRadius: '10px', border: 'none', background: '#f3f4f6', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {/* Gen Summary Modal */}
+        {genSummary && (
+          <div onClick={() => setGenSummary(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '360px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>✨ Logs Generated</div>
+              <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>Based on your today's activity</div>
+              
+              <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
+                <div style={{ padding: '14px 16px', background: '#f3e8ff', borderRadius: '12px' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#7c3aed' }}>{genSummary.todayCount}</div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600 }}>Today updates</div>
+                </div>
+                <div style={{ padding: '14px 16px', background: '#ede9fe', borderRadius: '12px' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#6d28d9' }}>{genSummary.tomorrowCount}</div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600 }}>Tomorrow focus</div>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => { setGenSummary(null); setShowDailyLogModal(true); }}
+                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Review & Edit
+              </button>
             </div>
           </div>
         )}
