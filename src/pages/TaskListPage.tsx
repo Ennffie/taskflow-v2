@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
-import { STATUS_CONFIG, type TaskItem, type TaskStatus } from '../types';
+import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type TaskItem, type TaskStatus } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
@@ -43,7 +43,14 @@ function StatusIcon({ status }: { status: TaskStatus }) {
     case 'done':
       return <div style={{ ...iconStyle, borderColor: '#10b981', background: '#10b981' }}><CheckCircle2 size={12} color="#fff" /></div>;
     case 'in_progress':
+    case 'round_1_wip':
+    case 'round_2_wip':
+    case 'round_3_wip':
       return <div style={{ ...iconStyle, borderColor: '#f59e0b', background: '#fef3c7' }}><Clock size={12} color="#f59e0b" /></div>;
+    case 'internal_review':
+    case 'round_1_review':
+    case 'round_2_review':
+    case 'round_3_review':
     case 'review':
       return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={12} color="#7c3aed" /></div>;
     case 'planning':
@@ -241,7 +248,7 @@ export function TaskListPage() {
             </button>
             {openDropdown === 'status' && (
               <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', minWidth: '180px', zIndex: 20, padding: '8px' }}>
-                {(['all', 'todo', 'planning', 'in_progress', 'review', 'done', 'cancelled'] as const).map((s) => (
+                {(['all', ...TASK_STATUS_OPTIONS] as const).map((s) => (
                   <button 
                     key={s} 
                     onClick={() => { setStatusFilter(s); setOpenDropdown(null); }}

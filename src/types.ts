@@ -1,5 +1,5 @@
 export type Role = 'admin' | 'member' | 'viewer';
-export type TaskStatus = 'todo' | 'planning' | 'in_progress' | 'review' | 'done' | 'cancelled';
+export type TaskStatus = 'todo' | 'planning' | 'in_progress' | 'internal_review' | 'round_1_wip' | 'round_1_review' | 'round_2_wip' | 'round_2_review' | 'round_3_wip' | 'round_3_review' | 'review' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'other';
 
@@ -50,10 +50,33 @@ export const STATUS_META: Record<TaskStatus, { label: string; color: string; bg:
   todo: { label: 'Todo', color: '#6b7280', bg: '#f3f4f6' },
   planning: { label: 'Planning', color: '#0f766e', bg: '#ccfbf1' },
   in_progress: { label: 'In Progress', color: '#6d28d9', bg: '#f3e8ff' },
+  internal_review: { label: 'Internal Review', color: '#7c3aed', bg: '#f3e8ff' },
+  round_1_wip: { label: 'Round 1 WIP', color: '#9333ea', bg: '#f3e8ff' },
+  round_1_review: { label: 'Round 1 Review', color: '#2563eb', bg: '#dbeafe' },
+  round_2_wip: { label: 'Round 2 WIP', color: '#7c3aed', bg: '#ede9fe' },
+  round_2_review: { label: 'Round 2 Review', color: '#1d4ed8', bg: '#dbeafe' },
+  round_3_wip: { label: 'Round 3 WIP', color: '#6d28d9', bg: '#f5f3ff' },
+  round_3_review: { label: 'Round 3 Review', color: '#1e40af', bg: '#dbeafe' },
   review: { label: 'Review', color: '#1d4ed8', bg: '#dbeafe' },
   done: { label: 'Done', color: '#047857', bg: '#d1fae5' },
   cancelled: { label: 'Cancelled', color: '#b91c1c', bg: '#fee2e2' },
 };
+
+export const TASK_STATUS_OPTIONS: TaskStatus[] = [
+  'todo',
+  'planning',
+  'in_progress',
+  'internal_review',
+  'round_1_wip',
+  'round_1_review',
+  'round_2_wip',
+  'round_2_review',
+  'round_3_wip',
+  'round_3_review',
+  'review',
+  'done',
+  'cancelled',
+];
 
 export const FOCUS_META = { label: 'Focus', color: '#7c3aed', bg: '#ede9fe' };
 

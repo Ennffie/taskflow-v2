@@ -535,6 +535,13 @@ export function MyLogPage() {
                       <option value="todo">Todo</option>
                       <option value="planning">Planning</option>
                       <option value="in_progress">In Progress</option>
+                      <option value="internal_review">Internal Review</option>
+                      <option value="round_1_wip">Round 1 WIP</option>
+                      <option value="round_1_review">Round 1 Review</option>
+                      <option value="round_2_wip">Round 2 WIP</option>
+                      <option value="round_2_review">Round 2 Review</option>
+                      <option value="round_3_wip">Round 3 WIP</option>
+                      <option value="round_3_review">Round 3 Review</option>
                       <option value="review">Review</option>
                       <option value="done">Done</option>
                       <option value="cancelled">Cancelled</option>
