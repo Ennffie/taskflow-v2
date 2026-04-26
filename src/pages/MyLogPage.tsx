@@ -38,6 +38,12 @@ export function MyLogPage() {
       const todayCount = draft.todayWork ? draft.todayWork.split('\n').filter(Boolean).length : 0;
       const tomorrowCount = draft.tomorrowWork ? draft.tomorrowWork.split('\n').filter(Boolean).length : 0;
       setGenSummary({ todayCount, tomorrowCount });
+      // Auto-select first focus task or first task for the log
+      const focusTasks = tasks.filter(t => t.is_focus);
+      const targetTask = focusTasks[0] || tasks[0];
+      if (targetTask) {
+        setSelectedTask(targetTask);
+      }
     } catch (error: any) {
       alert(`Generate today's logs failed: ${error?.message || 'Unknown error'}`);
     } finally {
