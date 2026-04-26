@@ -124,15 +124,15 @@ export function TaskCard({
 
       {/* Primary Assignee Avatar */}
       <div style={{ 
-        width: '30px', 
-        height: '30px', 
+        width: '36px', 
+        height: '36px', 
         borderRadius: '50%', 
         background: primaryAssignee ? getAvatarColor(primaryAssignee.name, primaryAssignee.id) : '#E2E8F0',
         color: '#fff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: primaryAssignee ? '11px' : '14px',
+        fontSize: primaryAssignee ? '13px' : '16px',
         fontWeight: 700,
         flexShrink: 0,
         border: '2px solid #fff',
@@ -144,7 +144,7 @@ export function TaskCard({
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         {/* Task Title */}
         <p style={{ 
-          fontSize: '15px', 
+          fontSize: '17px', 
           fontWeight: 600, 
           color: '#111827', 
           margin: 0, 
