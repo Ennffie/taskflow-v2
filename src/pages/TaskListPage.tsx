@@ -314,8 +314,6 @@ export function TaskListPage() {
                     }}>
                       {groupName} {groupTasks.length}
                     </span>
-                    <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>{groupTasks.length}</span>
-                    {isFocusSection && <span style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 8px', background: '#7c3aed', color: '#fff', borderRadius: '10px', fontWeight: 600 }}>FOCUS</span>}
                   </div>
                   
                   {isExpanded && groupTasks.map((task, taskIndex) => (
