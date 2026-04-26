@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Target } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
+import { generateTodayLogs, fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import type { LogEntry, TaskItem, LogCategory, TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
@@ -26,6 +26,22 @@ export function MyLogPage() {
   const [editNextStatus, setEditNextStatus] = useState<TaskStatus | ''>('');
   const [todayWork, setTodayWork] = useState('');
   const [tomorrowWork, setTomorrowWork] = useState('');
+  const [genLoading, setGenLoading] = useState(false);
+
+  const handleGenTodayLogs = async () => {
+    setGenLoading(true);
+    try {
+      const draft = await generateTodayLogs();
+      setTodayWork(draft.todayWork);
+      setTomorrowWork(draft.tomorrowWork);
+      setShowDailyLogModal(true);
+    } catch (error: any) {
+      alert(`Generate today's logs failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
   const [saving, setSaving] = useState(false);
   const [deletingLog, setDeletingLog] = useState(false);
 
@@ -284,8 +300,25 @@ export function MyLogPage() {
       <div style={{ display: 'grid', gap: '18px' }}>
         {/* Header */}
         <section style={panelStyle}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
             <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>My logs</div>
+            <button
+              onClick={handleGenTodayLogs}
+              disabled={genLoading}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '10px',
+                border: 'none',
+                background: '#7c3aed',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                opacity: genLoading ? 0.6 : 1,
+              }}
+            >
+              {genLoading ? 'Generating...' : "Gen Today's Logs"}
+            </button>
           </div>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0' }}>
             A clean list of updates you have posted across the workspace.

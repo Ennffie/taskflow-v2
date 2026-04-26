@@ -85,6 +85,114 @@ function computeParentProgress(task: any, allTasks: any[]): { progress_percent: 
   };
 }
 
+export interface TodayLogDraft {
+  todayWork: string;
+  tomorrowWork: string;
+  generatedAt: string;
+}
+
+export async function generateTodayLogs(userId?: string): Promise<TodayLogDraft> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Fetch all tasks with subtasks for this user
+  const { data: allTasks, error: tasksError } = await supabase
+    .from('tasks')
+    .select('*')
+    .order('due_date', { ascending: true });
+
+  if (tasksError || !allTasks) throw tasksError;
+
+  // Filter tasks relevant to user if userId provided
+  let relevantTasks = allTasks;
+  if (userId) {
+    const { data: userAssignees } = await supabase
+      .from('task_assignees')
+      .select('task_id')
+      .eq('user_id', userId);
+    const assignedTaskIds = new Set((userAssignees ?? []).map((a: any) => a.task_id));
+    relevantTasks = allTasks.filter(t => assignedTaskIds.has(t.id) || t.created_by === userId);
+  }
+
+  const todayUpdates: string[] = [];
+  const tomorrowItems: string[] = [];
+
+  // Process main tasks
+  for (const task of relevantTasks) {
+    if (task.parent_id) continue; // Skip subtasks here, process via parent
+
+    const subtasks = allTasks.filter(st => st.parent_id === task.id);
+    const hasSubtasks = subtasks.length > 0;
+
+    // Check if task itself was created today
+    const taskCreatedToday = task.created_at && task.created_at.startsWith(today);
+
+    // Check if task was updated today
+    const taskUpdatedToday = task.updated_at && task.updated_at.startsWith(today);
+
+    // Check if any subtask was updated/finished today
+    const subtasksUpdatedToday = subtasks.filter(st =>
+      (st.updated_at && st.updated_at.startsWith(today)) ||
+      (st.created_at && st.created_at.startsWith(today))
+    );
+
+    // Section A: What have I done today
+    // 1. Subtasks with tick/finished
+    const finishedSubtasks = subtasks.filter(st =>
+      st.is_finished && (st.updated_at?.startsWith(today) || st.created_at?.startsWith(today))
+    );
+    for (const st of finishedSubtasks) {
+      todayUpdates.push(`${st.title} is finished`);
+    }
+
+    // 2. Subtasks with progress/status change (not finished)
+    const updatedSubtasks = subtasksUpdatedToday.filter(st =>
+      !st.is_finished && (st.updated_at?.startsWith(today))
+    );
+    for (const st of updatedSubtasks) {
+      todayUpdates.push(`${st.title} is updated`);
+    }
+
+    // 3. Main task itself updated (no subtasks)
+    if (!hasSubtasks && taskUpdatedToday && !taskCreatedToday) {
+      if (task.is_finished) {
+        todayUpdates.push(`${task.title} is finished`);
+      } else {
+        todayUpdates.push(`${task.title} is updated`);
+      }
+    }
+
+    // 4. New task added today
+    if (taskCreatedToday) {
+      todayUpdates.push(`${task.title}, New task added`);
+    }
+
+    // Section B: What I will focus on tomorrow
+    // Items not finished/closed today
+    const isDoneToday = task.is_finished && task.updated_at?.startsWith(today);
+    if (!isDoneToday) {
+      // If has unfinished subtasks
+      const unfinishedSubtasks = subtasks.filter(st => !st.is_finished);
+      if (unfinishedSubtasks.length > 0 || !hasSubtasks) {
+        // Only add if there's something to do tomorrow
+        const hasActivityToday = taskUpdatedToday || taskCreatedToday || subtasksUpdatedToday.length > 0;
+        if (hasActivityToday || task.is_focus) {
+          tomorrowItems.push(task.title);
+        }
+      }
+    }
+  }
+
+  // Deduplicate
+  const uniqueToday = [...new Set(todayUpdates)];
+  const uniqueTomorrow = [...new Set(tomorrowItems)];
+
+  return {
+    todayWork: uniqueToday.join('\n'),
+    tomorrowWork: uniqueTomorrow.join('\n'),
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export async function fetchTasks(): Promise<TaskItem[]> {
   const { data: tasks, error: taskError } = await supabase
     .from('tasks')
