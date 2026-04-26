@@ -16,7 +16,7 @@ function getAvatarColor(name: string, id?: string) {
 
 const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-export function SubtaskPreviewList({ parentTitle, subtasks, limit = 3 }: { parentTitle?: string; subtasks: TaskItem[]; limit?: number }) {
+export function SubtaskPreviewList({ subtasks, limit = 3 }: { subtasks: TaskItem[]; limit?: number }) {
   const navigate = useNavigate();
   const visible = subtasks.slice(0, limit);
   const remaining = subtasks.length - visible.length;
@@ -25,11 +25,6 @@ export function SubtaskPreviewList({ parentTitle, subtasks, limit = 3 }: { paren
 
   return (
     <div style={{ marginTop: '2px', paddingTop: '6px', borderTop: '1px solid #eef2f7', display: 'grid', gap: '4px' }}>
-      {parentTitle && (
-        <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.3px', paddingLeft: '2px' }}>
-          {parentTitle}
-        </div>
-      )}
       {visible.map((subtask) => {
         const assignee = subtask.assignees[0];
         const progress = subtask.is_finished ? 100 : (subtask.progress_percent ?? 0);

@@ -200,7 +200,7 @@ export function TaskCard({
 
       {subtasks.length > 0 && (
         <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: showCheckbox ? '32px' : '48px' }}>
-          <SubtaskPreviewList parentTitle={task.title} subtasks={subtasks} />
+          <SubtaskPreviewList subtasks={subtasks} />
         </div>
       )}
     </div>
