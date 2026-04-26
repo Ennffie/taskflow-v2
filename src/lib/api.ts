@@ -98,25 +98,33 @@ export async function generateTodayLogs(userId?: string): Promise<TodayLogDraft>
   let checkedTaskIds: string[] = [];
   try {
     const savedChecked = localStorage.getItem('myTasks_checked');
+    console.log('[GenLogs] localStorage raw:', savedChecked);
     if (savedChecked) {
       const parsed = JSON.parse(savedChecked);
+      console.log('[GenLogs] parsed:', parsed);
       if (parsed.date === today) {
         checkedTaskIds = parsed.tasks || [];
+      } else {
+        console.log('[GenLogs] date mismatch:', parsed.date, '!=', today);
       }
     }
   } catch (e) {
-    // ignore
+    console.error('[GenLogs] localStorage parse error:', e);
   }
+  console.log('[GenLogs] checkedTaskIds:', checkedTaskIds);
 
-  // Fetch all tasks with subtasks for this user
+  // Fetch all tasks
   const { data: allTasks, error: tasksError } = await supabase
     .from('tasks')
-    .select('*')
-    .order('due_date', { ascending: true });
+    .select('*');
 
-  if (tasksError || !allTasks) throw tasksError;
+  if (tasksError || !allTasks) {
+    console.error('[GenLogs] fetch error:', tasksError);
+    throw tasksError;
+  }
+  console.log('[GenLogs] total tasks:', allTasks.length);
 
-  // Filter tasks relevant to user if userId provided
+  // Filter to user's tasks if userId provided
   let relevantTasks = allTasks;
   if (userId) {
     const { data: userAssignees } = await supabase
@@ -125,92 +133,44 @@ export async function generateTodayLogs(userId?: string): Promise<TodayLogDraft>
       .eq('user_id', userId);
     const assignedTaskIds = new Set((userAssignees ?? []).map((a: any) => a.task_id));
     relevantTasks = allTasks.filter(t => assignedTaskIds.has(t.id) || t.created_by === userId);
+    console.log('[GenLogs] user tasks:', relevantTasks.length);
   }
 
   const todayUpdates: string[] = [];
   const tomorrowItems: string[] = [];
 
-  // Process main tasks
-  for (const task of relevantTasks) {
-    if (task.parent_id) continue; // Skip subtasks here, process via parent
+  // Process main tasks (non-subtasks)
+  const mainTasks = relevantTasks.filter(t => !t.parent_id);
+  console.log('[GenLogs] main tasks:', mainTasks.length);
 
+  for (const task of mainTasks) {
     const subtasks = allTasks.filter(st => st.parent_id === task.id);
-    const hasSubtasks = subtasks.length > 0;
+    const taskTicked = checkedTaskIds.includes(task.id);
+    const subtasksTicked = subtasks.filter(st => checkedTaskIds.includes(st.id));
 
-    // Check if task itself was created today
-    const taskCreatedToday = task.created_at && task.created_at.startsWith(today);
+    console.log('[GenLogs] task:', task.title, 'ticked:', taskTicked, 'subtasks ticked:', subtasksTicked.length);
 
-    // Check if task was updated today
-    const taskUpdatedToday = task.updated_at && task.updated_at.startsWith(today);
-
-    // Check if task was ticked today (from localStorage)
-    const taskTickedToday = checkedTaskIds.includes(task.id);
-
-    // Check if any subtask was ticked today
-    const subtasksTickedToday = subtasks.filter(st => checkedTaskIds.includes(st.id));
-
-    // Check if any subtask was updated/finished today
-    const subtasksUpdatedToday = subtasks.filter(st =>
-      (st.updated_at && st.updated_at.startsWith(today)) ||
-      (st.created_at && st.created_at.startsWith(today))
-    );
-
-    // Section A: What have I done today
-    // 1. Tasks ticked today (from My Tasks checklist)
-    if (taskTickedToday) {
+    // Section A: done today
+    if (taskTicked) {
       todayUpdates.push(`${task.title} is finished`);
     }
-
-    // 2. Subtasks ticked today
-    for (const st of subtasksTickedToday) {
+    for (const st of subtasksTicked) {
       todayUpdates.push(`${st.title} is finished`);
     }
 
-    // 3. Subtasks with progress/status change (not finished)
-    const updatedSubtasks = subtasksUpdatedToday.filter(st =>
-      !st.is_finished && !checkedTaskIds.includes(st.id) && (st.updated_at?.startsWith(today))
-    );
-    for (const st of updatedSubtasks) {
-      todayUpdates.push(`${st.title} is updated`);
-    }
-
-    // 4. Main task itself updated (no subtasks)
-    if (!hasSubtasks && taskUpdatedToday && !taskCreatedToday && !taskTickedToday) {
-      if (task.is_finished) {
-        todayUpdates.push(`${task.title} is finished`);
-      } else {
-        todayUpdates.push(`${task.title} is updated`);
-      }
-    }
-
-    // 5. New task added today
-    if (taskCreatedToday) {
-      todayUpdates.push(`${task.title}, New task added`);
-    }
-
-    // Section B: What I will focus on tomorrow
-    // Items not finished/closed today
-    const isDoneToday = (task.is_finished && task.updated_at?.startsWith(today)) || taskTickedToday;
-    if (!isDoneToday) {
-      // If has unfinished subtasks
-      const unfinishedSubtasks = subtasks.filter(st => !st.is_finished && !checkedTaskIds.includes(st.id));
-      if (unfinishedSubtasks.length > 0 || !hasSubtasks) {
-        // Only add if there's something to do tomorrow
-        const hasActivityToday = taskUpdatedToday || taskCreatedToday || taskTickedToday || subtasksUpdatedToday.length > 0 || subtasksTickedToday.length > 0;
-        if (hasActivityToday || task.is_focus) {
-          tomorrowItems.push(task.title);
-        }
-      }
+    // Section B: tomorrow focus
+    const isDone = taskTicked || (task.is_finished && task.updated_at?.startsWith(today));
+    if (!isDone) {
+      tomorrowItems.push(task.title);
     }
   }
 
-  // Deduplicate
-  const uniqueToday = [...new Set(todayUpdates)];
-  const uniqueTomorrow = [...new Set(tomorrowItems)];
+  console.log('[GenLogs] todayUpdates:', todayUpdates);
+  console.log('[GenLogs] tomorrowItems:', tomorrowItems);
 
   return {
-    todayWork: uniqueToday.join('\n'),
-    tomorrowWork: uniqueTomorrow.join('\n'),
+    todayWork: todayUpdates.join('\n'),
+    tomorrowWork: tomorrowItems.join('\n'),
     generatedAt: new Date().toISOString(),
   };
 }
