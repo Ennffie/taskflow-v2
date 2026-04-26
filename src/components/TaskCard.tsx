@@ -165,18 +165,9 @@ export function TaskCard({
           <span style={{ fontSize: '12px', fontWeight: 700, color: progress >= 100 ? '#10b981' : '#7c3aed', background: progress >= 100 ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
             {progress}%
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '13px' }}>💬</span>
-            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
-              {task.log_count} log{task.log_count <= 1 ? '' : 's'}
-            </span>
-          </div>
-
-          {(task.subtask_count ?? 0) > 0 && (
-            <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600, background: '#eef2ff', padding: '4px 8px', borderRadius: '999px' }}>
-              {task.subtask_count} sub-task{task.subtask_count === 1 ? '' : 's'}
-            </span>
-          )}
+          <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600, background: '#f8fafc', padding: '4px 8px', borderRadius: '999px' }}>
+            {task.log_count} log{task.log_count <= 1 ? '' : 's'}
+          </span>
 
           <span style={{ 
             fontSize: '12px', 
