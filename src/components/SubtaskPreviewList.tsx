@@ -16,7 +16,7 @@ function getAvatarColor(name: string, id?: string) {
 
 const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-export function SubtaskPreviewList({ subtasks, limit = 3 }: { subtasks: TaskItem[]; limit?: number }) {
+export function SubtaskPreviewList({ subtasks, limit = 99 }: { subtasks: TaskItem[]; limit?: number }) {
   const navigate = useNavigate();
   const visible = subtasks.slice(0, limit);
   const remaining = subtasks.length - visible.length;
@@ -24,7 +24,7 @@ export function SubtaskPreviewList({ subtasks, limit = 3 }: { subtasks: TaskItem
   if (subtasks.length === 0) return null;
 
   return (
-    <div style={{ marginTop: '2px', paddingTop: '6px', borderTop: '1px solid #eef2f7', display: 'grid', gap: '4px' }}>
+    <div style={{ marginTop: '1px', paddingTop: '4px', borderTop: '1px solid #eef2f7', display: 'grid', gap: '3px' }}>
       {visible.map((subtask) => {
         const assignee = subtask.assignees[0];
         const progress = subtask.is_finished ? 100 : (subtask.progress_percent ?? 0);
@@ -36,27 +36,27 @@ export function SubtaskPreviewList({ subtasks, limit = 3 }: { subtasks: TaskItem
             onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${subtask.id}`); }}
             style={{
               display: 'grid',
-              gridTemplateColumns: '20px minmax(0,1fr) auto',
-              gap: '8px',
+              gridTemplateColumns: '18px minmax(0,1fr) auto',
+              gap: '6px',
               alignItems: 'center',
               border: 'none',
               background: '#f8fafc',
-              borderRadius: '8px',
-              padding: '6px 8px',
+              borderRadius: '7px',
+              padding: '4px 6px',
               cursor: 'pointer',
               textAlign: 'left',
             }}
           >
-            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: assignee ? getAvatarColor(assignee.name, assignee.id) : '#E2E8F0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700 }}>
+            <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: assignee ? getAvatarColor(assignee.name, assignee.id) : '#E2E8F0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 700 }}>
               {assignee ? initials(assignee.name) : '—'}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{subtask.title}</div>
-              <div style={{ fontSize: '10px', color: isOverdue ? '#dc2626' : '#94a3b8', marginTop: '1px', lineHeight: 1.2 }}>{due === '—' ? 'No due date' : due}</div>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{subtask.title}</div>
+              <div style={{ fontSize: '9px', color: isOverdue ? '#dc2626' : '#94a3b8', marginTop: '0px', lineHeight: 1.1 }}>{due === '—' ? 'No due date' : due}</div>
             </div>
-            <div style={{ display: 'grid', gap: '3px', justifyItems: 'end', minWidth: '56px' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#475569' }}>{progress}%</div>
-              <div style={{ width: '52px', height: '5px', borderRadius: '999px', background: '#e2e8f0', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gap: '2px', justifyItems: 'end', minWidth: '48px' }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, color: '#475569' }}>{progress}%</div>
+              <div style={{ width: '44px', height: '4px', borderRadius: '999px', background: '#e2e8f0', overflow: 'hidden' }}>
                 <div style={{ width: `${progress}%`, height: '100%', background: progress >= 100 ? '#10b981' : '#7c3aed', borderRadius: '999px' }} />
               </div>
             </div>
@@ -64,7 +64,7 @@ export function SubtaskPreviewList({ subtasks, limit = 3 }: { subtasks: TaskItem
         );
       })}
       {remaining > 0 && (
-        <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, paddingLeft: '28px' }}>+{remaining} more sub-task{remaining === 1 ? '' : 's'}</div>
+        <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, paddingLeft: '24px' }}>+{remaining} more sub-task{remaining === 1 ? '' : 's'}</div>
       )}
     </div>
   );

@@ -90,8 +90,8 @@ export function TaskCard({
       onClick={() => navigate(`/tasks/${task.id}`)}
       style={{ 
         display: 'grid', 
-        gap: '8px', 
-        padding: '14px 16px', 
+        gap: '6px', 
+        padding: '12px 14px', 
         borderBottom: '1px solid #f1f5f9', 
         cursor: 'pointer',
         background: baseBgColor,
@@ -100,7 +100,7 @@ export function TaskCard({
       onMouseEnter={(e) => e.currentTarget.style.background = hoverBgColor}
       onMouseLeave={(e) => e.currentTarget.style.background = baseBgColor}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
         {/* Checkbox (My Tasks only) */}
         {showCheckbox && (
           <div 
@@ -128,15 +128,15 @@ export function TaskCard({
 
         {/* Primary Assignee Avatar */}
         <div style={{ 
-          width: '36px', 
-          height: '36px', 
+          width: '32px', 
+          height: '32px', 
           borderRadius: '50%', 
           background: primaryAssignee ? getAvatarColor(primaryAssignee.name, primaryAssignee.id) : '#E2E8F0',
           color: '#fff',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: primaryAssignee ? '13px' : '16px',
+          fontSize: primaryAssignee ? '12px' : '14px',
           fontWeight: 700,
           flexShrink: 0,
           border: '2px solid #fff',
@@ -148,11 +148,11 @@ export function TaskCard({
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         {/* Task Title */}
         <p style={{ 
-          fontSize: '16px', 
+          fontSize: '15px', 
           fontWeight: 700, 
           color: '#111827', 
           margin: 0, 
-          lineHeight: 1.4,
+          lineHeight: 1.3,
           overflow: 'hidden',
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -161,27 +161,27 @@ export function TaskCard({
           {task.title}
         </p>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: progress >= 100 ? '#10b981' : '#7c3aed', background: progress >= 100 ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: progress >= 100 ? '#10b981' : '#7c3aed', background: progress >= 100 ? '#ecfdf5' : '#f3e8ff', padding: '3px 7px', borderRadius: '999px' }}>
             {progress}%
           </span>
-          <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600, background: '#f8fafc', padding: '4px 8px', borderRadius: '999px' }}>
+          <span style={{ fontSize: '11px', color: '#475569', fontWeight: 600, background: '#f8fafc', padding: '3px 7px', borderRadius: '999px' }}>
             {task.log_count} log{task.log_count <= 1 ? '' : 's'}
           </span>
 
           <span style={{ 
-            fontSize: '12px', 
+            fontSize: '11px', 
             fontWeight: 600,
             color: isOverdue(task.due_date) ? '#dc2626' : isDueSoon(task.due_date) ? '#d97706' : '#64748b',
             background: isOverdue(task.due_date) ? '#fef2f2' : isDueSoon(task.due_date) ? '#fffbeb' : '#f8fafc',
-            padding: '4px 8px',
+            padding: '3px 7px',
             borderRadius: '999px',
           }}>
             {dueDateLabel === '—' ? 'No due date' : dueDateLabel}
           </span>
 
           {task.tags.length > 0 && (
-            <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: '999px', background: '#f1f5f9', color: '#64748b', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '10px', fontWeight: 600, padding: '3px 7px', borderRadius: '999px', background: '#f1f5f9', color: '#64748b', maxWidth: '88px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {task.tags[0]}{task.tags.length > 1 ? ` +${task.tags.length - 1}` : ''}
             </span>
           )}
@@ -190,7 +190,7 @@ export function TaskCard({
       </div>
 
       {subtasks.length > 0 && (
-        <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: showCheckbox ? '32px' : '48px' }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: showCheckbox ? '28px' : '42px' }}>
           <SubtaskPreviewList subtasks={subtasks} />
         </div>
       )}
