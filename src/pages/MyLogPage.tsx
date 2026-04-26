@@ -437,12 +437,65 @@ export function MyLogPage() {
                 </div>
               </div>
               
-              <button
-                onClick={() => { setGenSummary(null); setShowDailyLogModal(true); }}
-                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
-              >
-                Review & Edit
-              </button>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                <button
+                  onClick={() => { setGenSummary(null); setShowDailyLogModal(true); }}
+                  style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Review & Edit
+                </button>
+                <button
+                  onClick={async () => {
+                    setGenSummary(null);
+                    if (!selectedTask) {
+                      alert('No task selected. Please try again.');
+                      return;
+                    }
+                    setSaving(true);
+                    try {
+                      const today = new Date().toISOString().slice(0, 10);
+                      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+                      if (todayWork.trim()) {
+                        await createLog({
+                          task_id: selectedTask.id,
+                          date: today,
+                          event: `[What I have done]\n${todayWork.trim()}`,
+                          category: 'other',
+                          time_spent: '',
+                          file_name: '',
+                          next_status: ''
+                        });
+                      }
+                      if (tomorrowWork.trim()) {
+                        await createLog({
+                          task_id: selectedTask.id,
+                          date: tomorrow,
+                          event: `[What I will focus on]\n${tomorrowWork.trim()}`,
+                          category: 'other',
+                          time_spent: '',
+                          file_name: '',
+                          next_status: ''
+                        });
+                        await updateTask(selectedTask.id, { is_focus: true });
+                      }
+                      const updatedLogs = await fetchMyLogs();
+                      setLogs(updatedLogs);
+                      setTodayWork('');
+                      setTomorrowWork('');
+                      setSelectedTask(null);
+                      alert('Logs saved successfully!');
+                    } catch (error: any) {
+                      alert(`Save failed: ${error?.message || 'Unknown error'}`);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving}
+                  style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#fff', color: '#111827', fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
+                >
+                  {saving ? 'Saving...' : 'Save Directly'}
+                </button>
+              </div>
             </div>
           </div>
         )}
