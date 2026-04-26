@@ -19,6 +19,7 @@ export function LogBookPage() {
   const [task, setTask] = useState<TaskItem | null>(null);
   const [draftTaskProgress, setDraftTaskProgress] = useState(0);
   const [draftSubtaskProgress, setDraftSubtaskProgress] = useState<Record<string, number>>({});
+  const [progressStatus, setProgressStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -80,6 +81,7 @@ export function LogBookPage() {
   const saveTaskProgress = async (nextProgress: number, nextFinished?: boolean) => {
     if (!task || !canEditTask) return;
     setProgressSaving(true);
+    setProgressStatus('saving');
     try {
       await updateTask(task.id, {
         progress_percent: nextFinished ? 100 : nextProgress,
@@ -90,8 +92,11 @@ export function LogBookPage() {
         setTask(nextTask);
         setDraftTaskProgress(nextTask.is_finished ? 100 : (nextTask.progress_percent ?? 0));
       }
+      setProgressStatus('saved');
+      setTimeout(() => setProgressStatus('idle'), 1200);
     } catch (error: any) {
       alert(`Update progress failed: ${error?.message || 'Unknown error'}`);
+      setProgressStatus('idle');
     } finally {
       setProgressSaving(false);
     }
@@ -100,6 +105,7 @@ export function LogBookPage() {
   const saveSubtaskProgress = async (subtask: TaskItem, nextProgress: number) => {
     if (!canEditSubtask(subtask)) return;
     setProgressSaving(true);
+    setProgressStatus('saving');
     try {
       await updateTask(subtask.id, {
         progress_percent: nextProgress,
@@ -113,8 +119,11 @@ export function LogBookPage() {
         setTask(nextTask);
         setDraftTaskProgress(nextTask.is_finished ? 100 : (nextTask.progress_percent ?? 0));
       }
+      setProgressStatus('saved');
+      setTimeout(() => setProgressStatus('idle'), 1200);
     } catch (error: any) {
       alert(`Update sub-task progress failed: ${error?.message || 'Unknown error'}`);
+      setProgressStatus('idle');
     } finally {
       setProgressSaving(false);
     }
@@ -298,7 +307,17 @@ export function LogBookPage() {
           <div style={{ display: 'grid', gap: '14px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
             <div style={{ display: 'grid', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Progress</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Progress</div>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#6d28d9', background: '#ede9fe', padding: '6px 10px', borderRadius: '999px', minWidth: '52px', textAlign: 'center' }}>
+                    {task.parent_id ? draftTaskProgress : (task.is_finished ? 100 : (task.progress_percent ?? 0))}%
+                  </span>
+                  {progressStatus !== 'idle' && (
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: progressStatus === 'saving' ? '#6d28d9' : '#047857' }}>
+                      {progressStatus === 'saving' ? 'Saving...' : 'Saved'}
+                    </span>
+                  )}
+                </div>
                 {canEditTask && !task.parent_id && !task.is_finished && (
                   <button
                     onClick={() => void saveTaskProgress(100, true)}
@@ -318,11 +337,13 @@ export function LogBookPage() {
                       max={100}
                       step={5}
                       value={draftTaskProgress}
+                      onInput={(e) => setDraftTaskProgress(Number((e.target as HTMLInputElement).value))}
                       onChange={(e) => setDraftTaskProgress(Number(e.target.value))}
                       onMouseUp={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
                       onTouchEnd={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
+                      style={{ width: '100%', height: '52px', accentColor: '#6d28d9', cursor: 'pointer' }}
                     />
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Sub-task progress can be edited here.</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Sub-task progress can be edited here.</div>
                   </div>
                 ) : (
                   <div style={{ fontSize: '12px', color: '#94a3b8' }}>Progress is editable by this sub-task assignee or admin only.</div>
@@ -385,17 +406,25 @@ export function LogBookPage() {
                             <div style={{ padding: '0 18px 14px 66px' }}>
                               {canEditSubtask(subtask) ? (
                                 <div style={{ display: 'grid', gap: '6px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>Progress</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#6d28d9', background: '#ede9fe', padding: '4px 8px', borderRadius: '999px', minWidth: '48px', textAlign: 'center' }}>
+                                      {draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0))}%
+                                    </span>
+                                  </div>
                                   <input
                                     type="range"
                                     min={0}
                                     max={100}
                                     step={5}
                                     value={draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0))}
+                                    onInput={(e) => setDraftSubtaskProgress((prev) => ({ ...prev, [subtask.id]: Number((e.target as HTMLInputElement).value) }))}
                                     onChange={(e) => setDraftSubtaskProgress((prev) => ({ ...prev, [subtask.id]: Number(e.target.value) }))}
                                     onMouseUp={() => void saveSubtaskProgress(subtask, draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)))}
                                     onTouchEnd={() => void saveSubtaskProgress(subtask, draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)))}
+                                    style={{ width: '100%', height: '52px', accentColor: '#6d28d9', cursor: 'pointer' }}
                                   />
-                                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>{subtask.is_finished ? 'Finished' : `${subtask.progress_percent ?? 0}%`}</div>
+                                  <div style={{ fontSize: '11px', color: progressStatus === 'saving' ? '#6d28d9' : progressStatus === 'saved' ? '#047857' : '#64748b', fontWeight: progressStatus === 'idle' ? 600 : 700 }}>{progressStatus === 'saving' ? 'Saving...' : progressStatus === 'saved' ? 'Saved' : (subtask.is_finished ? 'Finished' : 'Drag to update progress')}</div>
                                 </div>
                               ) : (
                                 <div style={{ fontSize: '11px', color: '#94a3b8' }}>Only assigned member or admin can edit this sub-task progress.</div>
