@@ -25,6 +25,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [isFocus, setIsFocus] = useState(false);
+  const [roundNumber, setRoundNumber] = useState(1);
 
   useEffect(() => {
     fetchProfiles().then(setProfiles).catch(console.error);
@@ -43,6 +44,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     setAssigneeIds(initialTask.assignees.map(a => a.id));
     setTagInput(initialTask.tags.join(', '));
     setIsFocus(initialTask.is_focus ?? false);
+    setRoundNumber(initialTask.round_number ?? 1);
   }, [initialTask]);
 
   const toggleAssignee = (id: string) => {
@@ -72,6 +74,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           priority,
           due_date: dueDate || null,
           is_focus: isFocus,
+          round_number: roundNumber,
         });
 
         await supabase.from('task_assignees').delete().eq('task_id', initialTask.id);
@@ -98,6 +101,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           tags: nextTags,
           parent_id: parentTaskId ?? null,
           is_focus: isFocus,
+          round_number: roundNumber,
         });
       }
 
@@ -125,6 +129,15 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}><option value="todo">Todo</option><option value="planning">Planning</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></Field>
           <Field label="Priority"><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         </div>
+        {parentTaskId && (
+          <Field label="Round">
+            <select value={roundNumber} onChange={(e) => setRoundNumber(Number(e.target.value))} style={inputStyle}>
+              <option value={1}>Round 1</option>
+              <option value={2}>Round 2</option>
+              <option value={3}>Round 3</option>
+            </select>
+          </Field>
+        )}
         <Field label="Due date">
           <div style={{ display: 'grid', gap: '10px' }}>
             <div style={{ position: 'relative' }}>

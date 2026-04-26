@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { formatDate } from '../lib/date';
 import { type TaskItem } from '../types';
+import { SubtaskPreviewList } from './SubtaskPreviewList';
 
 const AVATAR_COLOR_PALETTE = [
   '#6366F1', // indigo
@@ -37,6 +38,7 @@ interface TaskCardProps {
   showAssignees?: boolean;
   isFocusSection?: boolean;
   isEvenIndex?: boolean;
+  subtasks?: TaskItem[];
 }
 
 export function TaskCard({ 
@@ -47,6 +49,7 @@ export function TaskCard({
   showAssignees: _showAssignees = true,
   isFocusSection = false,
   isEvenIndex = true,
+  subtasks = [],
 }: TaskCardProps) {
   const navigate = useNavigate();
 
@@ -80,6 +83,7 @@ export function TaskCard({
   const dueDateLabel = formatDate(task.due_date);
   const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const primaryAssignee = task.assignees[0];
+  const progress = task.is_finished ? 100 : (task.progress_percent ?? 0);
 
   return (
     <div 
@@ -158,6 +162,9 @@ export function TaskCard({
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, color: progress >= 100 ? '#10b981' : '#7c3aed', background: progress >= 100 ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
+            {progress}%
+          </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{ fontSize: '13px' }}>💬</span>
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
@@ -190,6 +197,11 @@ export function TaskCard({
         </div>
       </div>
 
+      {subtasks.length > 0 && (
+        <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', marginLeft: showCheckbox ? '32px' : '0' }}>
+          <SubtaskPreviewList subtasks={subtasks} />
+        </div>
+      )}
     </div>
   );
 }

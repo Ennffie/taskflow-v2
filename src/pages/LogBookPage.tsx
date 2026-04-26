@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, User, FileText, GitBranch } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
-import { fetchLogs, fetchTask, deleteTask, fetchProfiles, updateLog, deleteLog, fetchSubtasks } from '../lib/api';
+import { fetchLogs, fetchTask, deleteTask, fetchProfiles, updateLog, deleteLog, fetchSubtasks, updateTask } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { useAuth } from '../contexts/AuthContext';
 import { PRIORITY_META, STATUS_META, FOCUS_META, type LogEntry, type TaskItem, type LogCategory } from '../types';
@@ -15,6 +15,7 @@ export function LogBookPage() {
   const { taskId = '' } = useParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const [progressSaving, setProgressSaving] = useState(false);
   const [task, setTask] = useState<TaskItem | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,50 @@ export function LogBookPage() {
   };
 
   useEffect(() => { void loadData(); }, [taskId]);
+
+  const canEditTask = useMemo(() => {
+    if (!profile || !task) return false;
+    if (profile.role === 'admin') return true;
+    return task.assignees.some(a => a.id === profile.id);
+  }, [profile, task]);
+
+  const canEditSubtask = (subtask: TaskItem): boolean => {
+    if (!profile) return false;
+    if (profile.role === 'admin') return true;
+    return subtask.assignees.some(a => a.id === profile.id);
+  };
+
+  const saveTaskProgress = async (nextProgress: number, nextFinished?: boolean) => {
+    if (!task || !canEditTask) return;
+    setProgressSaving(true);
+    try {
+      await updateTask(task.id, {
+        progress_percent: nextFinished ? 100 : nextProgress,
+        is_finished: nextFinished ?? false,
+      });
+      await loadData();
+    } catch (error: any) {
+      alert(`Update progress failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setProgressSaving(false);
+    }
+  };
+
+  const saveSubtaskProgress = async (subtask: TaskItem, nextProgress: number) => {
+    if (!canEditSubtask(subtask)) return;
+    setProgressSaving(true);
+    try {
+      await updateTask(subtask.id, {
+        progress_percent: nextProgress,
+        is_finished: nextProgress >= 100,
+      });
+      await loadData();
+    } catch (error: any) {
+      alert(`Update sub-task progress failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setProgressSaving(false);
+    }
+  };
 
   // Check if user can edit a log
   const canEditLog = (log: LogEntry): boolean => {
@@ -224,6 +269,10 @@ export function LogBookPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px', paddingRight: '50px' }}>
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111827', margin: 0 }}>{task.title}</h1>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: task.is_finished ? '#10b981' : '#7c3aed', background: task.is_finished ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
+              {task.is_finished ? '100% Finished' : `${task.progress_percent ?? 0}%`}
+            </span>
+            {!task.parent_id && <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '999px' }}>Round {task.round_number ?? 1}</span>}
             <div style={{ display: 'flex', gap: '6px' }}>
               {task.is_focus && <Badge bg={FOCUS_META.bg} color={FOCUS_META.color} text={FOCUS_META.label} />}
               <Badge bg={status.bg} color={status.color} text={status.label} />
@@ -231,26 +280,54 @@ export function LogBookPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'grid', gap: '14px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'grid', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Progress</div>
+                {canEditTask && !task.parent_id && !task.is_finished && (
+                  <button
+                    onClick={() => void saveTaskProgress(100, true)}
+                    disabled={progressSaving}
+                    style={{ border: 'none', background: '#111827', color: '#fff', borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: progressSaving ? 0.6 : 1 }}
+                  >
+                    Finish
+                  </button>
+                )}
+              </div>
+              {task.parent_id ? (
+                canEditTask ? (
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    <input type="range" min={0} max={100} step={5} value={task.is_finished ? 100 : (task.progress_percent ?? 0)} onChange={(e) => void saveTaskProgress(Number(e.target.value), Number(e.target.value) >= 100)} />
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Sub-task progress can be edited here.</div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Progress is editable by this sub-task assignee or admin only.</div>
+                )
+              ) : (
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>{subtasks.length > 0 ? 'Parent progress is calculated from sub-tasks and rounds. Use Finish when the whole task is done.' : 'Main task progress can be updated if you are assigned to this task.'}</div>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Calendar size={14} color="#7c3aed" />
               <div>
                 <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Due</div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>{formatDate(task.due_date) || 'Not set'}</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Users size={14} color="#7c3aed" />
               <div>
                 <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Assignees</div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>{task.assignees.length ? task.assignees.map(a => a.name.split(' ')[0]).join(', ') : 'Unassigned'}</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Tag size={14} color="#7c3aed" />
               <div>
                 <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Tags</div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>{task.tags.length ? task.tags.slice(0, 2).join(', ') + (task.tags.length > 2 ? ` +${task.tags.length - 2}` : '') : 'None'}</div>
+              </div>
               </div>
             </div>
           </div>
@@ -274,9 +351,26 @@ export function LogBookPage() {
                     No sub-tasks yet. Break this task into smaller actions when it helps execution.
                   </div>
                 ) : (
-                  <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                    {subtasks.map((subtask, index) => (
-                      <TaskCard key={subtask.id} task={subtask} showAssignees={true} isEvenIndex={index % 2 === 0} />
+                  <div style={{ display: 'grid', gap: '10px' }}>
+                    {[1, 2, 3].filter((round) => subtasks.some(st => (st.round_number ?? 1) === round)).map((round) => (
+                      <div key={round} style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                        <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 700, color: '#475569' }}>Round {round}</div>
+                        {subtasks.filter(st => (st.round_number ?? 1) === round).map((subtask, index) => (
+                          <div key={subtask.id} style={{ borderTop: index === 0 ? 'none' : '1px solid #f1f5f9' }}>
+                            <TaskCard task={subtask} showAssignees={true} isEvenIndex={index % 2 === 0} />
+                            <div style={{ padding: '0 18px 14px 66px' }}>
+                              {canEditSubtask(subtask) ? (
+                                <div style={{ display: 'grid', gap: '6px' }}>
+                                  <input type="range" min={0} max={100} step={5} value={subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)} onChange={(e) => void saveSubtaskProgress(subtask, Number(e.target.value))} />
+                                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>{subtask.is_finished ? 'Finished' : `${subtask.progress_percent ?? 0}%`}</div>
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '11px', color: '#94a3b8' }}>Only assigned member or admin can edit this sub-task progress.</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 )}

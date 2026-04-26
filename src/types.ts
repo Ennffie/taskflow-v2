@@ -23,6 +23,9 @@ export interface TaskItem {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  progress_percent?: number;
+  round_number?: number;
+  is_finished?: boolean;
   assignees: Profile[];
   tags: string[];
   log_count: number;

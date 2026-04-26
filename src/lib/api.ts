@@ -31,6 +31,60 @@ export async function fetchProfiles(): Promise<Profile[]> {
   return (data ?? []) as Profile[];
 }
 
+function computeParentProgress(task: any, allTasks: any[]): { progress_percent: number; round_number: number; is_finished: boolean } {
+  const subtasks = allTasks.filter(st => st.parent_id === task.id);
+  if (subtasks.length === 0) {
+    return {
+      progress_percent: task.is_finished ? 100 : (task.progress_percent ?? 0),
+      round_number: task.round_number ?? 1,
+      is_finished: task.is_finished ?? false,
+    };
+  }
+
+  const grouped = new Map<number, any[]>();
+  subtasks.forEach((st) => {
+    const round = st.round_number ?? 1;
+    grouped.set(round, [...(grouped.get(round) ?? []), st]);
+  });
+
+  const rounds = [...grouped.keys()].sort((a, b) => a - b);
+  const round1 = grouped.get(1) ?? [];
+  const round2 = grouped.get(2) ?? [];
+  const round3 = grouped.get(3) ?? [];
+  const avg = (items: any[]) => items.length ? items.reduce((sum, item) => sum + (item.is_finished ? 100 : (item.progress_percent ?? 0)), 0) / items.length : 0;
+
+  let progress = 0;
+  let currentRound = rounds[0] ?? 1;
+
+  if (round1.length > 0) {
+    const round1Avg = avg(round1);
+    progress = Math.max(progress, Math.round((round1Avg / 100) * 70));
+    currentRound = round1Avg >= 100 && round2.length > 0 ? 2 : 1;
+  }
+
+  if (round2.length > 0) {
+    const round2Avg = avg(round2);
+    progress = Math.max(progress, 70 + Math.round((round2Avg / 100) * 10));
+    if (round2Avg > 0) currentRound = round2Avg >= 100 && round3.length > 0 ? 3 : 2;
+  }
+
+  if (round3.length > 0) {
+    const round3Avg = avg(round3);
+    progress = Math.max(progress, 80 + Math.round((round3Avg / 100) * 10));
+    if (round3Avg > 0) currentRound = 3;
+  }
+
+  if (task.is_finished) {
+    progress = 100;
+  }
+
+  return {
+    progress_percent: Math.min(100, progress),
+    round_number: task.is_finished ? Math.max(3, currentRound) : currentRound,
+    is_finished: task.is_finished ?? false,
+  };
+}
+
 export async function fetchTasks(): Promise<TaskItem[]> {
   const { data: tasks, error: taskError } = await supabase
     .from('tasks')
@@ -71,24 +125,30 @@ export async function fetchTasks(): Promise<TaskItem[]> {
     logCounts.set(l.task_id, (logCounts.get(l.task_id) ?? 0) + 1);
   });
 
-  return tasks.map((t) => ({
-    id: t.id,
-    parent_id: t.parent_id ?? null,
-    is_focus: t.is_focus ?? false,
-    title: t.title,
-    description: t.description,
-    status: t.status,
-    priority: t.priority,
-    due_date: t.due_date,
-    created_by: t.created_by,
-    updated_by: t.updated_by,
-    created_at: t.created_at,
-    updated_at: t.updated_at,
-    assignees: assigneeMap.get(t.id) ?? [],
-    tags: tagMap.get(t.id) ?? [],
-    log_count: logCounts.get(t.id) ?? 0,
-    subtask_count: tasks.filter(st => st.parent_id === t.id).length,
-  })) as TaskItem[];
+  return tasks.map((t) => {
+    const aggregate = computeParentProgress(t, tasks);
+    return {
+      id: t.id,
+      parent_id: t.parent_id ?? null,
+      is_focus: t.is_focus ?? false,
+      title: t.title,
+      description: t.description,
+      status: t.status,
+      priority: t.priority,
+      due_date: t.due_date,
+      created_by: t.created_by,
+      updated_by: t.updated_by,
+      created_at: t.created_at,
+      updated_at: t.updated_at,
+      progress_percent: aggregate.progress_percent,
+      round_number: t.parent_id ? (t.round_number ?? 1) : aggregate.round_number,
+      is_finished: aggregate.is_finished,
+      assignees: assigneeMap.get(t.id) ?? [],
+      tags: tagMap.get(t.id) ?? [],
+      log_count: logCounts.get(t.id) ?? 0,
+      subtask_count: tasks.filter(st => st.parent_id === t.id).length,
+    };
+  }) as TaskItem[];
 }
 
 export async function fetchTask(taskId: string): Promise<TaskItem | null> {
@@ -126,6 +186,9 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
     updated_by: task.updated_by,
     created_at: task.created_at,
     updated_at: task.updated_at,
+    progress_percent: task.is_finished ? 100 : (task.progress_percent ?? 0),
+    round_number: task.round_number ?? 1,
+    is_finished: task.is_finished ?? false,
     assignees: taskAssignees,
     tags: (tags ?? []).map((t: any) => t.name),
     log_count: (logs ?? []).length,
@@ -170,6 +233,9 @@ export async function createTask(payload: {
   tags: string[];
   parent_id?: string | null;
   is_focus?: boolean;
+  progress_percent?: number;
+  round_number?: number;
+  is_finished?: boolean;
 }) {
   // Get current user
   const { data: userData } = await supabase.auth.getUser();
@@ -185,6 +251,9 @@ export async function createTask(payload: {
       due_date: payload.due_date ?? null,
       parent_id: payload.parent_id ?? null,
       is_focus: payload.is_focus ?? false,
+      progress_percent: payload.progress_percent ?? 0,
+      round_number: payload.round_number ?? 1,
+      is_finished: payload.is_finished ?? false,
       created_by: userId,
       updated_by: userId,
     })
@@ -218,6 +287,9 @@ export async function updateTask(
     due_date: string | null;
     parent_id: string | null;
     is_focus: boolean;
+    progress_percent: number;
+    round_number: number;
+    is_finished: boolean;
   }>
 ) {
   // Get current user
