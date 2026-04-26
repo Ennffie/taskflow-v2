@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, Us
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { LogFormModal } from '../components/LogFormModal';
-import { fetchLogs, fetchTask, deleteTask, fetchProfiles, updateLog, deleteLog, fetchSubtasks, updateTask } from '../lib/api';
+import { fetchLogs, fetchTask, deleteTask, updateLog, deleteLog, fetchSubtasks, updateTask } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { useAuth } from '../contexts/AuthContext';
 import { PRIORITY_META, STATUS_META, FOCUS_META, type LogEntry, type TaskItem, type LogCategory } from '../types';
@@ -17,6 +17,8 @@ export function LogBookPage() {
   const { profile } = useAuth();
   const [progressSaving, setProgressSaving] = useState(false);
   const [task, setTask] = useState<TaskItem | null>(null);
+  const [draftTaskProgress, setDraftTaskProgress] = useState(0);
+  const [draftSubtaskProgress, setDraftSubtaskProgress] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -45,12 +47,14 @@ export function LogBookPage() {
     try {
       const [nextTask, nextLogs] = await Promise.all([
         fetchTask(taskId), 
-        fetchLogs(taskId),
-        fetchProfiles()
+        fetchLogs(taskId)
       ]);
       setTask(nextTask);
+      setDraftTaskProgress(nextTask?.is_finished ? 100 : (nextTask?.progress_percent ?? 0));
       setLogs(nextLogs);
-      setSubtasks(nextTask ? await fetchSubtasks(nextTask.id) : []);
+      const nextSubtasks = nextTask ? await fetchSubtasks(nextTask.id) : [];
+      setSubtasks(nextSubtasks);
+      setDraftSubtaskProgress(Object.fromEntries(nextSubtasks.map((subtask) => [subtask.id, subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)])));
       setParentTask(nextTask?.parent_id ? await fetchTask(nextTask.parent_id) : null);
     } catch (error: any) {
       alert(`Load log book failed: ${error?.message || 'Unknown error'}`);
@@ -81,7 +85,11 @@ export function LogBookPage() {
         progress_percent: nextFinished ? 100 : nextProgress,
         is_finished: nextFinished ?? false,
       });
-      await loadData();
+      const nextTask = await fetchTask(task.id);
+      if (nextTask) {
+        setTask(nextTask);
+        setDraftTaskProgress(nextTask.is_finished ? 100 : (nextTask.progress_percent ?? 0));
+      }
     } catch (error: any) {
       alert(`Update progress failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -97,7 +105,14 @@ export function LogBookPage() {
         progress_percent: nextProgress,
         is_finished: nextProgress >= 100,
       });
-      await loadData();
+      const nextSubtasks = task ? await fetchSubtasks(task.id) : [];
+      setSubtasks(nextSubtasks);
+      setDraftSubtaskProgress(Object.fromEntries(nextSubtasks.map((item) => [item.id, item.is_finished ? 100 : (item.progress_percent ?? 0)])));
+      const nextTask = task ? await fetchTask(task.id) : null;
+      if (nextTask) {
+        setTask(nextTask);
+        setDraftTaskProgress(nextTask.is_finished ? 100 : (nextTask.progress_percent ?? 0));
+      }
     } catch (error: any) {
       alert(`Update sub-task progress failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -297,7 +312,16 @@ export function LogBookPage() {
               {task.parent_id ? (
                 canEditTask ? (
                   <div style={{ display: 'grid', gap: '8px' }}>
-                    <input type="range" min={0} max={100} step={5} value={task.is_finished ? 100 : (task.progress_percent ?? 0)} onChange={(e) => void saveTaskProgress(Number(e.target.value), Number(e.target.value) >= 100)} />
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={draftTaskProgress}
+                      onChange={(e) => setDraftTaskProgress(Number(e.target.value))}
+                      onMouseUp={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
+                      onTouchEnd={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
+                    />
                     <div style={{ fontSize: '12px', color: '#94a3b8' }}>Sub-task progress can be edited here.</div>
                   </div>
                 ) : (
@@ -361,7 +385,16 @@ export function LogBookPage() {
                             <div style={{ padding: '0 18px 14px 66px' }}>
                               {canEditSubtask(subtask) ? (
                                 <div style={{ display: 'grid', gap: '6px' }}>
-                                  <input type="range" min={0} max={100} step={5} value={subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)} onChange={(e) => void saveSubtaskProgress(subtask, Number(e.target.value))} />
+                                  <input
+                                    type="range"
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    value={draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0))}
+                                    onChange={(e) => setDraftSubtaskProgress((prev) => ({ ...prev, [subtask.id]: Number(e.target.value) }))}
+                                    onMouseUp={() => void saveSubtaskProgress(subtask, draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)))}
+                                    onTouchEnd={() => void saveSubtaskProgress(subtask, draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)))}
+                                  />
                                   <div style={{ fontSize: '11px', color: '#94a3b8' }}>{subtask.is_finished ? 'Finished' : `${subtask.progress_percent ?? 0}%`}</div>
                                 </div>
                               ) : (
