@@ -1,5 +1,5 @@
 export type Role = 'admin' | 'member' | 'viewer';
-export type TaskStatus = 'todo' | 'planning' | 'in_progress' | 'internal_review' | 'round_1_wip' | 'round_1_review' | 'round_2_wip' | 'round_2_review' | 'round_3_wip' | 'round_3_review' | 'review' | 'done' | 'cancelled';
+export type TaskStatus = 'todo' | 'planning' | 'in_progress' | 'internal_review' | 'round_1_wip' | 'round_1_review' | 'round_2_wip' | 'round_2_review' | 'round_3_wip' | 'round_3_review' | 'pending_mpfa_pc_nfc' | 'review' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'other';
 
@@ -57,6 +57,7 @@ export const STATUS_META: Record<TaskStatus, { label: string; color: string; bg:
   round_2_review: { label: 'Round 2 Review', color: '#1d4ed8', bg: '#dbeafe' },
   round_3_wip: { label: 'Round 3 WIP', color: '#6d28d9', bg: '#f5f3ff' },
   round_3_review: { label: 'Round 3 Review', color: '#1e40af', bg: '#dbeafe' },
+  pending_mpfa_pc_nfc: { label: 'Pending MPFA/PC for NFC', color: '#92400e', bg: '#fef3c7' },
   review: { label: 'Review', color: '#1d4ed8', bg: '#dbeafe' },
   done: { label: 'Done', color: '#047857', bg: '#d1fae5' },
   cancelled: { label: 'Cancelled', color: '#b91c1c', bg: '#fee2e2' },
@@ -73,6 +74,7 @@ export const TASK_STATUS_OPTIONS: TaskStatus[] = [
   'round_2_review',
   'round_3_wip',
   'round_3_review',
+  'pending_mpfa_pc_nfc',
   'review',
   'done',
   'cancelled',

@@ -42,6 +42,7 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   'Round 2 Review': 'round_2_review',
   'Round 3 WIP': 'round_3_wip',
   'Round 3 Review': 'round_3_review',
+  'Pending MPFA/PC for NFC': 'pending_mpfa_pc_nfc',
   'Planning': 'planning',
   'New': 'todo',
   'Waiting': 'todo',
