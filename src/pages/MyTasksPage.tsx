@@ -43,7 +43,7 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 }
 
 export function MyTasksPage() {
-  const { user } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,8 +112,9 @@ export function MyTasksPage() {
   };
 
   useEffect(() => {
-    if (user) void loadTasks();
-  }, [user]);
+    if (authLoading || !session || !user) return;
+    void loadTasks();
+  }, [authLoading, session, user?.id]);
 
   const filtered = useMemo(() => tasks.filter((task) => {
     const matchesQuery = `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());

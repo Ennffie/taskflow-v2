@@ -9,7 +9,11 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ImportReviewPage } from './pages/ImportReviewPage';
 
 function App() {
-  const { session, profile } = useAuth();
+  const { session, profile, loading } = useAuth();
+
+  if (loading) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '16px', background: '#f8fafc' }}>Loading…</div>;
+  }
 
   if (!session) {
     return <LoginPage />;

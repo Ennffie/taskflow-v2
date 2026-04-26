@@ -62,7 +62,7 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 }
 
 export function TaskListPage() {
-  const { profile } = useAuth();
+  const { profile, session, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -105,7 +105,10 @@ export function TaskListPage() {
     setStatusFilter('all');
   };
 
-  useEffect(() => { void loadTasks(); }, []);
+  useEffect(() => {
+    if (authLoading || !session) return;
+    void loadTasks();
+  }, [authLoading, session, profile?.id]);
 
   const filtered = useMemo(() => tasks.filter((task) => {
     const matchesQuery = `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());
