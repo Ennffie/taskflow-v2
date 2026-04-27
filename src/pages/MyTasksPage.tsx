@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
-import { createLog, deleteLog, fetchLogs, fetchTasks } from '../lib/api';
+import { createLog, deleteLog, fetchLogs, fetchTasks, updateTask } from '../lib/api';
 import { getReportDate } from '../lib/date';
 import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type TaskItem, type TaskStatus } from '../types';
 import { AppShell } from '../components/AppShell';
@@ -49,6 +49,11 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
   return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
 }
 
+type CheckedTaskSnapshot = {
+  progressPercent: number;
+  isFinished: boolean;
+};
+
 export function MyTasksPage() {
   const { user, session, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -68,10 +73,11 @@ export function MyTasksPage() {
 
   // Selected tasks for logging
   const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
+  const [checkedTaskSnapshots, setCheckedTaskSnapshots] = useState<Record<string, CheckedTaskSnapshot>>({});
   const [togglingTaskIds, setTogglingTaskIds] = useState<Set<string>>(new Set());
 
-  const persistCheckedTasks = (nextSet: Set<string>) => {
-    localStorage.setItem('myTasks_checked', JSON.stringify({ date: getReportDate(), tasks: Array.from(nextSet) }));
+  const persistCheckedTasks = (nextSet: Set<string>, nextSnapshots: Record<string, CheckedTaskSnapshot>) => {
+    localStorage.setItem('myTasks_checked', JSON.stringify({ date: getReportDate(), tasks: Array.from(nextSet), snapshots: nextSnapshots }));
   };
 
   const loadTasks = async () => {
@@ -104,6 +110,7 @@ export function MyTasksPage() {
           // Only keep checks from today
           if (parsed.date === today) {
             setCheckedTasks(new Set(parsed.tasks));
+            setCheckedTaskSnapshots(parsed.snapshots ?? {});
           }
         } catch (e) {
           // ignore parse error
@@ -130,6 +137,7 @@ export function MyTasksPage() {
 
     const reportDate = getReportDate();
     const isChecked = checkedTasks.has(taskId);
+    const task = tasks.find((item) => item.id === taskId);
 
     setTogglingTaskIds((prev) => new Set(prev).add(taskId));
     try {
@@ -141,6 +149,14 @@ export function MyTasksPage() {
         if (removableLog) {
           await deleteLog(removableLog.id);
         }
+
+        const snapshot = checkedTaskSnapshots[taskId];
+        if (snapshot) {
+          await updateTask(taskId, {
+            progress_percent: snapshot.progressPercent,
+            is_finished: snapshot.isFinished,
+          });
+        }
       } else {
         await createLog({
           task_id: taskId,
@@ -148,16 +164,28 @@ export function MyTasksPage() {
           event: 'Done',
           category: 'other',
         });
+
+        await updateTask(taskId, {
+          progress_percent: 100,
+          is_finished: true,
+        });
       }
 
       setCheckedTasks(prev => {
         const newSet = new Set(prev);
+        const nextSnapshots = { ...checkedTaskSnapshots };
         if (newSet.has(taskId)) {
           newSet.delete(taskId);
+          delete nextSnapshots[taskId];
         } else {
           newSet.add(taskId);
+          nextSnapshots[taskId] = {
+            progressPercent: task?.progress_percent ?? 0,
+            isFinished: task?.is_finished ?? false,
+          };
         }
-        persistCheckedTasks(newSet);
+        setCheckedTaskSnapshots(nextSnapshots);
+        persistCheckedTasks(newSet, nextSnapshots);
         return newSet;
       });
 
