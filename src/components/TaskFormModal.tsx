@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { createTask, fetchProfiles, updateTask } from '../lib/api';
+import { createTask, createTaskEventLog, fetchProfiles, updateTask } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { STATUS_META, TASK_STATUS_OPTIONS } from '../types';
 import type { Profile, TaskItem, TaskPriority, TaskStatus } from '../types';
@@ -19,6 +19,8 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [todayUpdate, setTodayUpdate] = useState('');
+  const [nextDayFocus, setNextDayFocus] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
@@ -39,6 +41,8 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     const cleanDescription = initialTask.description?.split(/\n\n\[\d{4}-\d{2}-\d{2}\]/)[0] || '';
     setTitle(initialTask.title);
     setDescription(cleanDescription);
+    setTodayUpdate(initialTask.today_update || '');
+    setNextDayFocus(initialTask.next_day_focus || '');
     setStatus(initialTask.status);
     setPriority(initialTask.priority);
     setDueDate(initialTask.due_date || '');
@@ -64,6 +68,15 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
       const nextTags = tagInput.split(',').map((tag) => tag.trim()).filter(Boolean);
 
       if (mode === 'edit' && initialTask) {
+        const logTaskId = initialTask.parent_id ?? initialTask.id;
+        const taskLabel = `${initialTask.parent_id ? 'Subtask' : 'Main Task'} ${title.trim()}`;
+        const previousAssigneeIds = initialTask.assignees.map((assignee) => assignee.id).sort();
+        const nextAssigneeIds = [...assigneeIds].sort();
+        const previousAssigneeNames = initialTask.assignees.map((assignee) => assignee.name).sort();
+        const nextAssigneeNames = profiles.filter((profile) => assigneeIds.includes(profile.id)).map((profile) => profile.name).sort();
+        const previousTags = [...initialTask.tags].sort();
+        const sortedNextTags = [...nextTags].sort();
+
         const logMatch = initialTask.description?.match(/\n\n(\[\d{4}-\d{2}-\d{2}\].*)/s);
         const logEntries = logMatch ? '\n\n' + logMatch[1] : '';
         const finalDescription = description.trim() + logEntries;
@@ -71,6 +84,8 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
         await updateTask(initialTask.id, {
           title: title.trim(),
           description: finalDescription,
+          today_update: todayUpdate.trim() || null,
+          next_day_focus: nextDayFocus.trim() || null,
           status: finalStatus,
           priority,
           due_date: dueDate || null,
@@ -91,10 +106,20 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
             nextTags.map((name) => ({ task_id: initialTask.id, name }))
           );
         }
+
+        if (JSON.stringify(previousAssigneeIds) !== JSON.stringify(nextAssigneeIds)) {
+          await createTaskEventLog(logTaskId, `${taskLabel} assignees: ${previousAssigneeNames.join(', ') || '—'} → ${nextAssigneeNames.join(', ') || '—'}`);
+        }
+
+        if (JSON.stringify(previousTags) !== JSON.stringify(sortedNextTags)) {
+          await createTaskEventLog(logTaskId, `${taskLabel} tags: ${previousTags.join(', ') || '—'} → ${sortedNextTags.join(', ') || '—'}`);
+        }
       } else {
         await createTask({
           title: title.trim(),
           description,
+          today_update: todayUpdate,
+          next_day_focus: nextDayFocus,
           status: finalStatus,
           priority,
           due_date: dueDate || undefined,
@@ -125,6 +150,10 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
         )}
         <Field label="Title"><input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder="e.g. PMC portal redesign" /></Field>
         <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="Context, scope, handoff details" /></Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <Field label="Today Update"><textarea value={todayUpdate} onChange={(e) => setTodayUpdate(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="What was done today" /></Field>
+          <Field label="Next Day Focus"><textarea value={nextDayFocus} onChange={(e) => setNextDayFocus(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="Next working day focus" /></Field>
+        </div>
         {/* Status + Priority in one row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
           <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}>{TASK_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{STATUS_META[value].label}</option>)}</select></Field>

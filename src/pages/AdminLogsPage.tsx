@@ -1,21 +1,92 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Download, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Download, Filter, FolderKanban, Rows3 } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { fetchProfiles, fetchAllLogs } from '../lib/api';
-import { formatDate, formatDateTime } from '../lib/date';
-import type { LogEntry, Profile } from '../types';
+import { fetchProfiles, fetchAllLogs, fetchTasks } from '../lib/api';
+import { buildTaskReportFilename, formatDate, formatDateTime, getReportDate } from '../lib/date';
+import { buildTrackerRows, type TrackerRow } from '../lib/report';
+import { loadXlsx, writeWorkbookFile } from '../lib/xlsx';
+import type { LogEntry, Profile, TaskItem } from '../types';
 import { panelStyle } from './TaskListPage';
 import { useAuth } from '../contexts/AuthContext';
+
+async function exportWorkbook(rows: TrackerRow[], reportDate: string) {
+  const XLSX = await loadXlsx();
+  const workbook = XLSX.utils.book_new();
+
+  const byMember = rows.reduce<Record<string, TrackerRow[]>>((acc, row) => {
+    const key = row.member || 'Unassigned';
+    acc[key] = acc[key] ?? [];
+    acc[key].push(row);
+    return acc;
+  }, {});
+
+  const memberSheetData: (string | number)[][] = [['Tracker by Member'], [], ['Member', 'Main Task', 'Subtask', 'Status', 'Progress', 'Due Date', 'Today Update', 'Next Day Focus']];
+  Object.entries(byMember).forEach(([member, memberRows]) => {
+    memberSheetData.push([member, '', '', '', '', '', '', '']);
+    memberRows.forEach((row) => {
+      memberSheetData.push(['', row.mainTask, row.subtask, row.status, row.progress, row.dueDate, row.todayUpdate, row.nextDayFocus]);
+    });
+  });
+  const memberSheet = XLSX.utils.aoa_to_sheet(memberSheetData);
+  memberSheet['!merges'] = [XLSX.utils.decode_range('A1:H1')];
+  memberSheet['!cols'] = [
+    { wch: 16 },
+    { wch: 24 },
+    { wch: 24 },
+    { wch: 16 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 34 },
+    { wch: 34 },
+  ];
+  XLSX.utils.book_append_sheet(workbook, memberSheet, 'Tracker by Member');
+
+  const byTask = rows.reduce<Record<string, TrackerRow[]>>((acc, row) => {
+    acc[row.mainTask] = acc[row.mainTask] ?? [];
+    acc[row.mainTask].push(row);
+    return acc;
+  }, {});
+
+  const taskSheetData: (string | number)[][] = [['Tracker by Task'], [], ['Order', 'Main Task', 'Main Task Status', 'Main Task Progress', 'Main Task Due Date', 'Subtask', 'Member', 'Subtask Status', 'Subtask Progress', 'Subtask Due Date', 'Today Update', 'Next Day Focus']];
+  Object.entries(byTask).forEach(([mainTask, taskRows], index) => {
+    const first = taskRows[0];
+    taskSheetData.push([String(index + 1).padStart(2, '0'), mainTask, first.mainTaskStatus ?? '', first.mainTaskProgress ?? '', first.mainTaskDueDate ?? '', '', '', '', '', '', '', '']);
+    taskRows.forEach((row) => {
+      taskSheetData.push(['', '', '', '', '', row.subtask, row.member, row.status, row.progress, row.dueDate, row.todayUpdate, row.nextDayFocus]);
+    });
+  });
+  const taskSheet = XLSX.utils.aoa_to_sheet(taskSheetData);
+  taskSheet['!merges'] = [XLSX.utils.decode_range('A1:L1')];
+  taskSheet['!cols'] = [
+    { wch: 8 },
+    { wch: 24 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 24 },
+    { wch: 16 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 34 },
+    { wch: 34 },
+  ];
+  XLSX.utils.book_append_sheet(workbook, taskSheet, 'Tracker by Task');
+
+  await writeWorkbookFile(workbook, buildTaskReportFilename(reportDate));
+}
 
 export function AdminLogsPage() {
   const { profile } = useAuth();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState<string>(getReportDate());
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [viewMode, setViewMode] = useState<'grouped' | 'raw'>('grouped');
 
   const isAdmin = profile?.role === 'admin';
 
@@ -25,11 +96,13 @@ export function AdminLogsPage() {
     setLoading(true);
     Promise.all([
       fetchAllLogs(),
-      fetchProfiles()
+      fetchProfiles(),
+      fetchTasks(),
     ])
-      .then(([logsData, profilesData]) => {
+      .then(([logsData, profilesData, tasksData]) => {
         setLogs(logsData);
         setProfiles(profilesData);
+        setTasks(tasksData);
       })
       .catch((error) => alert(`Load logs failed: ${error.message}`))
       .finally(() => setLoading(false));
@@ -61,6 +134,62 @@ export function AdminLogsPage() {
     return grouped;
   }, [filteredLogs]);
 
+  const groupedTaskLogs = useMemo(() => {
+    const tasksById = new Map(tasks.map((task) => [task.id, task]));
+    const grouped = new Map<string, {
+      mainTaskId: string;
+      mainTaskTitle: string;
+      mainTaskStatus: string;
+      mainTaskProgress: string;
+      mainTaskDueDate: string;
+      items: Array<{
+        id: string;
+        createdAt: string;
+        actorName: string;
+        category: string;
+        event: string;
+        sourceTaskTitle: string;
+        sourceIsSubtask: boolean;
+      }>;
+    }>();
+
+    filteredLogs.forEach((log) => {
+      const sourceTask = tasksById.get(log.task_id);
+      if (!sourceTask) return;
+      const mainTask = sourceTask.parent_id ? tasksById.get(sourceTask.parent_id) : sourceTask;
+      if (!mainTask) return;
+
+      const key = mainTask.id;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          mainTaskId: mainTask.id,
+          mainTaskTitle: mainTask.title,
+          mainTaskStatus: mainTask.status,
+          mainTaskProgress: `${mainTask.is_finished ? 100 : mainTask.progress_percent ?? 0}%`,
+          mainTaskDueDate: mainTask.due_date ?? '',
+          items: [],
+        });
+      }
+
+      grouped.get(key)?.items.push({
+        id: log.id,
+        createdAt: log.created_at,
+        actorName: log.created_by_profile?.name || 'Unknown',
+        category: log.category,
+        event: log.event,
+        sourceTaskTitle: sourceTask.title,
+        sourceIsSubtask: Boolean(sourceTask.parent_id),
+      });
+    });
+
+    return [...grouped.values()]
+      .map((group) => ({
+        ...group,
+        items: group.items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+      }))
+      .sort((a, b) => a.mainTaskTitle.localeCompare(b.mainTaskTitle));
+  }, [filteredLogs, tasks]);
+
   const goToPreviousDay = () => {
     const date = new Date(selectedDate);
     date.setDate(date.getDate() - 1);
@@ -74,33 +203,13 @@ export function AdminLogsPage() {
   };
 
   const goToToday = () => {
-    setSelectedDate(new Date().toISOString().slice(0, 10));
+    setSelectedDate(getReportDate());
   };
 
-  const exportToCSV = () => {
-    const headers = ['Date', 'User', 'Task ID', 'Category', 'Event', 'Time Spent', 'Created At'];
-    const rows = filteredLogs.map(log => {
-      const user = profiles.find(p => p.id === log.created_by);
-      return [
-        log.date,
-        user?.name || 'Unknown',
-        log.task_id,
-        log.category,
-        log.event.replace(/"/g, '""'),
-        log.time_spent || '',
-        log.created_at
-      ];
-    });
-    
-    const csv = [headers, ...rows]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
-      .join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `logs-${selectedDate}.csv`;
-    link.click();
+  const trackerRows = useMemo(() => buildTrackerRows(tasks, logs, selectedDate, selectedUser), [tasks, logs, selectedDate, selectedUser]);
+
+  const exportToXlsx = async () => {
+    await exportWorkbook(trackerRows, selectedDate);
   };
 
   const generateCalendarDays = () => {
@@ -252,6 +361,42 @@ export function AdminLogsPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+            <div style={{ display: 'flex', gap: '8px', marginRight: '10px' }}>
+              <button
+                onClick={() => setViewMode('grouped')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: viewMode === 'grouped' ? '#111827' : '#f3f4f6',
+                  color: viewMode === 'grouped' ? '#fff' : '#475569',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                <FolderKanban size={14} /> Grouped
+              </button>
+              <button
+                onClick={() => setViewMode('raw')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: viewMode === 'raw' ? '#111827' : '#f3f4f6',
+                  color: viewMode === 'raw' ? '#fff' : '#475569',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                <Rows3 size={14} /> Raw Logs
+              </button>
+            </div>
             <Filter size={16} color="#6b7280" />
             <select
               value={selectedUser}
@@ -427,18 +572,23 @@ export function AdminLogsPage() {
               }}
             >
               <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827', marginBottom: '8px' }}>
-                Export Report
+                Export XLSX Report
               </div>
               <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>
-                Export logs for <strong>{formatDate(selectedDate)}</strong> 
+                Export tracker report for <strong>{formatDate(selectedDate)}</strong> 
                 {selectedUser !== 'all' && (
                   <span> - {profiles.find(p => p.id === selectedUser)?.name}</span>
                 )}
               </p>
+              <div style={{ fontSize: '13px', color: '#475569', background: '#f8fafc', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px' }}>
+                File name: <strong>{buildTaskReportFilename(selectedDate)}</strong><br />
+                Sheet 1: Tracker by Member<br />
+                Sheet 2: Tracker by Task
+              </div>
               
               <div style={{ display: 'grid', gap: '10px' }}>
                 <button
-                  onClick={() => { exportToCSV(); setShowExport(false); }}
+                  onClick={() => { exportToXlsx(); setShowExport(false); }}
                   style={{
                     padding: '12px 16px',
                     borderRadius: '10px',
@@ -448,7 +598,7 @@ export function AdminLogsPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  Export as CSV
+                  Export XLSX
                 </button>
                 <button
                   onClick={() => setShowExport(false)}
@@ -471,6 +621,56 @@ export function AdminLogsPage() {
         <section style={{ display: 'grid', gap: '16px' }}>
           {loading ? (
             <div style={panelStyle}>Loading...</div>
+          ) : viewMode === 'grouped' ? groupedTaskLogs.length === 0 ? (
+            <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}>
+              <p>No grouped task logs found for this date.</p>
+            </div>
+          ) : (
+            groupedTaskLogs.map((group) => (
+              <div key={group.mainTaskId} style={panelStyle}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  marginBottom: '16px',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid #f1f5f9',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: '#111827' }}>{group.mainTaskTitle}</div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      <span style={{ padding: '4px 8px', borderRadius: '999px', background: '#f3f4f6', color: '#475569', fontSize: '12px', fontWeight: 700 }}>{group.mainTaskStatus}</span>
+                      <span style={{ padding: '4px 8px', borderRadius: '999px', background: '#ede9fe', color: '#6d28d9', fontSize: '12px', fontWeight: 700 }}>{group.mainTaskProgress}</span>
+                      {group.mainTaskDueDate ? (
+                        <span style={{ padding: '4px 8px', borderRadius: '999px', background: '#f8fafc', color: '#475569', fontSize: '12px', fontWeight: 700 }}>Due {formatDate(group.mainTaskDueDate)}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 700 }}>{group.items.length} update{group.items.length !== 1 ? 's' : ''}</div>
+                </div>
+
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {group.items.map((item) => (
+                    <div key={item.id} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #eef2f7' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#111827' }}>{item.actorName}</span>
+                          {item.sourceIsSubtask ? (
+                            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', padding: '2px 8px', borderRadius: '999px', background: '#ede9fe', color: '#6d28d9' }}>Subtask · {item.sourceTaskTitle}</span>
+                          ) : (
+                            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', padding: '2px 8px', borderRadius: '999px', background: '#f3f4f6', color: '#475569' }}>Main Task</span>
+                          )}
+                          <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', padding: '2px 8px', borderRadius: '999px', background: '#fef3c7', color: '#92400e' }}>{item.category}</span>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#9ca3af' }}>{formatDateTime(item.createdAt)}</span>
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#111827', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{item.event}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
           ) : Object.keys(logsByUser).length === 0 ? (
             <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}>
               <p>No logs found for this date.</p>

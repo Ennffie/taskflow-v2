@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
+import { readWorkbookFromFile, sheetToJsonRows } from '../lib/xlsx';
 import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type TaskItem, type TaskStatus } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
@@ -408,9 +409,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     setError(null);
     
     try {
-      const buffer = await file.arrayBuffer();
-      const XLSX = await import('xlsx');
-      const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+      const wb = await readWorkbookFromFile(file);
       setWorkbook(wb);
       
       const sheets = wb.SheetNames;
@@ -432,10 +431,8 @@ function ImportModal({ onClose }: { onClose: () => void }) {
 
   const parseSheet = (wb: any, sheetName: string) => {
     setParsing(true);
-    
-    import('xlsx').then(XLSX => {
-      const worksheet = wb.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+    sheetToJsonRows(wb, sheetName).then((data: any) => {
       
       // Parse rows
       const parsed: ImportRow[] = [];

@@ -16,6 +16,8 @@ export interface TaskItem {
   is_focus?: boolean;
   title: string;
   description: string | null;
+  today_update?: string | null;
+  next_day_focus?: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;

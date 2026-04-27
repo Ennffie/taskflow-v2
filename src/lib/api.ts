@@ -1,5 +1,121 @@
 import { supabase } from './supabase';
+import { getReportDate } from './date';
 import type { LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
+
+type TaskRecord = {
+  id: string;
+  parent_id?: string | null;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  due_date?: string | null;
+  is_focus?: boolean | null;
+  progress_percent?: number | null;
+  round_number?: number | null;
+  is_finished?: boolean | null;
+  today_update?: string | null;
+  next_day_focus?: string | null;
+};
+
+function formatTaskFieldValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return String(value);
+}
+
+function buildTaskUpdateEvents(before: TaskRecord, after: Partial<TaskRecord>): string[] {
+  const targetLabel = before.parent_id ? `Subtask ${after.title ?? before.title}` : `Main Task ${after.title ?? before.title}`;
+  const events: string[] = [];
+
+  const pushChange = (label: string, beforeValue: unknown, afterValue: unknown) => {
+    if (beforeValue === afterValue) return;
+    events.push(`${targetLabel} ${label}: ${formatTaskFieldValue(beforeValue)} → ${formatTaskFieldValue(afterValue)}`);
+  };
+
+  if (after.title !== undefined && after.title !== before.title) {
+    events.push(`${before.parent_id ? 'Subtask' : 'Main Task'} renamed: ${before.title} → ${after.title}`);
+  }
+  if (after.status !== undefined) pushChange('status', before.status, after.status);
+  if (after.priority !== undefined) pushChange('priority', before.priority, after.priority);
+  if (after.due_date !== undefined) pushChange('due date', before.due_date ?? null, after.due_date ?? null);
+  if (after.is_focus !== undefined) pushChange('focus', before.is_focus ?? false, after.is_focus);
+  if (after.progress_percent !== undefined) pushChange('progress', before.progress_percent ?? 0, after.progress_percent);
+  if (after.round_number !== undefined) pushChange('round', before.round_number ?? 1, after.round_number);
+  if (after.is_finished !== undefined) pushChange('finished', before.is_finished ?? false, after.is_finished);
+  if (after.today_update !== undefined && after.today_update !== before.today_update) {
+    events.push(`${targetLabel} Today Update edited`);
+  }
+  if (after.next_day_focus !== undefined && after.next_day_focus !== before.next_day_focus) {
+    events.push(`${targetLabel} Next Day Focus edited`);
+  }
+
+  return events;
+}
+
+async function createAutoEventLog(params: {
+  actorId: string | null | undefined;
+  taskId: string;
+  date?: string;
+  event: string;
+}) {
+  if (!params.actorId || !params.event.trim()) return;
+  const { error } = await supabase.from('log_entries').insert({
+    task_id: params.taskId,
+    date: params.date ?? getReportDate(),
+    event: params.event,
+    category: 'other',
+    created_by: params.actorId,
+  });
+  if (error) throw error;
+}
+
+export async function createTaskEventLog(taskId: string, event: string, date?: string) {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  await createAutoEventLog({
+    actorId: userId,
+    taskId,
+    date,
+    event,
+  });
+}
+
+export async function updateTaskAssignees(taskId: string, assigneeIds: string[]) {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
+  const [{ data: task, error: taskError }, { data: currentAssignees, error: assigneeError }, { data: profiles, error: profilesError }] = await Promise.all([
+    supabase.from('tasks').select('id, parent_id, title').eq('id', taskId).single(),
+    supabase.from('task_assignees').select('user_id').eq('task_id', taskId),
+    supabase.from('profiles').select('id, name'),
+  ]);
+
+  if (taskError || !task) throw taskError ?? new Error('Task not found');
+  if (assigneeError) throw assigneeError;
+  if (profilesError) throw profilesError;
+
+  const previousIds = (currentAssignees ?? []).map((item: any) => item.user_id).sort();
+  const nextIds = [...assigneeIds].sort();
+  if (JSON.stringify(previousIds) === JSON.stringify(nextIds)) return;
+
+  await supabase.from('task_assignees').delete().eq('task_id', taskId);
+  if (assigneeIds.length > 0) {
+    const { error: insertError } = await supabase.from('task_assignees').insert(
+      assigneeIds.map((uid) => ({ task_id: taskId, user_id: uid })),
+    );
+    if (insertError) throw insertError;
+  }
+
+  const profileMap = new Map((profiles ?? []).map((profile: any) => [profile.id, profile.name]));
+  const previousNames = previousIds.map((id) => profileMap.get(id)).filter(Boolean).join(', ') || '—';
+  const nextNames = nextIds.map((id) => profileMap.get(id)).filter(Boolean).join(', ') || '—';
+
+  await createAutoEventLog({
+    actorId: userId,
+    taskId: task.parent_id ?? task.id,
+    event: `${task.parent_id ? `Subtask ${task.title}` : `Main Task ${task.title}`} assignees: ${previousNames} → ${nextNames}`,
+  });
+}
 
 async function attachProfilesToLogs(logs: LogEntry[]): Promise<LogEntry[]> {
   if (!logs.length) return logs;
@@ -223,6 +339,8 @@ export async function fetchTasks(): Promise<TaskItem[]> {
       is_focus: t.is_focus ?? false,
       title: t.title,
       description: t.description,
+      today_update: t.today_update ?? null,
+      next_day_focus: t.next_day_focus ?? null,
       status: t.status,
       priority: t.priority,
       due_date: t.due_date,
@@ -269,6 +387,8 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
     is_focus: task.is_focus ?? false,
     title: task.title,
     description: task.description,
+    today_update: task.today_update ?? null,
+    next_day_focus: task.next_day_focus ?? null,
     status: task.status,
     priority: task.priority,
     due_date: task.due_date,
@@ -316,6 +436,8 @@ export async function fetchAllLogs(): Promise<LogEntry[]> {
 export async function createTask(payload: {
   title: string;
   description: string;
+  today_update?: string;
+  next_day_focus?: string;
   status: TaskStatus;
   priority: TaskPriority;
   due_date?: string;
@@ -336,6 +458,8 @@ export async function createTask(payload: {
     .insert({
       title: payload.title,
       description: payload.description,
+      today_update: payload.today_update?.trim() || null,
+      next_day_focus: payload.next_day_focus?.trim() || null,
       status: payload.status,
       priority: payload.priority,
       due_date: payload.due_date ?? null,
@@ -364,6 +488,12 @@ export async function createTask(payload: {
     );
   }
 
+  await createAutoEventLog({
+    actorId: userId,
+    taskId: task.parent_id ?? task.id,
+    event: task.parent_id ? `Subtask created: ${task.title}` : 'Main Task created',
+  });
+
   return task;
 }
 
@@ -372,6 +502,8 @@ export async function updateTask(
   payload: Partial<{
     title: string;
     description: string;
+    today_update: string | null;
+    next_day_focus: string | null;
     status: TaskStatus;
     priority: TaskPriority;
     due_date: string | null;
@@ -386,11 +518,28 @@ export async function updateTask(
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
 
+  const { data: existingTask, error: existingError } = await supabase
+    .from('tasks')
+    .select('id, parent_id, title, status, priority, due_date, is_focus, progress_percent, round_number, is_finished, today_update, next_day_focus')
+    .eq('id', taskId)
+    .single();
+
+  if (existingError || !existingTask) throw existingError ?? new Error('Task not found');
+
   const { error } = await supabase
     .from('tasks')
     .update({ ...payload, updated_at: new Date().toISOString(), updated_by: userId })
     .eq('id', taskId);
   if (error) throw error;
+
+  const events = buildTaskUpdateEvents(existingTask as TaskRecord, payload as Partial<TaskRecord>);
+  for (const event of events) {
+    await createAutoEventLog({
+      actorId: userId,
+      taskId: existingTask.parent_id ?? existingTask.id,
+      event,
+    });
+  }
 }
 
 export async function fetchSubtasks(parentTaskId: string): Promise<TaskItem[]> {

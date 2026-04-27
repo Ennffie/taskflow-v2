@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { fetchProfiles, inviteMember } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Profile, Role } from '../types';
 import { panelStyle } from './TaskListPage';
+import { FileSpreadsheet, FolderKanban, ScrollText, Users } from 'lucide-react';
 
 export function SettingsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -101,6 +103,18 @@ export function SettingsPage() {
           <div style={{ fontSize: '36px', fontWeight: 800, color: '#111827' }}>Settings</div>
           <p style={{ fontSize: '15px', color: '#6b7280', lineHeight: 1.7, marginTop: '10px' }}>Keep access simple in v1. Only role changes live here for now.</p>
         </section>
+
+        {isAdmin && (
+          <section style={panelStyle}>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#111827', marginBottom: '14px' }}>Trackers</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+              <TrackerLink to="/tracker/member" title="Tracker by Member" desc="People management view" icon={<Users size={20} color="#7c3aed" />} />
+              <TrackerLink to="/tracker/task" title="Tracker by Task" desc="Main task group view" icon={<FolderKanban size={20} color="#7c3aed" />} />
+              <TrackerLink to="/review-export" title="Review Before Export" desc="Warnings + final cleanup" icon={<FileSpreadsheet size={20} color="#7c3aed" />} />
+              <TrackerLink to="/team-logs" title="Team Logs" desc="Admin log history + export" icon={<ScrollText size={20} color="#7c3aed" />} />
+            </div>
+          </section>
+        )}
         <section style={{ ...panelStyle, padding: '12px' }}>
           {loading ? <div style={{ padding: '24px' }}>Loading users...</div> : profiles.map((profile) => (
             <div key={profile.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: '16px', alignItems: 'center', padding: '18px 16px', borderBottom: '1px solid #f3f4f6' }} className="settings-row">
@@ -264,5 +278,19 @@ export function SettingsPage() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function TrackerLink({ to, title, desc, icon }: { to: string; title: string; desc: string; icon: React.ReactNode }) {
+  return (
+    <Link to={to} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px 18px', background: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          {icon}
+          <div style={{ fontSize: '16px', fontWeight: 800, color: '#111827' }}>{title}</div>
+        </div>
+        <div style={{ fontSize: '13px', color: '#6b7280' }}>{desc}</div>
+      </div>
+    </Link>
   );
 }

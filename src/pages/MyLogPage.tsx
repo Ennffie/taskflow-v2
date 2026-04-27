@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Target } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { generateTodayLogs, fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
-import { formatDate, formatDateTime } from '../lib/date';
+import { addDays, formatDate, formatDateTime, getReportDate } from '../lib/date';
 import type { LogEntry, TaskItem, LogCategory, TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
 
@@ -11,7 +11,7 @@ export function MyLogPage() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'today' | 'tomorrow'>('today');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState<string>(getReportDate());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTaskSelector, setShowTaskSelector] = useState(false);
   const [showDailyLogModal, setShowDailyLogModal] = useState(false);
@@ -85,8 +85,8 @@ export function MyLogPage() {
 
   // Get tomorrow's date
   const tomorrowDate = useMemo(() => {
-    return new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-  }, []);
+    return addDays(selectedDate, 1);
+  }, [selectedDate]);
 
   // For Tomorrow tab: get focus tasks with their latest log content
   const tomorrowData = useMemo(() => {
@@ -126,7 +126,7 @@ export function MyLogPage() {
   };
 
   const goToToday = () => {
-    setSelectedDate(new Date().toISOString().slice(0, 10));
+    setSelectedDate(getReportDate());
   };
 
   const handleEditClick = (log: LogEntry) => {
@@ -204,8 +204,8 @@ export function MyLogPage() {
     if (!selectedTask) return;
     
     setSaving(true);
-    const today = new Date().toISOString().slice(0, 10);
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const today = getReportDate();
+    const tomorrow = addDays(today, 1);
     
     try {
       // 1. Create log for today's work
@@ -219,26 +219,28 @@ export function MyLogPage() {
           file_name: '',
           next_status: ''
         });
+        await updateTask(selectedTask.id, { today_update: todayWork.trim() });
       }
 
-      // 2. Create log for tomorrow's work and mark task as focus
+      // 2. Create log for next day focus and mark task as focus
       if (tomorrowWork.trim()) {
         await createLog({
           task_id: selectedTask.id,
           date: tomorrow,
-          event: `[What I will focus on]\n${tomorrowWork.trim()}`,
+          event: `[Next Day Focus]\n${tomorrowWork.trim()}`,
           category: 'other',
           time_spent: '',
           file_name: '',
           next_status: ''
         });
         await updateTask(selectedTask.id, { is_focus: true });
+        await updateTask(selectedTask.id, { next_day_focus: tomorrowWork.trim() });
       }
 
       // 3. Update task description
       const currentDesc = selectedTask.description || '';
       const todayEntry = todayWork.trim() ? `[${today}] What I have done:\n${todayWork.trim()}` : '';
-      const tomorrowEntry = tomorrowWork.trim() ? `[${tomorrow}] What I will focus on:\n${tomorrowWork.trim()}` : '';
+      const tomorrowEntry = tomorrowWork.trim() ? `[${tomorrow}] Next Day Focus:\n${tomorrowWork.trim()}` : '';
       const newDesc = [currentDesc, todayEntry, tomorrowEntry].filter(Boolean).join('\n\n');
       
       if (todayWork.trim() || tomorrowWork.trim()) {
@@ -326,7 +328,7 @@ export function MyLogPage() {
                 opacity: genLoading ? 0.6 : 1,
               }}
             >
-              {genLoading ? 'Generating...' : "Gen Today's Logs"}
+              {genLoading ? 'Generating...' : "Generate Today's Logs"}
             </button>
           </div>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0' }}>
@@ -367,7 +369,7 @@ export function MyLogPage() {
                 transition: 'all 0.2s',
               }}
             >
-              🎯 Tomorrow
+              🎯 Next Day
             </button>
           </div>
           
@@ -433,7 +435,7 @@ export function MyLogPage() {
                 </div>
                 <div style={{ padding: '14px 16px', background: '#ede9fe', borderRadius: '12px' }}>
                   <div style={{ fontSize: '24px', fontWeight: 800, color: '#6d28d9' }}>{genSummary.tomorrowCount}</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600 }}>Tomorrow focus</div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600 }}>Next Day Focus</div>
                 </div>
               </div>
               
@@ -453,8 +455,8 @@ export function MyLogPage() {
                     }
                     setSaving(true);
                     try {
-                      const today = new Date().toISOString().slice(0, 10);
-                      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+                      const today = getReportDate();
+                      const tomorrow = addDays(today, 1);
                       if (todayWork.trim()) {
                         await createLog({
                           task_id: selectedTask.id,
@@ -465,18 +467,20 @@ export function MyLogPage() {
                           file_name: '',
                           next_status: ''
                         });
+                        await updateTask(selectedTask.id, { today_update: todayWork.trim() });
                       }
                       if (tomorrowWork.trim()) {
                         await createLog({
                           task_id: selectedTask.id,
                           date: tomorrow,
-                          event: `[What I will focus on]\n${tomorrowWork.trim()}`,
+                          event: `[Next Day Focus]\n${tomorrowWork.trim()}`,
                           category: 'other',
                           time_spent: '',
                           file_name: '',
                           next_status: ''
                         });
                         await updateTask(selectedTask.id, { is_focus: true });
+                        await updateTask(selectedTask.id, { next_day_focus: tomorrowWork.trim() });
                       }
                       const updatedLogs = await fetchMyLogs();
                       setLogs(updatedLogs);
@@ -513,9 +517,9 @@ export function MyLogPage() {
                   <textarea value={todayWork} onChange={(e) => setTodayWork(e.target.value)} placeholder={`Example:\n- Completed Login page design\n- Reviewed PR #123`} style={{ width: '100%', minHeight: '120px', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What I will focus on tomorrow:</label>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Next Day Focus:</label>
                   <textarea value={tomorrowWork} onChange={(e) => setTomorrowWork(e.target.value)} placeholder={`Example:\n- Start on Dashboard\n- Client meeting at 2pm`} style={{ width: '100%', minHeight: '120px', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', resize: 'vertical' }} />
-                  <p style={{ fontSize: '12px', color: '#7c3aed', marginTop: '6px' }}>💡 What I will focus on will automatically mark this task as Focus</p>
+                  <p style={{ fontSize: '12px', color: '#7c3aed', marginTop: '6px' }}>💡 Next Day Focus 會自動將呢個 task 標記做 Focus</p>
                 </div>
               </div>
 
