@@ -103,44 +103,42 @@ export function TaskCard({
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
         {/* Checkbox (My Tasks only) */}
         {showCheckbox && (
-          <button
-            type="button"
-            aria-label={isSelected ? 'Uncheck task' : 'Check task'}
-            onClick={(e) => onToggleSelect?.(task.id, e)}
-            style={{ 
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect?.(task.id, e);
+            }}
+            style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '44px',
-              height: '44px',
-              margin: '-10px 0 -10px -10px',
-              padding: 0,
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
+              width: '36px',
+              height: '36px',
               flexShrink: 0,
+              cursor: 'pointer',
+              zIndex: 2,
+              position: 'relative',
             }}
           >
-            <span
+            <div
               style={{
-                width: '22px',
-                height: '22px',
+                width: '28px',
+                height: '28px',
                 borderRadius: '6px',
                 border: isSelected ? '2px solid #7c3aed' : '2px solid #e2e8f0',
                 background: isSelected ? '#7c3aed' : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxSizing: 'border-box',
               }}
             >
               {isSelected && (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               )}
-            </span>
-          </button>
+            </div>
+          </div>
         )}
 
         {/* Primary Assignee Avatar */}
