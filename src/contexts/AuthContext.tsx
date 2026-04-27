@@ -24,13 +24,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error] = useState<string | null>(null);
 
   const loadProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, name, email, role')
-      .eq('id', userId)
-      .single();
-    if (data) setProfile(data as Profile);
-    else setProfile(null);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, email, role')
+        .eq('id', userId)
+        .single();
+      if (data) setProfile(data as Profile);
+      else setProfile(null);
+    } catch {
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
@@ -43,28 +47,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setSession(data.session);
         setUser(data.session?.user ?? null);
+        setLoading(false);
 
         if (data.session?.user) {
-          await loadProfile(data.session.user.id);
+          void loadProfile(data.session.user.id);
+        } else {
+          setProfile(null);
         }
-      } finally {
-        if (mounted) setLoading(false);
+      } catch {
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        }
       }
     };
 
     void init();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+      setLoading(false);
 
       if (nextSession?.user) {
-        await loadProfile(nextSession.user.id);
+        void loadProfile(nextSession.user.id);
       } else {
         setProfile(null);
       }
-
-      setLoading(false);
     });
 
     return () => {
@@ -86,7 +97,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) return { error: error.message };
         setUser(data.user);
         setSession(data.session);
-        if (data.user) await loadProfile(data.user.id);
+        setLoading(false);
+        if (data.user) {
+          void loadProfile(data.user.id);
+        } else {
+          setProfile(null);
+        }
         return {};
       } catch (err: any) {
         return { error: err.message || 'Sign in failed' };
