@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Target } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
+import { TaskFormModal } from '../components/TaskFormModal';
 import { generateTodayLogs, fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
 import { addDays, formatDate, formatDateTime, getReportDate } from '../lib/date';
 import type { LogEntry, TaskItem, LogCategory, TaskStatus } from '../types';
@@ -16,7 +17,9 @@ export function MyLogPage() {
   const [showTaskSelector, setShowTaskSelector] = useState(false);
   const [showDailyLogModal, setShowDailyLogModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showTaskEditModal, setShowTaskEditModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [editingLog, setEditingLog] = useState<LogEntry | null>(null);
   const [editEvent, setEditEvent] = useState('');
   const [editCategory, setEditCategory] = useState<LogCategory>('design');
@@ -138,6 +141,19 @@ export function MyLogPage() {
     setEditFileName(log.file_name || '');
     // next_status not available in LogEntry type
     setShowEditModal(true);
+  };
+
+  const handleTaskEditClick = (task: TaskItem) => {
+    setEditingTask(task);
+    setShowTaskEditModal(true);
+  };
+
+  const handleTaskEdited = async () => {
+    const [updatedLogs, updatedTasks] = await Promise.all([fetchMyLogs(), fetchTasks()]);
+    setLogs(updatedLogs);
+    setTasks(updatedTasks);
+    setShowTaskEditModal(false);
+    setEditingTask(null);
   };
 
   const handleSaveEdit = async () => {
@@ -557,6 +573,15 @@ export function MyLogPage() {
           </div>
         )}
 
+        {showTaskEditModal && editingTask && (
+          <TaskFormModal
+            onClose={() => { setShowTaskEditModal(false); setEditingTask(null); }}
+            onCreated={handleTaskEdited}
+            mode="edit"
+            initialTask={editingTask}
+          />
+        )}
+
         {/* Edit Log Modal - Updated to match LogFormModal */}
         {showEditModal && editingLog && (
           <div onClick={() => setShowEditModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
@@ -793,20 +818,38 @@ export function MyLogPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Task Name */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
-                        {task.title}
-                      </span>
-                      <span style={{ 
-                        fontSize: '12px', 
-                        fontWeight: 600,
-                        color: '#7c3aed',
-                        background: '#ede9fe',
-                        padding: '2px 8px',
-                        borderRadius: '6px'
-                      }}>
-                        Focus
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
+                          {task.title}
+                        </span>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          fontWeight: 600,
+                          color: '#7c3aed',
+                          background: '#ede9fe',
+                          padding: '2px 8px',
+                          borderRadius: '6px'
+                        }}>
+                          Focus
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleTaskEditClick(task)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          border: '1px solid #d8b4fe',
+                          background: '#fff',
+                          color: '#7c3aed',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        Edit
+                      </button>
                     </div>
                     {/* Log Content / Description */}
                     {content && (
