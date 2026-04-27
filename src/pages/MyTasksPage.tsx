@@ -178,11 +178,10 @@ export function MyTasksPage() {
   }), [tasks, query, statusFilter]);
 
   const groupedTasks = useMemo(() => {
-    const rootTasks = filtered.filter(t => !t.parent_id);
-    const focusTasks = rootTasks.filter(t => t.is_focus).sort(sortByDueDate);
-    const overdueTasks = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
-    const otherTasks = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
-    const doneTasks = rootTasks.filter(t => t.status === 'done').sort(sortByDueDate);
+    const focusTasks = filtered.filter(t => t.is_focus).sort(sortByDueDate);
+    const overdueTasks = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
+    const otherTasks = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
+    const doneTasks = filtered.filter(t => t.status === 'done').sort(sortByDueDate);
 
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups["Focus"] = focusTasks;
@@ -194,10 +193,9 @@ export function MyTasksPage() {
   }, [filtered]);
 
   // Stats for compact cards
-  const rootTasks = filtered.filter(t => !t.parent_id);
-  const focusCount = rootTasks.filter(t => t.is_focus).length;
-  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
-  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const focusCount = filtered.filter(t => t.is_focus).length;
+  const overdueCount = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const otherCount = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -346,16 +344,22 @@ export function MyTasksPage() {
 
                   {isExpanded && groupTasks.map((task, taskIndex) => {
                     return (
-                      <TaskCard 
-                        key={task.id}
-                        task={task}
-                        showCheckbox={true}
-                        isSelected={checkedTasks.has(task.id)}
-                        onToggleSelect={(taskId, e) => { void toggleTaskCheck(taskId, e); }}
-                        showAssignees={false}
-                        isFocusSection={isFocusSection}
-                        isEvenIndex={taskIndex % 2 === 0}
-                      />
+                      <div key={task.id} style={task.parent_id ? { paddingLeft: '16px', borderLeft: '3px solid #e2e8f0', marginLeft: '0px' } : {}}>
+                        {task.parent_id && (
+                          <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, padding: '4px 14px 0px', background: taskIndex % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                            Subtask
+                          </div>
+                        )}
+                        <TaskCard 
+                          task={task}
+                          showCheckbox={true}
+                          isSelected={checkedTasks.has(task.id)}
+                          onToggleSelect={(taskId, e) => { void toggleTaskCheck(taskId, e); }}
+                          showAssignees={false}
+                          isFocusSection={isFocusSection}
+                          isEvenIndex={taskIndex % 2 === 0}
+                        />
+                      </div>
                     );
                   })}
                 </div>
