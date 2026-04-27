@@ -78,10 +78,22 @@ export function MyTasksPage() {
     setLoading(true);
     try {
       const allTasks = await fetchTasks();
-      // Filter to only show tasks assigned to current user
-      const myTasks = allTasks.filter(t =>
-        t.assignees.some(a => a.id === user?.id)
-      );
+      // Filter: tasks directly assigned to user + subtasks of those tasks
+      const myTaskIds = new Set<string>();
+      for (const t of allTasks) {
+        if (t.assignees.some(a => a.id === user?.id)) {
+          myTaskIds.add(t.id);
+          // Also include subtasks of this task
+          if (!t.parent_id) {
+            for (const st of allTasks) {
+              if (st.parent_id === t.id) {
+                myTaskIds.add(st.id);
+              }
+            }
+          }
+        }
+      }
+      const myTasks = allTasks.filter(t => myTaskIds.has(t.id));
       setTasks(myTasks);
       // Load checked state from localStorage
       const savedChecked = localStorage.getItem('myTasks_checked');
