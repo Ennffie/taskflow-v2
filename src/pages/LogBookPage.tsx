@@ -87,11 +87,15 @@ export function LogBookPage() {
         progress_percent: nextFinished ? 100 : nextProgress,
         is_finished: nextFinished ?? false,
       });
-      const nextTask = await fetchTask(task.id);
+      const [nextTask, nextLogs] = await Promise.all([
+        fetchTask(task.id),
+        fetchLogs(task.parent_id ?? task.id),
+      ]);
       if (nextTask) {
         setTask(nextTask);
         setDraftTaskProgress(nextTask.is_finished ? 100 : (nextTask.progress_percent ?? 0));
       }
+      setLogs(nextLogs);
       setProgressStatus('saved');
       setTimeout(() => setProgressStatus('idle'), 1200);
     } catch (error: any) {
@@ -111,14 +115,19 @@ export function LogBookPage() {
         progress_percent: nextProgress,
         is_finished: nextProgress >= 100,
       });
-      const nextSubtasks = task ? await fetchSubtasks(task.id) : [];
+      const rootTaskId = subtask.parent_id ?? task?.id ?? subtask.id;
+      const [nextSubtasks, nextTask, nextLogs] = await Promise.all([
+        fetchSubtasks(rootTaskId),
+        fetchTask(rootTaskId),
+        fetchLogs(rootTaskId),
+      ]);
       setSubtasks(nextSubtasks);
       setDraftSubtaskProgress(Object.fromEntries(nextSubtasks.map((item) => [item.id, item.is_finished ? 100 : (item.progress_percent ?? 0)])));
-      const nextTask = task ? await fetchTask(task.id) : null;
       if (nextTask) {
         setTask(nextTask);
         setDraftTaskProgress(nextTask.is_finished ? 100 : (nextTask.progress_percent ?? 0));
       }
+      setLogs(nextLogs);
       setProgressStatus('saved');
       setTimeout(() => setProgressStatus('idle'), 1200);
     } catch (error: any) {
