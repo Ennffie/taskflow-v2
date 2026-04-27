@@ -366,6 +366,7 @@ export function MyTasksPage() {
                           task={task}
                           showCheckbox={true}
                           isSelected={checkedTasks.has(task.id)}
+                          checkedTaskIds={checkedTasks}
                           onToggleSelect={(taskId, e) => { void toggleTaskCheck(taskId, e); }}
                           showAssignees={false}
                           isFocusSection={isFocusSection}

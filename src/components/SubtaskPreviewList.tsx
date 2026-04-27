@@ -16,7 +16,15 @@ function getAvatarColor(name: string, id?: string) {
 
 const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-export function SubtaskPreviewList({ subtasks, limit = 99 }: { subtasks: TaskItem[]; limit?: number }) {
+interface SubtaskPreviewListProps {
+  subtasks: TaskItem[];
+  limit?: number;
+  showCheckbox?: boolean;
+  checkedTaskIds?: Set<string>;
+  onToggleSelect?: (taskId: string, e: React.MouseEvent) => void;
+}
+
+export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false, checkedTaskIds, onToggleSelect }: SubtaskPreviewListProps) {
   const navigate = useNavigate();
   const visible = subtasks.slice(0, limit);
   const remaining = subtasks.length - visible.length;
@@ -31,16 +39,17 @@ export function SubtaskPreviewList({ subtasks, limit = 99 }: { subtasks: TaskIte
         const due = formatDate(subtask.due_date);
         const statusMeta = STATUS_META[subtask.status];
         const isOverdue = !!subtask.due_date && new Date(subtask.due_date) < new Date(new Date().setHours(0,0,0,0));
+        const isSelected = checkedTaskIds?.has(subtask.id) ?? false;
+
         return (
-          <button
+          <div
             key={subtask.id}
             onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${subtask.id}`); }}
             style={{
               display: 'grid',
-              gridTemplateColumns: '18px minmax(0,1fr) auto',
+              gridTemplateColumns: showCheckbox ? '28px 18px minmax(0,1fr) auto' : '18px minmax(0,1fr) auto',
               gap: '6px',
               alignItems: 'center',
-              border: 'none',
               background: '#f8fafc',
               borderRadius: '7px',
               padding: '4px 6px',
@@ -48,6 +57,43 @@ export function SubtaskPreviewList({ subtasks, limit = 99 }: { subtasks: TaskIte
               textAlign: 'left',
             }}
           >
+            {showCheckbox && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSelect?.(subtask.id, e);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '28px',
+                  height: '28px',
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                <div
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '5px',
+                    border: isSelected ? '2px solid #7c3aed' : '2px solid #94a3b8',
+                    background: isSelected ? '#7c3aed' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {isSelected && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            )}
             <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: assignee ? getAvatarColor(assignee.name, assignee.id) : '#E2E8F0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 700 }}>
               {assignee ? initials(assignee.name) : '—'}
             </div>
@@ -66,11 +112,11 @@ export function SubtaskPreviewList({ subtasks, limit = 99 }: { subtasks: TaskIte
                 <div style={{ width: `${progress}%`, height: '100%', background: progress >= 100 ? '#10b981' : '#7c3aed', borderRadius: '999px' }} />
               </div>
             </div>
-          </button>
+          </div>
         );
       })}
       {remaining > 0 && (
-        <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, paddingLeft: '24px' }}>+{remaining} more sub-task{remaining === 1 ? '' : 's'}</div>
+        <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, paddingLeft: showCheckbox ? '52px' : '24px' }}>+{remaining} more sub-task{remaining === 1 ? '' : 's'}</div>
       )}
     </div>
   );

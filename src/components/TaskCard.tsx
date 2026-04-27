@@ -35,6 +35,7 @@ interface TaskCardProps {
   showCheckbox?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (taskId: string, e: React.MouseEvent) => void;
+  checkedTaskIds?: Set<string>;
   showAssignees?: boolean;
   isFocusSection?: boolean;
   isEvenIndex?: boolean;
@@ -46,6 +47,7 @@ export function TaskCard({
   showCheckbox = false,
   isSelected = false,
   onToggleSelect,
+  checkedTaskIds,
   showAssignees: _showAssignees = true,
   isFocusSection = false,
   isEvenIndex = true,
@@ -206,7 +208,12 @@ export function TaskCard({
 
       {subtasks.length > 0 && (
         <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: showCheckbox ? '28px' : '42px' }}>
-          <SubtaskPreviewList subtasks={subtasks} />
+          <SubtaskPreviewList
+            subtasks={subtasks}
+            showCheckbox={showCheckbox}
+            checkedTaskIds={checkedTaskIds}
+            onToggleSelect={onToggleSelect}
+          />
         </div>
       )}
     </div>
