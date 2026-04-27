@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, createTask, createLog } from '../lib/api';
+import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, updateTaskAssignees, createTask, createLog } from '../lib/api';
 import type { TaskItem, Profile, TaskStatus } from '../types';
 import { STATUS_META } from '../types';
 
@@ -23,6 +23,7 @@ interface MatchResult {
   matchedAssignees: Profile[];
   parsedStatus: TaskStatus | null;
   reason: string;
+  isDay2?: boolean;
   logExists?: boolean;
 }
 
@@ -142,7 +143,7 @@ export function ImportReviewPage() {
     const day1Date = allDates.length > 0 ? allDates[0] : null;
     
     return rows.map((row) => {
-      const isDay2 = day1Date && row.dueDate && row.dueDate !== day1Date;
+      const isDay2 = Boolean(day1Date && row.dueDate && row.dueDate !== day1Date);
       // Day 2 rows force focus flag while keeping a normal status
       const parsedStatus = isDay2 ? 'in_progress' : parseStatus(row.status);
       const rowTaskId = row.taskId || extractTaskId(row.title);
@@ -177,6 +178,7 @@ export function ImportReviewPage() {
           matchedTask: null,
           matchedAssignees,
           parsedStatus,
+          isDay2,
           reason: isDay2 ? 'New task (Day 2 → Focus)' : 'New task',
         };
       }
@@ -194,6 +196,7 @@ export function ImportReviewPage() {
           matchedTask,
           matchedAssignees,
           parsedStatus,
+          isDay2: true,
           reason: logExists 
             ? 'Day 2 → Focus (log exists, update flag only)' 
             : 'Day 2 → Focus + add log',
@@ -209,6 +212,7 @@ export function ImportReviewPage() {
           matchedTask,
           matchedAssignees,
           parsedStatus,
+          isDay2: false,
           reason: 'Same log already exists',
         };
       }
@@ -220,6 +224,7 @@ export function ImportReviewPage() {
         matchedTask,
         matchedAssignees,
         parsedStatus,
+        isDay2: false,
         reason: parsedStatus !== matchedTask.status 
           ? `Status: ${STATUS_META[matchedTask.status].label} → ${parsedStatus ? STATUS_META[parsedStatus].label : '?'}`
           : 'Add new log',
@@ -252,12 +257,26 @@ export function ImportReviewPage() {
         if (result.action === 'update' && result.matchedTask) {
           // Track this task was imported
           importedTaskIds.add(result.matchedTask.id);
-          
-          // Update status if changed
+
+          const taskPatch: Parameters<typeof updateTask>[1] = {};
           if (result.parsedStatus && result.parsedStatus !== result.matchedTask.status) {
-            await updateTask(result.matchedTask.id, { status: result.parsedStatus });
+            taskPatch.status = result.parsedStatus;
+          }
+          if (result.row.dueDate && result.row.dueDate !== result.matchedTask.due_date) {
+            taskPatch.due_date = result.row.dueDate;
+          }
+          if (result.isDay2 && !result.matchedTask.is_focus) {
+            taskPatch.is_focus = true;
+          }
+          if (Object.keys(taskPatch).length > 0) {
+            await updateTask(result.matchedTask.id, taskPatch);
             updated++;
           }
+
+          if (result.matchedAssignees.length > 0) {
+            await updateTaskAssignees(result.matchedTask.id, result.matchedAssignees.map((a) => a.id));
+          }
+
           // Add log only if it's new (not existing)
           if (result.row.description && !result.logExists) {
             await createLog({
@@ -275,10 +294,26 @@ export function ImportReviewPage() {
           if (existingCreatedTask) {
             // Same task in batch → update status + add log (if new)
             importedTaskIds.add(existingCreatedTask.id);
+
+            const taskPatch: Parameters<typeof updateTask>[1] = {};
             if (result.parsedStatus && result.parsedStatus !== existingCreatedTask.status) {
-              await updateTask(existingCreatedTask.id, { status: result.parsedStatus });
+              taskPatch.status = result.parsedStatus;
+            }
+            if (result.row.dueDate && result.row.dueDate !== existingCreatedTask.due_date) {
+              taskPatch.due_date = result.row.dueDate;
+            }
+            if (result.isDay2 && !existingCreatedTask.is_focus) {
+              taskPatch.is_focus = true;
+            }
+            if (Object.keys(taskPatch).length > 0) {
+              await updateTask(existingCreatedTask.id, taskPatch);
               updated++;
             }
+
+            if (result.matchedAssignees.length > 0) {
+              await updateTaskAssignees(existingCreatedTask.id, result.matchedAssignees.map((a) => a.id));
+            }
+
             if (result.row.description && !result.logExists) {
               await createLog({
                 task_id: existingCreatedTask.id,
@@ -302,6 +337,7 @@ export function ImportReviewPage() {
               due_date: result.row.dueDate || undefined,
               assignee_ids: result.matchedAssignees.map(a => a.id),
               tags: [],
+              is_focus: result.isDay2 || false,
             });
             
             created++;

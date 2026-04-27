@@ -595,27 +595,41 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     });
   };
 
+  const normalizeImportedDate = (date: Date): string | null => {
+    if (isNaN(date.getTime())) return null;
+
+    const currentYear = new Date().getFullYear();
+    if (date.getFullYear() < currentYear - 1) {
+      const normalized = new Date(currentYear, date.getMonth(), date.getDate());
+      if (!isNaN(normalized.getTime())) {
+        return normalized.toISOString().slice(0, 10);
+      }
+    }
+
+    return date.toISOString().slice(0, 10);
+  };
+
   const parseDate = (dateVal: any): string | null => {
     // Handle Date object (from XLSX cellDates)
     if (dateVal instanceof Date) {
-      if (!isNaN(dateVal.getTime())) {
-        return dateVal.toISOString().slice(0, 10);
-      }
-      return null;
+      return normalizeImportedDate(dateVal);
     }
     
     // Handle Excel serial number (number of days since 1899-12-30)
     if (typeof dateVal === 'number') {
       const excelEpoch = new Date(1899, 11, 30);
       const date = new Date(excelEpoch.getTime() + dateVal * 24 * 60 * 60 * 1000);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString().slice(0, 10);
-      }
-      return null;
+      return normalizeImportedDate(date);
     }
-    
+
     const dateStr = String(dateVal || '').trim();
     if (!dateStr) return null;
+
+    if (/^today$/i.test(dateStr)) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return tomorrow.toISOString().slice(0, 10);
+    }
     
     // Handle DD-MMM format (e.g., "21-Apr", "20-Apr")
     const dddMmmMatch = dateStr.match(/^(\d{1,2})-([A-Za-z]{3})$/);
@@ -626,9 +640,8 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       if (monthIndex >= 0 && day >= 1 && day <= 31) {
         const year = new Date().getFullYear(); // Use current year
         const date = new Date(year, monthIndex, day);
-        if (!isNaN(date.getTime())) {
-          return date.toISOString().slice(0, 10);
-        }
+        const normalized = normalizeImportedDate(date);
+        if (normalized) return normalized;
       }
     }
     
@@ -645,9 +658,8 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       if (match) {
         try {
           const date = new Date(dateStr);
-          if (!isNaN(date.getTime())) {
-            return date.toISOString().slice(0, 10);
-          }
+          const normalized = normalizeImportedDate(date);
+          if (normalized) return normalized;
         } catch {
           // Continue to next format
         }
@@ -657,9 +669,8 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     // Default: try direct parsing
     try {
       const date = new Date(dateStr);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString().slice(0, 10);
-      }
+      const normalized = normalizeImportedDate(date);
+      if (normalized) return normalized;
     } catch {
       return null;
     }
