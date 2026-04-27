@@ -370,6 +370,7 @@ export function MyTasksPage() {
                           showAssignees={false}
                           isFocusSection={isFocusSection}
                           isEvenIndex={taskIndex % 2 === 0}
+                          subtasks={tasks.filter(st => st.parent_id === task.id)}
                         />
                       </div>
                     );
