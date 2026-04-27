@@ -125,7 +125,7 @@ export function TaskCard({
                 width: '28px',
                 height: '28px',
                 borderRadius: '6px',
-                border: isSelected ? '2px solid #7c3aed' : '2px solid #e2e8f0',
+                border: isSelected ? '2.5px solid #7c3aed' : '2.5px solid #94a3b8',
                 background: isSelected ? '#7c3aed' : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
