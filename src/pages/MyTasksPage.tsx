@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
-import { fetchTasks } from '../lib/api';
+import { createLog, deleteLog, fetchLogs, fetchTasks } from '../lib/api';
+import { getReportDate } from '../lib/date';
 import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type TaskItem, type TaskStatus } from '../types';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
@@ -67,6 +68,11 @@ export function MyTasksPage() {
 
   // Selected tasks for logging
   const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
+  const [togglingTaskIds, setTogglingTaskIds] = useState<Set<string>>(new Set());
+
+  const persistCheckedTasks = (nextSet: Set<string>) => {
+    localStorage.setItem('myTasks_checked', JSON.stringify({ date: getReportDate(), tasks: Array.from(nextSet) }));
+  };
 
   const loadTasks = async () => {
     setLoading(true);
@@ -82,7 +88,7 @@ export function MyTasksPage() {
       if (savedChecked) {
         try {
           const parsed = JSON.parse(savedChecked);
-          const today = new Date().toISOString().slice(0, 10);
+          const today = getReportDate();
           // Only keep checks from today
           if (parsed.date === today) {
             setCheckedTasks(new Set(parsed.tasks));
@@ -105,20 +111,54 @@ export function MyTasksPage() {
     }));
   };
 
-  const toggleTaskCheck = (taskId: string, e: React.MouseEvent) => {
+  const toggleTaskCheck = async (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setCheckedTasks(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
+
+    if (togglingTaskIds.has(taskId)) return;
+
+    const reportDate = getReportDate();
+    const isChecked = checkedTasks.has(taskId);
+
+    setTogglingTaskIds((prev) => new Set(prev).add(taskId));
+    try {
+      if (isChecked) {
+        const taskLogs = await fetchLogs(taskId);
+        const removableLog = taskLogs.find(
+          (log) => log.date === reportDate && log.created_by === user?.id && log.event.trim() === 'Done',
+        );
+        if (removableLog) {
+          await deleteLog(removableLog.id);
+        }
       } else {
-        newSet.add(taskId);
+        await createLog({
+          task_id: taskId,
+          date: reportDate,
+          event: 'Done',
+          category: 'other',
+        });
       }
-      // Save to localStorage with date
-      const today = new Date().toISOString().slice(0, 10);
-      localStorage.setItem('myTasks_checked', JSON.stringify({ date: today, tasks: Array.from(newSet) }));
-      return newSet;
-    });
+
+      setCheckedTasks(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(taskId)) {
+          newSet.delete(taskId);
+        } else {
+          newSet.add(taskId);
+        }
+        persistCheckedTasks(newSet);
+        return newSet;
+      });
+
+      await loadTasks();
+    } catch (error: any) {
+      alert(`Update task check failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setTogglingTaskIds((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
   };
 
   const clearFilters = () => {
@@ -311,7 +351,7 @@ export function MyTasksPage() {
                         task={task}
                         showCheckbox={true}
                         isSelected={checkedTasks.has(task.id)}
-                        onToggleSelect={toggleTaskCheck}
+                        onToggleSelect={(taskId, e) => { void toggleTaskCheck(taskId, e); }}
                         showAssignees={false}
                         isFocusSection={isFocusSection}
                         isEvenIndex={taskIndex % 2 === 0}
