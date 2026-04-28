@@ -102,10 +102,12 @@ export function TaskListPage() {
   };
 
   const toggleSection = (sectionName: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionName]: !prev[sectionName]
-    }));
+    setExpandedSections({
+      'Focus': sectionName === 'Focus',
+      'Overdue': sectionName === 'Overdue',
+      'Other': sectionName === 'Other',
+      'Done': false,
+    });
   };
 
   const clearFilters = () => {
