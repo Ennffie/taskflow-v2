@@ -302,6 +302,8 @@ export function LogBookPage() {
 
   const inputStyle = {
     width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
     padding: '14px',
     borderRadius: '12px',
     border: '1px solid #e2e8f0',
@@ -594,9 +596,9 @@ export function LogBookPage() {
                 <Trash2 size={20} color="#dc2626" />
               </button>
             </div>
-            <div style={{ display: 'grid', gap: '18px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+              <div style={{ display: 'grid', gap: '18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
                   Category
                   <select value={editLogCategory} onChange={(e) => setEditLogCategory(e.target.value as LogCategory)} style={inputStyle}>
                     <option value="design">Design</option>
