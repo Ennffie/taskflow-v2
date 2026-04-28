@@ -392,6 +392,8 @@ export function MyLogPage() {
   // Input style matching LogFormModal
   const inputStyle = {
     width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
     padding: '14px',
     borderRadius: '12px',
     border: '1px solid #e2e8f0',
@@ -694,8 +696,8 @@ export function MyLogPage() {
 
               <div style={{ display: 'grid', gap: '18px' }}>
                 {/* Row 1: Date + Category */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
                     Date
                     <input 
                       type="date" 
@@ -704,7 +706,7 @@ export function MyLogPage() {
                       style={inputStyle} 
                     />
                   </label>
-                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
                     Category
                     <select 
                       value={editCategory} 
@@ -744,8 +746,8 @@ export function MyLogPage() {
                 </label>
                 
                 {/* Row 4: Time spent + Next status */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
                     Time spent
                     <input 
                       value={editTimeSpent} 
@@ -754,7 +756,7 @@ export function MyLogPage() {
                       style={inputStyle} 
                     />
                   </label>
-                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
                     Status
                     <select 
                       value={editNextStatus} 
