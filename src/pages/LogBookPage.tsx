@@ -121,6 +121,7 @@ export function LogBookPage() {
       await updateTask(task.id, {
         progress_percent: nextFinished ? 100 : nextProgress,
         is_finished: nextFinished ?? false,
+        status: nextFinished ? 'done' : (task.status === 'done' ? 'in_progress' : task.status),
       });
       const [nextTask, nextLogs] = await Promise.all([
         fetchTask(task.id),
@@ -149,6 +150,7 @@ export function LogBookPage() {
       await updateTask(subtask.id, {
         progress_percent: nextProgress,
         is_finished: nextProgress >= 100,
+        status: nextProgress >= 100 ? 'done' : (subtask.status === 'done' ? 'in_progress' : subtask.status),
       });
       const rootTaskId = subtask.parent_id ?? task?.id ?? subtask.id;
       const [nextSubtasks, nextTask, nextLogs] = await Promise.all([
@@ -285,7 +287,10 @@ export function LogBookPage() {
     return <AppShell><div style={panelStyle}>Task not found.</div></AppShell>;
   }
 
-  const status = STATUS_META[task.status];
+  const effectiveStatusKey = (!task.parent_id && subtasks.length === 0 && derivedParentState.isFinished)
+    ? 'done'
+    : task.status;
+  const status = STATUS_META[effectiveStatusKey];
   const priority = PRIORITY_META[task.priority];
 
   const inputStyle = {
