@@ -115,6 +115,73 @@ export function MyLogPage() {
     return map;
   }, [tasks]);
 
+  const taskById = useMemo(() => {
+    const map = new Map<string, TaskItem>();
+    tasks.forEach(task => map.set(task.id, task));
+    return map;
+  }, [tasks]);
+
+  const todayLogGroups = useMemo(() => {
+    const getRootTaskId = (taskId: string) => {
+      const task = taskById.get(taskId);
+      if (!task) return taskId;
+      return task.parent_id ?? task.id;
+    };
+
+    const getMergeKey = (event: string, logId: string) => {
+      const normalized = event.trim();
+      const fieldMatch = normalized.match(/^([^\n:]+(?:\s[^\n:]+)*?):\s*.+$/);
+      if (fieldMatch && normalized.includes('→')) {
+        return fieldMatch[1].trim().toLowerCase();
+      }
+      return `log:${logId}`;
+    };
+
+    const grouped = new Map<string, {
+      rootTaskId: string;
+      title: string;
+      latestAt: string;
+      lineOrder: string[];
+      linesByKey: Map<string, { key: string; text: string; log: LogEntry; createdAt: string }>;
+    }>();
+
+    [...filteredLogs]
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .forEach((log) => {
+        const rootTaskId = getRootTaskId(log.task_id);
+        const group = grouped.get(rootTaskId) ?? {
+          rootTaskId,
+          title: taskMap.get(rootTaskId) || taskMap.get(log.task_id) || 'Unknown Task',
+          latestAt: log.created_at,
+          lineOrder: [] as string[],
+          linesByKey: new Map<string, { key: string; text: string; log: LogEntry; createdAt: string }>(),
+        };
+
+        const mergeKey = getMergeKey(log.event, log.id);
+        if (group.linesByKey.has(mergeKey)) {
+          group.lineOrder = group.lineOrder.filter((key) => key !== mergeKey);
+        }
+        group.lineOrder.push(mergeKey);
+        group.linesByKey.set(mergeKey, {
+          key: mergeKey,
+          text: log.event,
+          log,
+          createdAt: log.created_at,
+        });
+        group.latestAt = log.created_at;
+        grouped.set(rootTaskId, group);
+      });
+
+    return Array.from(grouped.values())
+      .map((group) => ({
+        rootTaskId: group.rootTaskId,
+        title: group.title,
+        latestAt: group.latestAt,
+        lines: group.lineOrder.map((key) => group.linesByKey.get(key)).filter(Boolean) as { key: string; text: string; log: LogEntry; createdAt: string }[],
+      }))
+      .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime());
+  }, [filteredLogs, taskById, taskMap]);
+
   // Navigation
   const goToPreviousDay = () => {
     const date = new Date(selectedDate);
@@ -742,52 +809,50 @@ export function MyLogPage() {
         {/* Logs List - Today Tab */}
         {activeTab === 'today' && (
           <section style={{ display: 'grid', gap: '14px' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>{filteredLogs.length} log{filteredLogs.length !== 1 ? 's' : ''} for {formatDate(selectedDate)}</h2>
-            {loading ? <div style={panelStyle}>Loading...</div> : filteredLogs.length === 0 ? <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}><p>No log entries for this date.</p></div> : filteredLogs.map((log) => (
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>{todayLogGroups.length} main task log{todayLogGroups.length !== 1 ? 's' : ''} for {formatDate(selectedDate)}</h2>
+            {loading ? <div style={panelStyle}>Loading...</div> : todayLogGroups.length === 0 ? <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}><p>No log entries for this date.</p></div> : todayLogGroups.map((group) => (
               <article 
-                key={log.id} 
-                onClick={() => handleEditClick(log)}
+                key={group.rootTaskId}
                 style={{ 
-                  ...panelStyle, 
-                  cursor: 'pointer',
-                  transition: 'transform 0.1s ease, box-shadow 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
+                  ...panelStyle,
+                  display: 'grid',
+                  gap: '12px',
                 }}
               >
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '10px 16px', alignItems: 'start' }}>
                   <div style={{ minWidth: 0 }}>
-                    {/* Task Name + Category */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: 700, 
-                        color: '#111827'
-                      }}>
-                        {taskMap.get(log.task_id) || 'Unknown Task'}
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
+                        {group.title}
                       </span>
-                      <span style={{ 
-                        fontSize: '12px', 
-                        fontWeight: 600, 
-                        color: '#7c3aed',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        padding: '2px 8px',
-                        background: '#ede9fe',
-                        borderRadius: '6px'
-                      }}>
-                        {log.category}
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '2px 8px', background: '#ede9fe', borderRadius: '6px' }}>
+                        My Log
                       </span>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDateTime(log.created_at)}</div>
-                  <div style={{ gridColumn: '1 / -1', fontSize: '15px', color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{log.event}</div>
+                  <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDateTime(group.latestAt)}</div>
+                </div>
+
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {group.lines.map((line, index) => (
+                    <button
+                      key={line.key}
+                      onClick={() => handleEditClick(line.log)}
+                      style={{
+                        border: 'none',
+                        background: index % 2 === 0 ? '#f8fafc' : '#fff',
+                        borderRadius: '12px',
+                        padding: '12px 14px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '8px 12px', alignItems: 'start' }}>
+                        <div style={{ fontSize: '15px', color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{line.text}</div>
+                        <div style={{ fontSize: '12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{formatDateTime(line.createdAt).split(' ').slice(-1)[0]}</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </article>
             ))}
