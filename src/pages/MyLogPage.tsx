@@ -91,33 +91,44 @@ export function MyLogPage() {
     return addDays(selectedDate, 1);
   }, [selectedDate]);
 
-  // For Tomorrow tab: get focus tasks with their latest log content
+  const taskById = useMemo(() => {
+    const map = new Map<string, TaskItem>();
+    tasks.forEach(task => map.set(task.id, task));
+    return map;
+  }, [tasks]);
+
+  // For Tomorrow tab: keep focus tasks concise
   const tomorrowData = useMemo(() => {
     const focusTasks = tasks.filter(t => t.is_focus);
+
+    const hasRelatedChangeToday = (task: TaskItem) => {
+      return logs.some((log) => {
+        if (log.date !== selectedDate) return false;
+        const relatedTask = taskById.get(log.task_id);
+        if (!relatedTask) return log.task_id === task.id;
+        return relatedTask.id === task.id || relatedTask.parent_id === task.id;
+      });
+    };
+
     return focusTasks.map(task => {
-      // Find latest log for this task
-      const taskLogs = logs.filter(l => l.task_id === task.id).sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      const taskLogs = logs
+        .filter(l => l.task_id === task.id)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       const latestLog = taskLogs[0];
+      const shouldShowContinueTomorrow = !task.is_finished || hasRelatedChangeToday(task);
+
       return {
         task,
         latestLog,
-        content: latestLog?.event || task.description || ''
+        content: shouldShowContinueTomorrow ? 'Continues tomorrow' : (task.next_day_focus?.trim() || latestLog?.event || task.description || ''),
       };
     });
-  }, [tasks, logs]);
+  }, [tasks, logs, selectedDate, taskById]);
 
   // Task name lookup map
   const taskMap = useMemo(() => {
     const map = new Map<string, string>();
     tasks.forEach(task => map.set(task.id, task.title));
-    return map;
-  }, [tasks]);
-
-  const taskById = useMemo(() => {
-    const map = new Map<string, TaskItem>();
-    tasks.forEach(task => map.set(task.id, task));
     return map;
   }, [tasks]);
 
