@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { readWorkbookFromFile, sheetToJsonRows } from '../lib/xlsx';
 import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type TaskItem, type TaskStatus } from '../types';
-import { AppShell } from '../components/AppShell';
+import { AppShell, notifyModalOpen, notifyModalClose } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
 import { useAuth } from '../contexts/AuthContext';
@@ -104,6 +104,7 @@ export function TaskListPage() {
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
   
   // Section expand/collapse state - default: Only Tomorrow expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -167,11 +168,29 @@ export function TaskListPage() {
     }
   }, [query]);
 
-  const filtered = useMemo(() => tasks.filter((task) => {
-    const matchesQuery = `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());
+  useEffect(() => {
+    if (isFilterSheetOpen) {
+      setIsFilterSheetVisible(true);
+      notifyModalOpen();
+      return () => {
+        notifyModalClose();
+      };
+    }
+
+    if (isFilterSheetVisible) {
+      const timer = window.setTimeout(() => setIsFilterSheetVisible(false), 260);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isFilterSheetOpen, isFilterSheetVisible]);
+
+  const queryFilteredTasks = useMemo(() => tasks.filter((task) => {
+    return `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());
+  }), [tasks, query]);
+
+  const filtered = useMemo(() => queryFilteredTasks.filter((task) => {
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-    return matchesQuery && matchesStatus;
-  }), [tasks, query, statusFilter]);
+    return matchesStatus;
+  }), [queryFilteredTasks, statusFilter]);
 
   const groupedTasks = useMemo(() => {
     const rootTasks = filtered.filter(t => !t.parent_id);
@@ -188,6 +207,14 @@ export function TaskListPage() {
     
     return groups;
   }, [filtered, sortOption]);
+
+  const statusOptionBaseTasks = queryFilteredTasks.filter(t => !t.parent_id);
+  const statusOptionCounts = (['all', ...TASK_STATUS_OPTIONS] as const).reduce<Record<string, number>>((acc, option) => {
+    acc[option] = option === 'all'
+      ? statusOptionBaseTasks.length
+      : statusOptionBaseTasks.filter((task) => task.status === option).length;
+    return acc;
+  }, {});
 
   // Stats for compact cards - use filtered tasks to match list
   const rootTasks = filtered.filter(t => !t.parent_id);
@@ -303,7 +330,10 @@ export function TaskListPage() {
           </div>
 
           <button 
-            onClick={() => setIsFilterSheetOpen(true)}
+            onClick={() => {
+              setIsFilterSheetVisible(true);
+              setIsFilterSheetOpen(true);
+            }}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: '#475569', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
           >
             <Filter size={16} />
@@ -386,14 +416,14 @@ export function TaskListPage() {
           )}
         </div>
 
-        {isFilterSheetOpen && (
+        {isFilterSheetVisible && (
           <div
             onClick={() => setIsFilterSheetOpen(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.34)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '16px' }}
+            style={{ position: 'fixed', inset: 0, background: isFilterSheetOpen ? 'rgba(15, 23, 42, 0.42)' : 'rgba(15, 23, 42, 0)', zIndex: 220, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '16px', transition: 'background 0.26s ease' }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{ width: '100%', maxWidth: '560px', background: '#fff', borderRadius: '28px 28px 0 0', padding: '18px 18px 28px 18px', boxShadow: '0 -10px 40px rgba(15, 23, 42, 0.18)', display: 'grid', gap: '18px', maxHeight: '85vh', overflowY: 'auto' }}
+              style={{ width: '100%', maxWidth: '560px', background: '#fff', borderRadius: '28px 28px 0 0', padding: '18px 18px 32px 18px', boxShadow: '0 -10px 40px rgba(15, 23, 42, 0.18)', display: 'grid', gap: '18px', maxHeight: '85vh', overflowY: 'auto', transform: isFilterSheetOpen ? 'translateY(0)' : 'translateY(32px)', opacity: isFilterSheetOpen ? 1 : 0, transition: 'transform 0.26s ease, opacity 0.26s ease' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                 <div>
@@ -413,17 +443,21 @@ export function TaskListPage() {
                 <div style={{ display: 'grid', gap: '8px' }}>
                   {(['all', ...TASK_STATUS_OPTIONS] as const).map((option) => {
                     const active = statusFilter === option;
+                    const count = statusOptionCounts[option] ?? 0;
                     return (
                       <button
                         key={option}
                         onClick={() => setStatusFilter(option)}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '14px 16px', borderRadius: '16px', border: active ? '2px solid #7c3aed' : '1px solid #e2e8f0', background: active ? '#f5f3ff' : '#fff', cursor: 'pointer' }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                           {option !== 'all' ? <StatusIcon status={option} /> : <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#e2e8f0' }} />}
                           <span style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{option === 'all' ? 'All Statuses' : STATUS_CONFIG[option].label}</span>
                         </div>
-                        <div style={{ width: '20px', height: '20px', borderRadius: '999px', border: active ? '6px solid #7c3aed' : '2px solid #d1d5db', background: '#fff', flexShrink: 0 }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: active ? '#7c3aed' : '#64748b', minWidth: '22px', textAlign: 'right' }}>{count}</span>
+                          <div style={{ width: '20px', height: '20px', borderRadius: '999px', border: active ? '6px solid #7c3aed' : '2px solid #d1d5db', background: '#fff' }} />
+                        </div>
                       </button>
                     );
                   })}
