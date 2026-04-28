@@ -514,6 +514,32 @@ export async function createTask(payload: {
   return task;
 }
 
+async function syncParentTaskAggregate(parentTaskId: string, userId?: string | null) {
+  const { data: relatedTasks, error: relatedError } = await supabase
+    .from('tasks')
+    .select('id, parent_id, status, progress_percent, round_number, is_finished')
+    .or(`id.eq.${parentTaskId},parent_id.eq.${parentTaskId}`);
+
+  if (relatedError || !relatedTasks?.length) throw relatedError ?? new Error('Related tasks not found');
+
+  const parentTask = relatedTasks.find((task: any) => task.id === parentTaskId);
+  if (!parentTask) throw new Error('Parent task not found');
+
+  const aggregate = computeParentProgress(parentTask, relatedTasks);
+  const { error: updateError } = await supabase
+    .from('tasks')
+    .update({
+      progress_percent: aggregate.progress_percent,
+      round_number: aggregate.round_number,
+      is_finished: aggregate.is_finished,
+      updated_at: new Date().toISOString(),
+      updated_by: userId ?? null,
+    })
+    .eq('id', parentTaskId);
+
+  if (updateError) throw updateError;
+}
+
 export async function updateTask(
   taskId: string,
   payload: Partial<{
@@ -556,6 +582,10 @@ export async function updateTask(
       taskId: existingTask.parent_id ?? existingTask.id,
       event,
     });
+  }
+
+  if (existingTask.parent_id) {
+    await syncParentTaskAggregate(existingTask.parent_id, userId);
   }
 }
 
