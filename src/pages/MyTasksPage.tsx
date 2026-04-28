@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox } from 'lucide-react';
 import { createLog, deleteLog, fetchLogs, fetchTasks, updateTask } from '../lib/api';
 import { getReportDate } from '../lib/date';
@@ -76,6 +76,7 @@ export function MyTasksPage() {
   const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
   const [checkedTaskSnapshots, setCheckedTaskSnapshots] = useState<Record<string, CheckedTaskSnapshot>>({});
   const [togglingTaskIds, setTogglingTaskIds] = useState<Set<string>>(new Set());
+  const pendingScrollRestoreRef = useRef<number | null>(null);
 
   const persistCheckedTasks = (nextSet: Set<string>, nextSnapshots: Record<string, CheckedTaskSnapshot>) => {
     localStorage.setItem('myTasks_checked', JSON.stringify({ date: getReportDate(), tasks: Array.from(nextSet), snapshots: nextSnapshots }));
@@ -102,6 +103,16 @@ export function MyTasksPage() {
       }
       const myTasks = allTasks.filter(t => myTaskIds.has(t.id));
       setTasks(myTasks);
+
+      if (pendingScrollRestoreRef.current !== null) {
+        const scrollTop = pendingScrollRestoreRef.current;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: scrollTop, behavior: 'auto' });
+            pendingScrollRestoreRef.current = null;
+          });
+        });
+      }
       // Load checked state from localStorage
       const savedChecked = localStorage.getItem('myTasks_checked');
       if (savedChecked) {
@@ -139,6 +150,7 @@ export function MyTasksPage() {
     const reportDate = getReportDate();
     const isChecked = checkedTasks.has(taskId);
     const task = tasks.find((item) => item.id === taskId);
+    pendingScrollRestoreRef.current = window.scrollY;
 
     setTogglingTaskIds((prev) => new Set(prev).add(taskId));
     try {
