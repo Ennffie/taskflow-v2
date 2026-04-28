@@ -18,27 +18,44 @@ export type TrackerRow = {
   mainTaskDueDate?: string;
 };
 
-function normalizeLogBody(event: string): string {
-  return event
-    .replace(/^\[(What I have done|What I will focus on|Next Day Focus)\]\s*/i, '')
-    .trim();
+function getRootTaskId(taskId: string, taskMap: Map<string, TaskItem>): string {
+  const task = taskMap.get(taskId);
+  if (!task) return taskId;
+  return task.parent_id ?? task.id;
 }
 
-function findUpdatesForTask(logs: LogEntry[], taskId: string, date: string) {
-  const dayLogs = logs.filter((log) => log.task_id === taskId && log.date === date);
-  const todayUpdate = dayLogs
-    .filter((log) => /\[What I have done\]/i.test(log.event))
-    .map((log) => normalizeLogBody(log.event))
-    .filter(Boolean)
-    .join('\n');
+function getMergeKey(event: string, logId: string): string {
+  const normalized = event.trim();
+  const fieldMatch = normalized.match(/^([^\n:]+(?:\s[^\n:]+)*?):\s*.+$/);
+  if (fieldMatch && normalized.includes('→')) return fieldMatch[1].trim().toLowerCase();
+  return `log:${logId}`;
+}
 
-  const nextDayFocus = dayLogs
-    .filter((log) => /\[(What I will focus on|Next Day Focus)\]/i.test(log.event))
-    .map((log) => normalizeLogBody(log.event))
-    .filter(Boolean)
-    .join('\n');
+function buildDailyMyLogMap(logs: LogEntry[], tasks: TaskItem[], date: string): Map<string, string> {
+  const taskMap = new Map(tasks.map((task) => [task.id, task]));
+  const grouped = new Map<string, { order: string[]; lines: Map<string, string> }>();
 
-  return { todayUpdate, nextDayFocus };
+  logs
+    .filter((log) => log.date === date)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .forEach((log) => {
+      const rootTaskId = getRootTaskId(log.task_id, taskMap);
+      const group = grouped.get(rootTaskId) ?? { order: [], lines: new Map<string, string>() };
+      const mergeKey = getMergeKey(log.event, log.id);
+      if (group.lines.has(mergeKey)) {
+        group.order = group.order.filter((key) => key !== mergeKey);
+      }
+      group.order.push(mergeKey);
+      group.lines.set(mergeKey, log.event.trim());
+      grouped.set(rootTaskId, group);
+    });
+
+  return new Map(
+    Array.from(grouped.entries()).map(([rootTaskId, group]) => [
+      rootTaskId,
+      group.order.map((key) => group.lines.get(key)).filter(Boolean).join('\n'),
+    ]),
+  );
 }
 
 function matchesSelectedUser(task: TaskItem, selectedUser: string): boolean {
@@ -53,10 +70,21 @@ function formatProgress(task: TaskItem): string {
 export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate: string, selectedUser: string): TrackerRow[] {
   const nextFocusDate = addDays(reportDate, 1);
   const rootTasks = tasks.filter((task) => !task.parent_id);
+  const todayMyLogs = buildDailyMyLogMap(logs, tasks, reportDate);
+  const nextDayMyLogs = buildDailyMyLogMap(logs, tasks, nextFocusDate);
+  const tasksWithUpdateToday = new Set(
+    logs
+      .filter((log) => log.date === reportDate)
+      .map((log) => getRootTaskId(log.task_id, new Map(tasks.map((task) => [task.id, task])))),
+  );
 
   return rootTasks.flatMap<TrackerRow>((mainTask) => {
     const subtasks = tasks.filter((task) => task.parent_id === mainTask.id);
     const relevantSubtasks = subtasks.filter((subtask) => matchesSelectedUser(subtask, selectedUser));
+    const today = todayMyLogs.get(mainTask.id)?.trim() || '';
+    const next = nextDayMyLogs.get(mainTask.id)?.trim() || ((mainTask.is_focus && (!mainTask.is_finished || tasksWithUpdateToday.has(mainTask.id))) ? 'Continues tomorrow' : '');
+
+    if (!today && !next) return [];
 
     if (subtasks.length > 0 && relevantSubtasks.length === 0 && selectedUser !== 'all') {
       return [];
@@ -64,10 +92,6 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
 
     if (subtasks.length === 0) {
       if (!matchesSelectedUser(mainTask, selectedUser)) return [];
-      const fallbackToday = findUpdatesForTask(logs, mainTask.id, reportDate).todayUpdate;
-      const fallbackNext = findUpdatesForTask(logs, mainTask.id, nextFocusDate).nextDayFocus;
-      const today = mainTask.today_update?.trim() || fallbackToday;
-      const next = mainTask.next_day_focus?.trim() || fallbackNext;
       return [{
         mainTaskId: mainTask.id,
         subtaskId: null,
@@ -76,36 +100,29 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
         subtask: '',
         status: STATUS_META[mainTask.status]?.label ?? mainTask.status,
         progress: formatProgress(mainTask),
-        dueDate: mainTask.due_date ?? '',
+        dueDate: mainTask.due_date?.trim() || 'TBC',
         todayUpdate: today,
         nextDayFocus: next,
         mainTaskStatus: STATUS_META[mainTask.status]?.label ?? mainTask.status,
         mainTaskProgress: formatProgress(mainTask),
-        mainTaskDueDate: mainTask.due_date ?? '',
+        mainTaskDueDate: mainTask.due_date?.trim() || 'TBC',
       }];
     }
 
-    return relevantSubtasks.map((subtask) => {
-      const fallbackToday = findUpdatesForTask(logs, subtask.id, reportDate).todayUpdate;
-      const fallbackNext = findUpdatesForTask(logs, subtask.id, nextFocusDate).nextDayFocus;
-      const today = subtask.today_update?.trim() || fallbackToday;
-      const next = subtask.next_day_focus?.trim() || fallbackNext;
-
-      return {
-        mainTaskId: mainTask.id,
-        subtaskId: subtask.id,
-        member: subtask.assignees.map((item) => item.name).join(', ') || 'Unassigned',
-        mainTask: mainTask.title,
-        subtask: subtask.title,
-        status: STATUS_META[subtask.status]?.label ?? subtask.status,
-        progress: formatProgress(subtask),
-        dueDate: subtask.due_date ?? '',
-        todayUpdate: today,
-        nextDayFocus: next,
-        mainTaskStatus: STATUS_META[mainTask.status]?.label ?? mainTask.status,
-        mainTaskProgress: formatProgress(mainTask),
-        mainTaskDueDate: mainTask.due_date ?? '',
-      };
-    });
+    return relevantSubtasks.map((subtask) => ({
+      mainTaskId: mainTask.id,
+      subtaskId: subtask.id,
+      member: subtask.assignees.map((item) => item.name).join(', ') || 'Unassigned',
+      mainTask: mainTask.title,
+      subtask: subtask.title,
+      status: STATUS_META[subtask.status]?.label ?? subtask.status,
+      progress: formatProgress(subtask),
+      dueDate: subtask.due_date?.trim() || 'TBC',
+      todayUpdate: today,
+      nextDayFocus: next,
+      mainTaskStatus: STATUS_META[mainTask.status]?.label ?? mainTask.status,
+      mainTaskProgress: formatProgress(mainTask),
+      mainTaskDueDate: mainTask.due_date?.trim() || 'TBC',
+    }));
   });
 }
