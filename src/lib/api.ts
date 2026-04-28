@@ -148,11 +148,10 @@ export async function fetchProfiles(): Promise<Profile[]> {
 }
 
 function getEffectiveRound(task: { round_number?: number | null; status?: TaskStatus | null }): number {
-  if (task.round_number && task.round_number >= 1) return task.round_number;
+  const explicitRound = task.round_number && task.round_number >= 1 ? task.round_number : 1;
   const status = task.status ?? 'todo';
-  if (status.startsWith('round_3_')) return 3;
-  if (status.startsWith('round_2_')) return 2;
-  return 1;
+  const statusRound = status.startsWith('round_3_') ? 3 : status.startsWith('round_2_') ? 2 : 1;
+  return Math.max(explicitRound, statusRound);
 }
 
 function computeParentProgress(task: any, allTasks: any[]): { progress_percent: number; round_number: number; is_finished: boolean } {
@@ -383,7 +382,7 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
     supabase.from('task_assignees').select('task_id, user_id').eq('task_id', taskId),
     supabase.from('tags').select('task_id, name').eq('task_id', taskId),
     supabase.from('log_entries').select('id, task_id').eq('task_id', taskId),
-    supabase.from('tasks').select('id, parent_id, progress_percent, round_number, is_finished').or(`id.eq.${taskId},parent_id.eq.${taskId}`),
+    supabase.from('tasks').select('id, parent_id, status, progress_percent, round_number, is_finished').or(`id.eq.${taskId},parent_id.eq.${taskId}`),
   ]);
 
   const aggregate = task.parent_id ? {
