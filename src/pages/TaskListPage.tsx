@@ -447,7 +447,10 @@ export function TaskListPage() {
                     return (
                       <button
                         key={option}
-                        onClick={() => setStatusFilter(option)}
+                        onClick={() => {
+                          setStatusFilter(option);
+                          showAllSections();
+                        }}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '14px 16px', borderRadius: '16px', border: active ? '2px solid #7c3aed' : '1px solid #e2e8f0', background: active ? '#f5f3ff' : '#fff', cursor: 'pointer' }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
@@ -472,7 +475,10 @@ export function TaskListPage() {
                     return (
                       <button
                         key={option}
-                        onClick={() => setSortOption(option)}
+                        onClick={() => {
+                          setSortOption(option);
+                          showAllSections();
+                        }}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '14px 16px', borderRadius: '16px', border: active ? '2px solid #111827' : '1px solid #e2e8f0', background: active ? '#f8fafc' : '#fff', cursor: 'pointer' }}
                       >
                         <span style={{ fontSize: '14px', fontWeight: 600, color: '#111827', textAlign: 'left' }}>{label}</span>
