@@ -6,6 +6,7 @@ import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type TaskItem, type TaskStatus } fr
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
+import { SubtaskPreviewList } from '../components/SubtaskPreviewList';
 import { useAuth } from '../contexts/AuthContext';
 
 function StatusIcon({ status }: { status: TaskStatus }) {
@@ -383,13 +384,27 @@ export function MyTasksPage() {
                   </div>
 
                   {isExpanded && groupTasks.map((task, taskIndex) => {
-                    return (
-                      <div key={task.id} style={task.parent_id ? { paddingLeft: '16px', borderLeft: '3px solid #e2e8f0', marginLeft: '0px' } : {}}>
-                        {task.parent_id && (
-                          <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, padding: '4px 14px 0px', background: taskIndex % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                    if (task.parent_id) {
+                      return (
+                        <div key={task.id} style={{ paddingLeft: '16px', borderLeft: '3px solid #e2e8f0', marginLeft: '0px', background: taskIndex % 2 === 0 ? '#fff' : '#f8fafc', paddingBottom: '8px' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, padding: '4px 14px 4px' }}>
                             Subtask
                           </div>
-                        )}
+                          <div style={{ padding: '0 10px 0 14px' }}>
+                            <SubtaskPreviewList
+                              subtasks={[task]}
+                              showCheckbox={true}
+                              checkedTaskIds={checkedTasks}
+                              onToggleSelect={(taskId, e) => { void toggleTaskCheck(taskId, e); }}
+                              embedded={false}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={task.id}>
                         <TaskCard 
                           task={task}
                           showCheckbox={true}

@@ -22,9 +22,10 @@ interface SubtaskPreviewListProps {
   showCheckbox?: boolean;
   checkedTaskIds?: Set<string>;
   onToggleSelect?: (taskId: string, e: React.MouseEvent) => void;
+  embedded?: boolean;
 }
 
-export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false, checkedTaskIds, onToggleSelect }: SubtaskPreviewListProps) {
+export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false, checkedTaskIds, onToggleSelect, embedded = true }: SubtaskPreviewListProps) {
   const navigate = useNavigate();
   const visible = subtasks.slice(0, limit);
   const remaining = subtasks.length - visible.length;
@@ -32,7 +33,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
   if (subtasks.length === 0) return null;
 
   return (
-    <div style={{ marginTop: '1px', paddingTop: '4px', borderTop: '1px solid #eef2f7', display: 'grid', gap: '3px' }}>
+    <div style={{ marginTop: embedded ? '1px' : '0', paddingTop: embedded ? '4px' : '0', borderTop: embedded ? '1px solid #eef2f7' : 'none', display: 'grid', gap: '3px' }}>
       {visible.map((subtask) => {
         const assignee = subtask.assignees[0];
         const progress = subtask.is_finished ? 100 : (subtask.progress_percent ?? 0);
