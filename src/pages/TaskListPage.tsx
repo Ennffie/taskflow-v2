@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { readWorkbookFromFile, sheetToJsonRows } from '../lib/xlsx';
@@ -69,15 +69,41 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
   return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
 }
 
+type SortOption = 'due_asc' | 'due_desc' | 'updated_desc' | 'title_asc';
+
+const SORT_OPTION_META: Record<SortOption, string> = {
+  due_asc: 'Due date · Nearest first',
+  due_desc: 'Due date · Latest first',
+  updated_desc: 'Recently updated',
+  title_asc: 'Task name · A-Z',
+};
+
+function sortTasks(tasks: TaskItem[], sortOption: SortOption): TaskItem[] {
+  const list = [...tasks];
+
+  switch (sortOption) {
+    case 'due_desc':
+      return list.sort((a, b) => sortByDueDate(b, a));
+    case 'updated_desc':
+      return list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    case 'title_asc':
+      return list.sort((a, b) => a.title.localeCompare(b.title));
+    case 'due_asc':
+    default:
+      return list.sort(sortByDueDate);
+  }
+}
+
 export function TaskListPage() {
   const { profile, session, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('due_asc');
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   
   // Section expand/collapse state - default: Only Tomorrow expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -121,6 +147,7 @@ export function TaskListPage() {
   const clearFilters = () => {
     setQuery('');
     setStatusFilter('all');
+    setSortOption('due_asc');
     setExpandedSections({
       'Focus': true,
       'Overdue': false,
@@ -148,10 +175,10 @@ export function TaskListPage() {
 
   const groupedTasks = useMemo(() => {
     const rootTasks = filtered.filter(t => !t.parent_id);
-    const focusTasks = rootTasks.filter(t => t.is_focus).sort(sortByDueDate);
-    const overdueTasks = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
-    const otherTasks = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
-    const doneTasks = rootTasks.filter(t => t.status === 'done').sort(sortByDueDate);
+    const focusTasks = sortTasks(rootTasks.filter(t => t.is_focus), sortOption);
+    const overdueTasks = sortTasks(rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus), sortOption);
+    const otherTasks = sortTasks(rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus), sortOption);
+    const doneTasks = sortTasks(rootTasks.filter(t => t.status === 'done'), sortOption);
     
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups['Focus'] = focusTasks;
@@ -160,7 +187,7 @@ export function TaskListPage() {
     if (doneTasks.length > 0) groups['Done'] = doneTasks;
     
     return groups;
-  }, [filtered]);
+  }, [filtered, sortOption]);
 
   // Stats for compact cards - use filtered tasks to match list
   const rootTasks = filtered.filter(t => !t.parent_id);
@@ -275,38 +302,20 @@ export function TaskListPage() {
             />
           </div>
 
-          <div style={{ position: 'relative' }}>
-            <button 
-              onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
-            >
-              <Filter size={16} />
-              <span>{statusFilter === 'all' ? 'All Status' : STATUS_CONFIG[statusFilter].label}</span>
-              <ChevronDown size={14} />
-            </button>
-            {openDropdown === 'status' && (
-              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', minWidth: '180px', zIndex: 20, padding: '8px' }}>
-                {(['all', ...TASK_STATUS_OPTIONS] as const).map((s) => (
-                  <button 
-                    key={s} 
-                    onClick={() => { setStatusFilter(s); setOpenDropdown(null); }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', border: 'none', background: 'transparent', fontSize: '14px', color: '#475569', cursor: 'pointer', fontWeight: 500 }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    {s !== 'all' && <StatusIcon status={s} />}
-                    <span>{s === 'all' ? 'All Statuses' : STATUS_CONFIG[s].label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <button 
+            onClick={() => setIsFilterSheetOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: '#475569', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            <Filter size={16} />
+            <span>Filter / Sort</span>
+            <ChevronDown size={14} />
+          </button>
         </div>
 
-        {(query || statusFilter !== 'all') && (
+        {(query || statusFilter !== 'all' || sortOption !== 'due_asc') && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>
-              {filtered.length} result{filtered.length === 1 ? '' : 's'} found
+              {filtered.length} result{filtered.length === 1 ? '' : 's'} found · {statusFilter === 'all' ? 'All Status' : STATUS_CONFIG[statusFilter].label} · {SORT_OPTION_META[sortOption]}
             </span>
             <button
               onClick={clearFilters}
@@ -376,6 +385,87 @@ export function TaskListPage() {
             })
           )}
         </div>
+
+        {isFilterSheetOpen && (
+          <div
+            onClick={() => setIsFilterSheetOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.34)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '16px' }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: '560px', background: '#fff', borderRadius: '28px 28px 0 0', padding: '18px 18px 28px 18px', boxShadow: '0 -10px 40px rgba(15, 23, 42, 0.18)', display: 'grid', gap: '18px', maxHeight: '85vh', overflowY: 'auto' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#111827' }}>Filter & Sort</div>
+                  <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Clean, quick, and mobile-friendly.</div>
+                </div>
+                <button
+                  onClick={() => setIsFilterSheetOpen(false)}
+                  style={{ width: '40px', height: '40px', borderRadius: '999px', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                >
+                  <X size={18} color="#475569" />
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gap: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</div>
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  {(['all', ...TASK_STATUS_OPTIONS] as const).map((option) => {
+                    const active = statusFilter === option;
+                    return (
+                      <button
+                        key={option}
+                        onClick={() => setStatusFilter(option)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '14px 16px', borderRadius: '16px', border: active ? '2px solid #7c3aed' : '1px solid #e2e8f0', background: active ? '#f5f3ff' : '#fff', cursor: 'pointer' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {option !== 'all' ? <StatusIcon status={option} /> : <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#e2e8f0' }} />}
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{option === 'all' ? 'All Statuses' : STATUS_CONFIG[option].label}</span>
+                        </div>
+                        <div style={{ width: '20px', height: '20px', borderRadius: '999px', border: active ? '6px solid #7c3aed' : '2px solid #d1d5db', background: '#fff', flexShrink: 0 }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sort by</div>
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  {(Object.entries(SORT_OPTION_META) as [SortOption, string][]).map(([option, label]) => {
+                    const active = sortOption === option;
+                    return (
+                      <button
+                        key={option}
+                        onClick={() => setSortOption(option)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '14px 16px', borderRadius: '16px', border: active ? '2px solid #111827' : '1px solid #e2e8f0', background: active ? '#f8fafc' : '#fff', cursor: 'pointer' }}
+                      >
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#111827', textAlign: 'left' }}>{label}</span>
+                        <div style={{ width: '20px', height: '20px', borderRadius: '999px', border: active ? '6px solid #111827' : '2px solid #d1d5db', background: '#fff', flexShrink: 0 }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', paddingTop: '4px' }}>
+                <button
+                  onClick={clearFilters}
+                  style={{ border: 'none', background: 'transparent', color: '#94a3b8', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Clear filters
+                </button>
+                <button
+                  onClick={() => setIsFilterSheetOpen(false)}
+                  style={{ padding: '12px 18px', borderRadius: '999px', border: 'none', background: '#111827', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} />}
