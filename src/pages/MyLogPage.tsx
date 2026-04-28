@@ -27,6 +27,7 @@ export function MyLogPage() {
   const [editTimeSpent, setEditTimeSpent] = useState('');
   const [editFileName, setEditFileName] = useState('');
   const [editNextStatus, setEditNextStatus] = useState<TaskStatus | ''>('');
+  const [editNextDayFocus, setEditNextDayFocus] = useState('');
   const [todayWork, setTodayWork] = useState('');
   const [tomorrowWork, setTomorrowWork] = useState('');
   const [genLoading, setGenLoading] = useState(false);
@@ -210,13 +211,21 @@ export function MyLogPage() {
     setSelectedDate(getReportDate());
   };
 
+  const getRootTask = (taskId: string) => {
+    const currentTask = taskById.get(taskId);
+    if (!currentTask) return null;
+    return currentTask.parent_id ? (taskById.get(currentTask.parent_id) ?? currentTask) : currentTask;
+  };
+
   const handleEditClick = (log: LogEntry) => {
+    const rootTask = getRootTask(log.task_id);
     setEditingLog(log);
     setEditEvent(log.event);
     setEditCategory(log.category as LogCategory || 'design');
     setEditDate(log.date || new Date().toISOString().slice(0, 10));
     setEditTimeSpent(log.time_spent || '');
     setEditFileName(log.file_name || '');
+    setEditNextDayFocus(rootTask?.next_day_focus?.trim() || '');
     // next_status not available in LogEntry type
     setShowEditModal(true);
   };
@@ -245,10 +254,18 @@ export function MyLogPage() {
         time_spent: editTimeSpent,
         file_name: editFileName,
       });
+
+      const rootTask = getRootTask(editingLog.task_id);
+      if (rootTask) {
+        await updateTask(rootTask.id, {
+          next_day_focus: editNextDayFocus.trim() || null,
+        });
+      }
       
-      // Refresh logs
-      const updatedLogs = await fetchMyLogs();
+      // Refresh logs + tasks
+      const [updatedLogs, updatedTasks] = await Promise.all([fetchMyLogs(), fetchTasks()]);
       setLogs(updatedLogs);
+      setTasks(updatedTasks);
       
       setShowEditModal(false);
       setEditingLog(null);
@@ -257,6 +274,7 @@ export function MyLogPage() {
       setEditDate('');
       setEditTimeSpent('');
       setEditFileName('');
+      setEditNextDayFocus('');
     } catch (error: any) {
       alert(`Update log failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -278,6 +296,7 @@ export function MyLogPage() {
       setEditDate('');
       setEditTimeSpent('');
       setEditFileName('');
+      setEditNextDayFocus('');
     } catch (error: any) {
       alert(`Delete log failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -730,14 +749,24 @@ export function MyLogPage() {
                   </label>
                 </div>
                 
-                {/* Row 2: Update */}
+                {/* Row 2: Today's Update */}
                 <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
-                  Update
+                  Today’s Update
                   <textarea 
                     value={editEvent} 
                     onChange={(e) => setEditEvent(e.target.value)} 
-                    placeholder="What changed, what was decided, and what happens next"
-                    style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} 
+                    placeholder="What I have done today"
+                    style={{ ...inputStyle, minHeight: '100px', resize: 'vertical', height: 'auto' }} 
+                  />
+                </label>
+
+                <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
+                  Next Day Focus
+                  <textarea 
+                    value={editNextDayFocus}
+                    onChange={(e) => setEditNextDayFocus(e.target.value)}
+                    placeholder="What to focus on next day"
+                    style={{ ...inputStyle, minHeight: '100px', resize: 'vertical', height: 'auto' }} 
                   />
                 </label>
                 
