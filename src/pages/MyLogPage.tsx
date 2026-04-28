@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Target } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { TaskFormModal } from '../components/TaskFormModal';
 import { generateTodayLogs, fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
 import { addDays, formatDate, formatDateTime, getReportDate } from '../lib/date';
 import type { LogEntry, TaskItem, LogCategory, TaskStatus } from '../types';
@@ -17,13 +16,11 @@ export function MyLogPage() {
   const [showTaskSelector, setShowTaskSelector] = useState(false);
   const [showDailyLogModal, setShowDailyLogModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showTaskEditModal, setShowTaskEditModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [editingLog, setEditingLog] = useState<LogEntry | null>(null);
   const [editEvent, setEditEvent] = useState('');
   const [editCategory, setEditCategory] = useState<LogCategory>('design');
-  const [editDate, setEditDate] = useState('');
   const [editTimeSpent, setEditTimeSpent] = useState('');
   const [editFileName, setEditFileName] = useState('');
   const [editNextStatus, setEditNextStatus] = useState<TaskStatus | ''>('');
@@ -220,9 +217,9 @@ export function MyLogPage() {
   const handleEditClick = (log: LogEntry) => {
     const rootTask = getRootTask(log.task_id);
     setEditingLog(log);
+    setEditingTask(rootTask);
     setEditEvent(log.event);
     setEditCategory(log.category as LogCategory || 'design');
-    setEditDate(log.date || new Date().toISOString().slice(0, 10));
     setEditTimeSpent(log.time_spent || '');
     setEditFileName(log.file_name || '');
     setEditNextDayFocus(rootTask?.next_day_focus?.trim() || '');
@@ -230,34 +227,37 @@ export function MyLogPage() {
     setShowEditModal(true);
   };
 
-  const handleTaskEditClick = (task: TaskItem) => {
-    setEditingTask(task);
-    setShowTaskEditModal(true);
-  };
-
-  const handleTaskEdited = async () => {
-    const [updatedLogs, updatedTasks] = await Promise.all([fetchMyLogs(), fetchTasks()]);
-    setLogs(updatedLogs);
-    setTasks(updatedTasks);
-    setShowTaskEditModal(false);
-    setEditingTask(null);
+  const handleNextDayEditClick = (task: TaskItem) => {
+    const rootTask = getRootTask(task.id) ?? task;
+    setEditingLog(null);
+    setEditingTask(rootTask);
+    setEditEvent(rootTask.today_update?.trim() || '');
+    setEditCategory('design');
+    setEditTimeSpent('');
+    setEditFileName('');
+    setEditNextStatus('');
+    setEditNextDayFocus(rootTask.next_day_focus?.trim() || '');
+    setShowEditModal(true);
   };
 
   const handleSaveEdit = async () => {
-    if (!editingLog) return;
+    if (!editingLog && !editingTask) return;
     
     setSaving(true);
     try {
-      await updateLog(editingLog.id, {
-        event: editEvent.trim(),
-        category: editCategory,
-        time_spent: editTimeSpent,
-        file_name: editFileName,
-      });
+      if (editingLog) {
+        await updateLog(editingLog.id, {
+          event: editEvent.trim(),
+          category: editCategory,
+          time_spent: editTimeSpent,
+          file_name: editFileName,
+        });
+      }
 
-      const rootTask = getRootTask(editingLog.task_id);
+      const rootTask = editingLog ? getRootTask(editingLog.task_id) : editingTask;
       if (rootTask) {
         await updateTask(rootTask.id, {
+          today_update: editEvent.trim() || null,
           next_day_focus: editNextDayFocus.trim() || null,
         });
       }
@@ -269,9 +269,9 @@ export function MyLogPage() {
       
       setShowEditModal(false);
       setEditingLog(null);
+      setEditingTask(null);
       setEditEvent('');
       setEditCategory('design');
-      setEditDate('');
       setEditTimeSpent('');
       setEditFileName('');
       setEditNextDayFocus('');
@@ -291,9 +291,9 @@ export function MyLogPage() {
       setLogs(updatedLogs);
       setShowEditModal(false);
       setEditingLog(null);
+      setEditingTask(null);
       setEditEvent('');
       setEditCategory('design');
-      setEditDate('');
       setEditTimeSpent('');
       setEditFileName('');
       setEditNextDayFocus('');
@@ -673,29 +673,20 @@ export function MyLogPage() {
           </div>
         )}
 
-        {showTaskEditModal && editingTask && (
-          <TaskFormModal
-            onClose={() => { setShowTaskEditModal(false); setEditingTask(null); }}
-            onCreated={handleTaskEdited}
-            mode="edit"
-            initialTask={editingTask}
-          />
-        )}
-
         {/* Edit Log Modal - Updated to match LogFormModal */}
-        {showEditModal && editingLog && (
-          <div onClick={() => setShowEditModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
+        {showEditModal && (editingLog || editingTask) && (
+          <div onClick={() => { setShowEditModal(false); setEditingLog(null); setEditingTask(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <div>
                   <div style={{ fontSize: '24px', fontWeight: 800 }}>Edit Log</div>
                   <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
-                    Task: <strong>{taskMap.get(editingLog.task_id) || 'Unknown Task'}</strong>
+                    Task: <strong>{editingTask?.title || (editingLog ? (taskMap.get(editingLog.task_id) || 'Unknown Task') : 'Unknown Task')}</strong>
                   </div>
                 </div>
                 <button 
                   onClick={handleLogDelete}
-                  disabled={deletingLog}
+                  disabled={deletingLog || !editingLog}
                   style={{ 
                     width: '36px', 
                     height: '36px', 
@@ -705,8 +696,8 @@ export function MyLogPage() {
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    cursor: deletingLog ? 'not-allowed' : 'pointer',
-                    opacity: deletingLog ? 0.6 : 1,
+                    cursor: (deletingLog || !editingLog) ? 'not-allowed' : 'pointer',
+                    opacity: (deletingLog || !editingLog) ? 0.35 : 1,
                   }}
                   title="Delete Log"
                 >
@@ -715,41 +706,7 @@ export function MyLogPage() {
               </div>
 
               <div style={{ display: 'grid', gap: '18px' }}>
-                {/* Row 1: Date + Category */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '14px' }}>
-                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
-                    Date
-                    <input 
-                      type="date" 
-                      value={editDate} 
-                      onChange={(e) => setEditDate(e.target.value)} 
-                      style={{
-                        ...inputStyle,
-                        WebkitAppearance: 'none',
-                        appearance: 'none',
-                        textAlign: 'left',
-                        paddingRight: '14px',
-                      }} 
-                    />
-                  </label>
-                  <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
-                    Category
-                    <select 
-                      value={editCategory} 
-                      onChange={(e) => setEditCategory(e.target.value as LogCategory)}
-                      style={inputStyle}
-                    >
-                      <option value="design">Design</option>
-                      <option value="research">Research</option>
-                      <option value="meeting">Meeting</option>
-                      <option value="review">Review</option>
-                      <option value="development">Development</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </label>
-                </div>
-                
-                {/* Row 2: Today's Update */}
+                {/* Row 1: Today's Update */}
                 <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>
                   Today’s Update
                   <textarea 
@@ -949,7 +906,7 @@ export function MyLogPage() {
                         </span>
                       </div>
                       <button
-                        onClick={() => handleTaskEditClick(task)}
+                        onClick={() => handleNextDayEditClick(task)}
                         style={{
                           padding: '6px 10px',
                           borderRadius: '8px',
