@@ -105,6 +105,7 @@ export function TaskListPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
+  const [activeCompactCard, setActiveCompactCard] = useState<'Focus' | 'Overdue' | 'Other' | 'All'>('Focus');
   
   // Section expand/collapse state - default: Only Tomorrow expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -120,6 +121,7 @@ export function TaskListPage() {
       'Other': true,
       'Done': true,
     });
+    setActiveCompactCard('All');
   };
   
   const userName = profile?.name || 'User';
@@ -143,6 +145,9 @@ export function TaskListPage() {
       'Other': sectionName === 'Other',
       'Done': false,
     });
+    if (sectionName === 'Focus' || sectionName === 'Overdue' || sectionName === 'Other') {
+      setActiveCompactCard(sectionName);
+    }
   };
 
   const clearFilters = () => {
@@ -155,6 +160,7 @@ export function TaskListPage() {
       'Other': false,
       'Done': false,
     });
+    setActiveCompactCard('Focus');
   };
 
   useEffect(() => {
@@ -222,7 +228,6 @@ export function TaskListPage() {
   const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
   const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
   const allCount = rootTasks.length;
-  const allSectionsActive = ['Focus', 'Overdue', 'Other', 'Done'].every((section) => expandedSections[section]);
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -281,7 +286,7 @@ export function TaskListPage() {
             count={focusCount}
             bgColor="#ede9fe"
             iconBgColor="#ddd6fe"
-            active={expandedSections['Focus']}
+            active={activeCompactCard === 'Focus'}
             onToggle={() => toggleSection('Focus')}
           />
           <CompactCard 
@@ -290,7 +295,7 @@ export function TaskListPage() {
             count={overdueCount}
             bgColor="#fef2f2"
             iconBgColor="#fee2e2"
-            active={expandedSections['Overdue']}
+            active={activeCompactCard === 'Overdue'}
             onToggle={() => toggleSection('Overdue')}
           />
           <CompactCard 
@@ -299,7 +304,7 @@ export function TaskListPage() {
             count={otherCount}
             bgColor="#eff6ff"
             iconBgColor="#dbeafe"
-            active={expandedSections['Other']}
+            active={activeCompactCard === 'Other'}
             onToggle={() => toggleSection('Other')}
           />
           <CompactCard 
@@ -308,7 +313,7 @@ export function TaskListPage() {
             count={allCount}
             bgColor="#f1f5f9"
             iconBgColor="#e2e8f0"
-            active={allSectionsActive}
+            active={activeCompactCard === 'All'}
             onToggle={showAllSections}
           />
         </div>
