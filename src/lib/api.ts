@@ -167,7 +167,9 @@ function computeParentProgress(task: any, allTasks: any[]): { progress_percent: 
   const round1 = grouped.get(1) ?? [];
   const round2 = grouped.get(2) ?? [];
   const round3 = grouped.get(3) ?? [];
-  const avg = (items: any[]) => items.length ? items.reduce((sum, item) => sum + (item.is_finished ? 100 : (item.progress_percent ?? 0)), 0) / items.length : 0;
+  const getItemProgress = (item: any) => item.is_finished ? 100 : (item.progress_percent ?? 0);
+  const avg = (items: any[]) => items.length ? items.reduce((sum, item) => sum + getItemProgress(item), 0) / items.length : 0;
+  const allSubtasksFinished = subtasks.every((st) => getItemProgress(st) >= 100);
 
   let progress = 0;
   let currentRound = rounds[0] ?? 1;
@@ -190,14 +192,16 @@ function computeParentProgress(task: any, allTasks: any[]): { progress_percent: 
     if (round3Avg > 0) currentRound = 3;
   }
 
-  if (task.is_finished) {
+  const isFinished = allSubtasksFinished ? (task.is_finished ?? false) : false;
+
+  if (isFinished) {
     progress = 100;
   }
 
   return {
     progress_percent: Math.min(100, progress),
-    round_number: task.is_finished ? Math.max(3, currentRound) : currentRound,
-    is_finished: task.is_finished ?? false,
+    round_number: isFinished ? Math.max(3, currentRound) : currentRound,
+    is_finished: isFinished,
   };
 }
 
@@ -368,11 +372,18 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
   
   if (error || !task) return null;
 
-  const [{ data: assignees }, { data: tags }, { data: logs }] = await Promise.all([
+  const [{ data: assignees }, { data: tags }, { data: logs }, { data: relatedTasks }] = await Promise.all([
     supabase.from('task_assignees').select('task_id, user_id').eq('task_id', taskId),
     supabase.from('tags').select('task_id, name').eq('task_id', taskId),
     supabase.from('log_entries').select('id, task_id').eq('task_id', taskId),
+    supabase.from('tasks').select('id, parent_id, progress_percent, round_number, is_finished').or(`id.eq.${taskId},parent_id.eq.${taskId}`),
   ]);
+
+  const aggregate = task.parent_id ? {
+    progress_percent: task.is_finished ? 100 : (task.progress_percent ?? 0),
+    round_number: task.round_number ?? 1,
+    is_finished: task.is_finished ?? false,
+  } : computeParentProgress(task, relatedTasks ?? [task]);
 
   const { data: profiles } = await supabase.from('profiles').select('id, name, email, role');
   const profileMap = new Map((profiles ?? []).map((p) => [p.id, p as Profile]));
@@ -396,13 +407,13 @@ export async function fetchTask(taskId: string): Promise<TaskItem | null> {
     updated_by: task.updated_by,
     created_at: task.created_at,
     updated_at: task.updated_at,
-    progress_percent: task.is_finished ? 100 : (task.progress_percent ?? 0),
-    round_number: task.round_number ?? 1,
-    is_finished: task.is_finished ?? false,
+    progress_percent: aggregate.progress_percent,
+    round_number: aggregate.round_number,
+    is_finished: aggregate.is_finished,
     assignees: taskAssignees,
     tags: (tags ?? []).map((t: any) => t.name),
     log_count: (logs ?? []).length,
-    subtask_count: 0,
+    subtask_count: task.parent_id ? 0 : (relatedTasks ?? []).filter((item: any) => item.parent_id === task.id).length,
   } as TaskItem;
 }
 

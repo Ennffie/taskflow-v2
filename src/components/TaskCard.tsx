@@ -85,7 +85,33 @@ export function TaskCard({
   const dueDateLabel = formatDate(task.due_date);
   const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const primaryAssignee = task.assignees[0];
-  const progress = task.is_finished ? 100 : (task.progress_percent ?? 0);
+
+  const progress = (() => {
+    if (subtasks.length === 0) return task.is_finished ? 100 : (task.progress_percent ?? 0);
+
+    const getItemProgress = (item: TaskItem) => item.is_finished ? 100 : (item.progress_percent ?? 0);
+    const grouped = new Map<number, TaskItem[]>();
+
+    subtasks.forEach((subtask) => {
+      const round = subtask.round_number ?? 1;
+      grouped.set(round, [...(grouped.get(round) ?? []), subtask]);
+    });
+
+    const avg = (items: TaskItem[]) => items.length ? items.reduce((sum, item) => sum + getItemProgress(item), 0) / items.length : 0;
+    const round1 = grouped.get(1) ?? [];
+    const round2 = grouped.get(2) ?? [];
+    const round3 = grouped.get(3) ?? [];
+
+    let nextProgress = 0;
+    if (round1.length > 0) nextProgress = Math.max(nextProgress, Math.round((avg(round1) / 100) * 70));
+    if (round2.length > 0) nextProgress = Math.max(nextProgress, 70 + Math.round((avg(round2) / 100) * 10));
+    if (round3.length > 0) nextProgress = Math.max(nextProgress, 80 + Math.round((avg(round3) / 100) * 10));
+
+    const allSubtasksFinished = subtasks.every((subtask) => getItemProgress(subtask) >= 100);
+    if (allSubtasksFinished && task.is_finished) return 100;
+
+    return Math.min(100, nextProgress);
+  })();
 
   return (
     <div 

@@ -51,7 +51,7 @@ export function LogBookPage() {
         fetchLogs(taskId)
       ]);
       setTask(nextTask);
-      setDraftTaskProgress(nextTask?.is_finished ? 100 : (nextTask?.progress_percent ?? 0));
+      setDraftTaskProgress(nextTask?.progress_percent ?? 0);
       setLogs(nextLogs);
       const nextSubtasks = nextTask ? await fetchSubtasks(nextTask.id) : [];
       setSubtasks(nextSubtasks);
@@ -78,6 +78,41 @@ export function LogBookPage() {
     return subtask.assignees.some(a => a.id === profile.id);
   };
 
+  const derivedParentState = useMemo(() => {
+    if (!task || task.parent_id || subtasks.length === 0) {
+      return {
+        progress: task?.is_finished ? 100 : (task?.progress_percent ?? 0),
+        isFinished: task?.is_finished ?? false,
+      };
+    }
+
+    const getItemProgress = (item: TaskItem) => item.is_finished ? 100 : (item.progress_percent ?? 0);
+    const grouped = new Map<number, TaskItem[]>();
+
+    subtasks.forEach((subtask) => {
+      const round = subtask.round_number ?? 1;
+      grouped.set(round, [...(grouped.get(round) ?? []), subtask]);
+    });
+
+    const avg = (items: TaskItem[]) => items.length ? items.reduce((sum, item) => sum + getItemProgress(item), 0) / items.length : 0;
+    const round1 = grouped.get(1) ?? [];
+    const round2 = grouped.get(2) ?? [];
+    const round3 = grouped.get(3) ?? [];
+
+    let progress = 0;
+    if (round1.length > 0) progress = Math.max(progress, Math.round((avg(round1) / 100) * 70));
+    if (round2.length > 0) progress = Math.max(progress, 70 + Math.round((avg(round2) / 100) * 10));
+    if (round3.length > 0) progress = Math.max(progress, 80 + Math.round((avg(round3) / 100) * 10));
+
+    const allSubtasksFinished = subtasks.every((subtask) => getItemProgress(subtask) >= 100);
+    return {
+      progress: allSubtasksFinished && task.is_finished ? 100 : Math.min(100, progress),
+      isFinished: allSubtasksFinished && (task.is_finished ?? false),
+    };
+  }, [task, subtasks]);
+
+  const canFinishParentTask = !task?.parent_id && (subtasks.length === 0 || subtasks.every((subtask) => (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)) >= 100));
+
   const saveTaskProgress = async (nextProgress: number, nextFinished?: boolean) => {
     if (!task || !canEditTask) return;
     setProgressSaving(true);
@@ -93,7 +128,7 @@ export function LogBookPage() {
       ]);
       if (nextTask) {
         setTask(nextTask);
-        setDraftTaskProgress(nextTask.is_finished ? 100 : (nextTask.progress_percent ?? 0));
+        setDraftTaskProgress(nextTask.progress_percent ?? 0);
       }
       setLogs(nextLogs);
       setProgressStatus('saved');
@@ -125,7 +160,7 @@ export function LogBookPage() {
       setDraftSubtaskProgress(Object.fromEntries(nextSubtasks.map((item) => [item.id, item.is_finished ? 100 : (item.progress_percent ?? 0)])));
       if (nextTask) {
         setTask(nextTask);
-        setDraftTaskProgress(nextTask.is_finished ? 100 : (nextTask.progress_percent ?? 0));
+        setDraftTaskProgress(nextTask.progress_percent ?? 0);
       }
       setLogs(nextLogs);
       setProgressStatus('saved');
@@ -307,8 +342,8 @@ export function LogBookPage() {
               </span>
             )}
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111827', margin: 0 }}>{task.title}</h1>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: task.is_finished ? '#10b981' : '#7c3aed', background: task.is_finished ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
-              {task.is_finished ? '100% Finished' : `${task.progress_percent ?? 0}%`}
+            <span style={{ fontSize: '12px', fontWeight: 700, color: derivedParentState.isFinished ? '#10b981' : '#7c3aed', background: derivedParentState.isFinished ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
+              {derivedParentState.isFinished ? '100% Finished' : `${derivedParentState.progress}%`}
             </span>
             {!task.parent_id && <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '999px' }}>Round {task.round_number ?? 1}</span>}
             <div style={{ display: 'flex', gap: '6px' }}>
@@ -324,7 +359,7 @@ export function LogBookPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Progress</div>
                   <span style={{ fontSize: '13px', fontWeight: 800, color: '#6d28d9', background: '#ede9fe', padding: '6px 10px', borderRadius: '999px', minWidth: '52px', textAlign: 'center' }}>
-                    {task.parent_id ? draftTaskProgress : (task.is_finished ? 100 : (task.progress_percent ?? 0))}%
+                    {task.parent_id ? draftTaskProgress : derivedParentState.progress}%
                   </span>
                   {progressStatus !== 'idle' && (
                     <span style={{ fontSize: '12px', fontWeight: 700, color: progressStatus === 'saving' ? '#6d28d9' : '#047857' }}>
@@ -332,11 +367,12 @@ export function LogBookPage() {
                     </span>
                   )}
                 </div>
-                {canEditTask && !task.parent_id && !task.is_finished && (
+                {canEditTask && !task.parent_id && !derivedParentState.isFinished && (
                   <button
                     onClick={() => void saveTaskProgress(100, true)}
-                    disabled={progressSaving}
-                    style={{ border: 'none', background: '#111827', color: '#fff', borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: progressSaving ? 0.6 : 1 }}
+                    disabled={progressSaving || !canFinishParentTask}
+                    title={canFinishParentTask ? 'Mark main task as finished' : 'Finish is available only after all sub-tasks reach 100%'}
+                    style={{ border: 'none', background: canFinishParentTask ? '#111827' : '#cbd5e1', color: '#fff', borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, cursor: progressSaving || !canFinishParentTask ? 'not-allowed' : 'pointer', opacity: progressSaving ? 0.6 : 1 }}
                   >
                     Finish
                   </button>
@@ -363,7 +399,7 @@ export function LogBookPage() {
                   <div style={{ fontSize: '12px', color: '#94a3b8' }}>Progress is editable by this sub-task assignee or admin only.</div>
                 )
               ) : (
-                <div style={{ fontSize: '12px', color: '#94a3b8' }}>{subtasks.length > 0 ? 'Parent progress is calculated from sub-tasks and rounds. Use Finish when the whole task is done.' : 'Main task progress can be updated if you are assigned to this task.'}</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>{subtasks.length > 0 ? (canFinishParentTask ? 'Parent progress is calculated from sub-tasks and rounds. You can finish this main task now.' : 'Parent progress is calculated from sub-tasks and rounds. Finish unlocks only after all sub-tasks reach 100%.') : 'Main task progress can be updated if you are assigned to this task.'}</div>
               )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
