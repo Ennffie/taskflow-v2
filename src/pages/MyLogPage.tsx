@@ -394,6 +394,7 @@ export function MyLogPage() {
     width: '100%',
     maxWidth: '100%',
     minWidth: 0,
+    height: '56px',
     padding: '14px',
     borderRadius: '12px',
     border: '1px solid #e2e8f0',
@@ -703,7 +704,13 @@ export function MyLogPage() {
                       type="date" 
                       value={editDate} 
                       onChange={(e) => setEditDate(e.target.value)} 
-                      style={inputStyle} 
+                      style={{
+                        ...inputStyle,
+                        WebkitAppearance: 'none',
+                        appearance: 'none',
+                        textAlign: 'left',
+                        paddingRight: '14px',
+                      }} 
                     />
                   </label>
                   <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
