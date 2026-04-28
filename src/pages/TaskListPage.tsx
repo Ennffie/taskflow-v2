@@ -86,6 +86,14 @@ export function TaskListPage() {
     'Other': false,
     'Done': false,
   });
+  const showAllSections = () => {
+    setExpandedSections({
+      'Focus': true,
+      'Overdue': true,
+      'Other': true,
+      'Done': true,
+    });
+  };
   
   const userName = profile?.name || 'User';
   const isAdmin = profile?.role === 'admin';
@@ -113,12 +121,24 @@ export function TaskListPage() {
   const clearFilters = () => {
     setQuery('');
     setStatusFilter('all');
+    setExpandedSections({
+      'Focus': true,
+      'Overdue': false,
+      'Other': false,
+      'Done': false,
+    });
   };
 
   useEffect(() => {
     if (authLoading || !session) return;
     void loadTasks();
   }, [authLoading, session, profile?.id]);
+
+  useEffect(() => {
+    if (query.trim()) {
+      showAllSections();
+    }
+  }, [query]);
 
   const filtered = useMemo(() => tasks.filter((task) => {
     const matchesQuery = `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());
@@ -147,6 +167,8 @@ export function TaskListPage() {
   const focusCount = rootTasks.filter(t => t.is_focus).length;
   const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
   const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const allCount = rootTasks.length;
+  const allSectionsActive = ['Focus', 'Overdue', 'Other', 'Done'].every((section) => expandedSections[section]);
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -189,7 +211,7 @@ export function TaskListPage() {
           </div>
         </div>
 
-        {/* Horizontal Scrollable Compact Cards - 3 cards only */}
+        {/* Horizontal Scrollable Compact Cards */}
         <div style={{ 
           display: 'flex', 
           gap: '12px', 
@@ -226,6 +248,15 @@ export function TaskListPage() {
             active={expandedSections['Other']}
             onToggle={() => toggleSection('Other')}
           />
+          <CompactCard 
+            icon={<CheckCircle2 size={20} color="#0f172a" />}
+            label="All" 
+            count={allCount}
+            bgColor="#f1f5f9"
+            iconBgColor="#e2e8f0"
+            active={allSectionsActive}
+            onToggle={showAllSections}
+          />
         </div>
 
         {/* Search & Filters */}
@@ -234,7 +265,11 @@ export function TaskListPage() {
             <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
               value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
+              onChange={(e) => {
+                const nextQuery = e.target.value;
+                setQuery(nextQuery);
+                if (nextQuery.trim()) showAllSections();
+              }} 
               placeholder="Search tasks by name..." 
               style={{ width: '100%', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '12px 14px 12px 42px', fontSize: '14px', outline: 'none', background: '#fff' }} 
             />
