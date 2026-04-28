@@ -597,7 +597,7 @@ export function LogBookPage() {
               </button>
             </div>
               <div style={{ display: 'grid', gap: '18px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '14px' }}>
                 <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151', minWidth: 0 }}>
                   Category
                   <select value={editLogCategory} onChange={(e) => setEditLogCategory(e.target.value as LogCategory)} style={inputStyle}>
