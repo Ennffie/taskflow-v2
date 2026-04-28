@@ -61,7 +61,7 @@ export function LoginPage() {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               style={inputStyle} 
-              placeholder="enfield.sw.law@pccw.com" 
+              placeholder="yourname@domain.com" 
             />
           </Field>
           
