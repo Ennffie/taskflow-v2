@@ -104,14 +104,14 @@ export function LogBookPage() {
     if (round2.length > 0) progress = Math.max(progress, 70 + Math.round((avg(round2) / 100) * 10));
     if (round3.length > 0) progress = Math.max(progress, 80 + Math.round((avg(round3) / 100) * 10));
 
-    const allSubtasksFinished = subtasks.every((subtask) => getItemProgress(subtask) >= 100);
+    const calculatedProgress = Math.min(100, progress);
     return {
-      progress: allSubtasksFinished && task.is_finished ? 100 : Math.min(100, progress),
-      isFinished: allSubtasksFinished && (task.is_finished ?? false),
+      progress: task.is_finished && calculatedProgress >= 90 ? 100 : calculatedProgress,
+      isFinished: (task.is_finished ?? false) && calculatedProgress >= 90,
     };
   }, [task, subtasks]);
 
-  const canFinishParentTask = !task?.parent_id && (subtasks.length === 0 || subtasks.every((subtask) => (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)) >= 100));
+  const canFinishParentTask = !task?.parent_id && (subtasks.length === 0 ? true : derivedParentState.progress >= 90);
 
   const saveTaskProgress = async (nextProgress: number, nextFinished?: boolean) => {
     if (!task || !canEditTask) return;
@@ -399,7 +399,7 @@ export function LogBookPage() {
                   <div style={{ fontSize: '12px', color: '#94a3b8' }}>Progress is editable by this sub-task assignee or admin only.</div>
                 )
               ) : (
-                <div style={{ fontSize: '12px', color: '#94a3b8' }}>{subtasks.length > 0 ? (canFinishParentTask ? 'Parent progress is calculated from sub-tasks and rounds. You can finish this main task now.' : 'Parent progress is calculated from sub-tasks and rounds. Finish unlocks only after all sub-tasks reach 100%.') : 'Main task progress can be updated if you are assigned to this task.'}</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>{subtasks.length > 0 ? (canFinishParentTask ? 'Parent progress is calculated from sub-tasks and rounds. You can finish this main task now.' : 'Parent progress is calculated from sub-tasks and rounds. Finish unlocks only at the final round.') : 'Main task progress can be updated if you are assigned to this task.'}</div>
               )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>

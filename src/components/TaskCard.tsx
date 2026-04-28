@@ -107,10 +107,10 @@ export function TaskCard({
     if (round2.length > 0) nextProgress = Math.max(nextProgress, 70 + Math.round((avg(round2) / 100) * 10));
     if (round3.length > 0) nextProgress = Math.max(nextProgress, 80 + Math.round((avg(round3) / 100) * 10));
 
-    const allSubtasksFinished = subtasks.every((subtask) => getItemProgress(subtask) >= 100);
-    if (allSubtasksFinished && task.is_finished) return 100;
+    const calculatedProgress = Math.min(100, nextProgress);
+    if (task.is_finished && calculatedProgress >= 90) return 100;
 
-    return Math.min(100, nextProgress);
+    return calculatedProgress;
   })();
 
   return (

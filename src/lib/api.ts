@@ -169,8 +169,6 @@ function computeParentProgress(task: any, allTasks: any[]): { progress_percent: 
   const round3 = grouped.get(3) ?? [];
   const getItemProgress = (item: any) => item.is_finished ? 100 : (item.progress_percent ?? 0);
   const avg = (items: any[]) => items.length ? items.reduce((sum, item) => sum + getItemProgress(item), 0) / items.length : 0;
-  const allSubtasksFinished = subtasks.every((st) => getItemProgress(st) >= 100);
-
   let progress = 0;
   let currentRound = rounds[0] ?? 1;
 
@@ -192,14 +190,15 @@ function computeParentProgress(task: any, allTasks: any[]): { progress_percent: 
     if (round3Avg > 0) currentRound = 3;
   }
 
-  const isFinished = allSubtasksFinished ? (task.is_finished ?? false) : false;
+  const calculatedProgress = Math.min(100, progress);
+  const isFinished = (task.is_finished ?? false) && calculatedProgress >= 90;
 
   if (isFinished) {
     progress = 100;
   }
 
   return {
-    progress_percent: Math.min(100, progress),
+    progress_percent: isFinished ? 100 : calculatedProgress,
     round_number: isFinished ? Math.max(3, currentRound) : currentRound,
     is_finished: isFinished,
   };
