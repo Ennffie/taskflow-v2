@@ -45,7 +45,25 @@ export function ReviewBeforeExportPage() {
 
   const rows = useMemo(() => buildTrackerRows(tasks, logs, reportDate, 'all'), [tasks, logs, reportDate]);
   const warnings = useMemo(() => buildReviewWarnings(rows), [rows]);
-  const issueRows = useMemo(() => filterRowsByWarning(rows, activeWarning), [rows, activeWarning]);
+  const issueRowsWithReasons = useMemo(() => {
+    const getReasons = (row: (typeof rows)[number]) => {
+      const reasons: string[] = [];
+      if (!row.member || row.member === 'Unassigned') reasons.push('Missing assignee');
+      if (row.status === 'Overdue') reasons.push('Overdue');
+      return reasons;
+    };
+
+    return rows
+      .map((row, index) => ({ row, index, reasons: getReasons(row) }))
+      .filter((item) => item.reasons.length > 0);
+  }, [rows]);
+
+  const issueRows = useMemo(() => {
+    if (activeWarning === 'all') return issueRowsWithReasons;
+    const filtered = filterRowsByWarning(rows, activeWarning);
+    const allowedKeys = new Set(filtered.map((row, index) => `${row.mainTaskId}-${row.subtaskId ?? 'main'}-${index}`));
+    return issueRowsWithReasons.filter(({ row, index }) => allowedKeys.has(`${row.mainTaskId}-${row.subtaskId ?? 'main'}-${index}`));
+  }, [rows, activeWarning, issueRowsWithReasons]);
   const groupedByMember = useMemo(() => rows.reduce<Record<string, typeof rows>>((acc, row) => {
     const key = row.member || 'Unassigned';
     acc[key] = acc[key] ?? [];
@@ -129,7 +147,7 @@ export function ReviewBeforeExportPage() {
         <section style={panelStyle}>
           <div style={{ fontSize: '16px', fontWeight: 800, color: '#111827', marginBottom: '12px' }}>Warnings</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-            <button onClick={() => setActiveWarning('all')} style={warningChip(activeWarning === 'all')}>All Issues ({rows.length})</button>
+            <button onClick={() => setActiveWarning('all')} style={warningChip(activeWarning === 'all')}>All Issues ({issueRowsWithReasons.length})</button>
             {warnings.map((warning) => (
               <button key={warning.kind} onClick={() => { setActiveWarning(warning.kind); setTab('issues'); }} style={warningChip(activeWarning === warning.kind, warning.kind === 'overdue' ? 'danger' : 'warning')}>
                 <AlertTriangle size={14} /> {warning.count} · {warning.message}
@@ -165,7 +183,7 @@ export function ReviewBeforeExportPage() {
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '10px' }}>
-              {issueRows.length === 0 ? <div style={{ color: '#6b7280' }}>No issues in this filter. Nice ✨</div> : <MiniRows rows={issueRows} profiles={profiles} showTask showActions editingRowKey={editingRowKey} savingRowKey={savingRowKey} draftTodayUpdate={draftTodayUpdate} draftNextDayFocus={draftNextDayFocus} draftDueDate={draftDueDate} draftAssigneeId={draftAssigneeId} onDraftTodayUpdateChange={setDraftTodayUpdate} onDraftNextDayFocusChange={setDraftNextDayFocus} onDraftDueDateChange={setDraftDueDate} onDraftAssigneeIdChange={setDraftAssigneeId} onStartEdit={handleStartEdit} onSaveEdit={handleSaveEdit} onCancelEdit={handleCancelEdit} />}
+              {issueRows.length === 0 ? <div style={{ color: '#6b7280' }}>No issues in this filter. Nice ✨</div> : <MiniRows rows={issueRows.map((item) => item.row)} issueReasons={issueRows.map((item) => item.reasons)} profiles={profiles} showTask showActions editingRowKey={editingRowKey} savingRowKey={savingRowKey} draftTodayUpdate={draftTodayUpdate} draftNextDayFocus={draftNextDayFocus} draftDueDate={draftDueDate} draftAssigneeId={draftAssigneeId} onDraftTodayUpdateChange={setDraftTodayUpdate} onDraftNextDayFocusChange={setDraftNextDayFocus} onDraftDueDateChange={setDraftDueDate} onDraftAssigneeIdChange={setDraftAssigneeId} onStartEdit={handleStartEdit} onSaveEdit={handleSaveEdit} onCancelEdit={handleCancelEdit} />}
             </div>
           )}
         </section>
@@ -186,7 +204,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return <button onClick={onClick} style={{ padding: '10px 14px', borderRadius: '10px', border: 'none', background: active ? '#111827' : '#f3f4f6', color: active ? '#fff' : '#475569', fontWeight: 700, cursor: 'pointer' }}>{children}</button>;
 }
 
-function MiniRows({ rows, profiles, showTask = false, showActions = false, editingRowKey, savingRowKey, draftTodayUpdate, draftNextDayFocus, draftDueDate, draftAssigneeId, onDraftTodayUpdateChange, onDraftNextDayFocusChange, onDraftDueDateChange, onDraftAssigneeIdChange, onStartEdit, onSaveEdit, onCancelEdit }: { rows: ReturnType<typeof buildTrackerRows>; profiles: Profile[]; showTask?: boolean; showActions?: boolean; editingRowKey?: string | null; savingRowKey?: string | null; draftTodayUpdate?: string; draftNextDayFocus?: string; draftDueDate?: string; draftAssigneeId?: string; onDraftTodayUpdateChange?: (value: string) => void; onDraftNextDayFocusChange?: (value: string) => void; onDraftDueDateChange?: (value: string) => void; onDraftAssigneeIdChange?: (value: string) => void; onStartEdit?: (row: ReturnType<typeof buildTrackerRows>[number], index: number) => void; onSaveEdit?: (row: ReturnType<typeof buildTrackerRows>[number], index: number) => void; onCancelEdit?: () => void; }) {
+function MiniRows({ rows, issueReasons, profiles, showTask = false, showActions = false, editingRowKey, savingRowKey, draftTodayUpdate, draftNextDayFocus, draftDueDate, draftAssigneeId, onDraftTodayUpdateChange, onDraftNextDayFocusChange, onDraftDueDateChange, onDraftAssigneeIdChange, onStartEdit, onSaveEdit, onCancelEdit }: { rows: ReturnType<typeof buildTrackerRows>; issueReasons?: string[][]; profiles: Profile[]; showTask?: boolean; showActions?: boolean; editingRowKey?: string | null; savingRowKey?: string | null; draftTodayUpdate?: string; draftNextDayFocus?: string; draftDueDate?: string; draftAssigneeId?: string; onDraftTodayUpdateChange?: (value: string) => void; onDraftNextDayFocusChange?: (value: string) => void; onDraftDueDateChange?: (value: string) => void; onDraftAssigneeIdChange?: (value: string) => void; onStartEdit?: (row: ReturnType<typeof buildTrackerRows>[number], index: number) => void; onSaveEdit?: (row: ReturnType<typeof buildTrackerRows>[number], index: number) => void; onCancelEdit?: () => void; }) {
   return (
     <div style={{ display: 'grid', gap: '10px' }}>
       {rows.map((row, index) => (
@@ -201,6 +219,13 @@ function MiniRows({ rows, profiles, showTask = false, showActions = false, editi
             <div>
               {showTask ? <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px' }}>{row.mainTask}</div> : null}
               <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>{row.subtask || row.mainTask}</div>
+              {issueReasons?.[index]?.length ? (
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  {issueReasons[index].map((reason) => (
+                    <span key={reason} style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', background: '#fef3c7', padding: '3px 7px', borderRadius: '999px' }}>{reason}</span>
+                  ))}
+                </div>
+              ) : null}
               {isEditing ? (
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
                   <select value={draftAssigneeId} onChange={(e) => onDraftAssigneeIdChange?.(e.target.value)} style={quickInlineSelectStyle}>
