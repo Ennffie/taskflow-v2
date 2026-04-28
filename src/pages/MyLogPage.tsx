@@ -761,8 +761,8 @@ export function MyLogPage() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '10px 16px', alignItems: 'start' }}>
+                  <div style={{ minWidth: 0 }}>
                     {/* Task Name + Category */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={{ 
@@ -785,9 +785,9 @@ export function MyLogPage() {
                         {log.category}
                       </span>
                     </div>
-                    <div style={{ fontSize: '15px', color: '#374151', marginTop: '10px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{log.event}</div>
                   </div>
                   <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDateTime(log.created_at)}</div>
+                  <div style={{ gridColumn: '1 / -1', fontSize: '15px', color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{log.event}</div>
                 </div>
               </article>
             ))}
