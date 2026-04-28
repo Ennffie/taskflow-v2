@@ -147,19 +147,27 @@ export async function fetchProfiles(): Promise<Profile[]> {
   return (data ?? []) as Profile[];
 }
 
+function getEffectiveRound(task: { round_number?: number | null; status?: TaskStatus | null }): number {
+  if (task.round_number && task.round_number >= 1) return task.round_number;
+  const status = task.status ?? 'todo';
+  if (status.startsWith('round_3_')) return 3;
+  if (status.startsWith('round_2_')) return 2;
+  return 1;
+}
+
 function computeParentProgress(task: any, allTasks: any[]): { progress_percent: number; round_number: number; is_finished: boolean } {
   const subtasks = allTasks.filter(st => st.parent_id === task.id);
   if (subtasks.length === 0) {
     return {
       progress_percent: task.is_finished ? 100 : (task.progress_percent ?? 0),
-      round_number: task.round_number ?? 1,
+      round_number: getEffectiveRound(task),
       is_finished: task.is_finished ?? false,
     };
   }
 
   const grouped = new Map<number, any[]>();
   subtasks.forEach((st) => {
-    const round = st.round_number ?? 1;
+    const round = getEffectiveRound(st);
     grouped.set(round, [...(grouped.get(round) ?? []), st]);
   });
 

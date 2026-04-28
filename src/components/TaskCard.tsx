@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { formatDate } from '../lib/date';
-import { type TaskItem } from '../types';
+import { type TaskItem, type TaskStatus } from '../types';
 import { SubtaskPreviewList } from './SubtaskPreviewList';
 
 const AVATAR_COLOR_PALETTE = [
@@ -28,6 +28,14 @@ function getAvatarColor(name: string, id?: string) {
   }
 
   return AVATAR_COLOR_PALETTE[Math.abs(hash) % AVATAR_COLOR_PALETTE.length];
+}
+
+function getEffectiveRound(task: { round_number?: number | null; status?: TaskStatus | null }): number {
+  if (task.round_number && task.round_number >= 1) return task.round_number;
+  const status = task.status ?? 'todo';
+  if (status.startsWith('round_3_')) return 3;
+  if (status.startsWith('round_2_')) return 2;
+  return 1;
 }
 
 interface TaskCardProps {
@@ -93,7 +101,7 @@ export function TaskCard({
     const grouped = new Map<number, TaskItem[]>();
 
     subtasks.forEach((subtask) => {
-      const round = subtask.round_number ?? 1;
+      const round = getEffectiveRound(subtask);
       grouped.set(round, [...(grouped.get(round) ?? []), subtask]);
     });
 

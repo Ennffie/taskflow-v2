@@ -6,10 +6,18 @@ import { LogFormModal } from '../components/LogFormModal';
 import { fetchLogs, fetchTask, deleteTask, updateLog, deleteLog, fetchSubtasks, updateTask } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { useAuth } from '../contexts/AuthContext';
-import { PRIORITY_META, STATUS_META, FOCUS_META, type LogEntry, type TaskItem, type LogCategory } from '../types';
+import { PRIORITY_META, STATUS_META, FOCUS_META, type LogEntry, type TaskItem, type LogCategory, type TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
+
+function getEffectiveRound(task: { round_number?: number | null; status?: TaskStatus | null }): number {
+  if (task.round_number && task.round_number >= 1) return task.round_number;
+  const status = task.status ?? 'todo';
+  if (status.startsWith('round_3_')) return 3;
+  if (status.startsWith('round_2_')) return 2;
+  return 1;
+}
 
 export function LogBookPage() {
   const { taskId = '' } = useParams();
@@ -90,7 +98,7 @@ export function LogBookPage() {
     const grouped = new Map<number, TaskItem[]>();
 
     subtasks.forEach((subtask) => {
-      const round = subtask.round_number ?? 1;
+      const round = getEffectiveRound(subtask);
       grouped.set(round, [...(grouped.get(round) ?? []), subtask]);
     });
 
@@ -350,7 +358,7 @@ export function LogBookPage() {
             <span style={{ fontSize: '12px', fontWeight: 700, color: derivedParentState.isFinished ? '#10b981' : '#7c3aed', background: derivedParentState.isFinished ? '#ecfdf5' : '#f3e8ff', padding: '4px 8px', borderRadius: '999px' }}>
               {derivedParentState.isFinished ? '100% Finished' : `${derivedParentState.progress}%`}
             </span>
-            {!task.parent_id && <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '999px' }}>Round {task.round_number ?? 1}</span>}
+            {!task.parent_id && <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '999px' }}>Round {getEffectiveRound(task)}</span>}
             <div style={{ display: 'flex', gap: '6px' }}>
               {task.is_focus && <Badge bg={FOCUS_META.bg} color={FOCUS_META.color} text={FOCUS_META.label} />}
               <Badge bg={status.bg} color={status.color} text={status.label} />
@@ -452,10 +460,10 @@ export function LogBookPage() {
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gap: '10px' }}>
-                    {[1, 2, 3].filter((round) => subtasks.some(st => (st.round_number ?? 1) === round)).map((round) => (
+                    {[1, 2, 3].filter((round) => subtasks.some(st => getEffectiveRound(st) === round)).map((round) => (
                       <div key={round} style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                         <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 700, color: '#475569' }}>Round {round}</div>
-                        {subtasks.filter(st => (st.round_number ?? 1) === round).map((subtask, index) => (
+                        {subtasks.filter(st => getEffectiveRound(st) === round).map((subtask, index) => (
                           <div key={subtask.id} style={{ borderTop: index === 0 ? 'none' : '1px solid #f1f5f9' }}>
                             <TaskCard task={subtask} showAssignees={true} isEvenIndex={index % 2 === 0} />
                             <div style={{ padding: '0 18px 14px 66px' }}>
