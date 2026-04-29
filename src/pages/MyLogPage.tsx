@@ -139,6 +139,63 @@ export function MyLogPage() {
   }, [tasks]);
 
   const todayLogGroups = useMemo(() => {
+    const parseAutoFieldEvent = (text: string) => {
+      const match = text.trim().match(/^(Main Task\s+.+?|Subtask\s+.+?)\s+(status|progress|finished):\s*(.+?)\s*→\s*(.+)$/i);
+      if (!match) return null;
+      return {
+        subject: match[1].trim(),
+        field: match[2].trim().toLowerCase(),
+        before: match[3].trim(),
+        after: match[4].trim(),
+      };
+    };
+
+    const compactSystemLines = (lines: { key: string; text: string; log: LogEntry; createdAt: string }[]) => {
+      const consumed = new Set<string>();
+      const compacted: { key: string; text: string; log: LogEntry; createdAt: string }[] = [];
+
+      lines.forEach((line, index) => {
+        if (consumed.has(line.key)) return;
+        const parsed = parseAutoFieldEvent(line.text);
+        if (!parsed) {
+          compacted.push(line);
+          return;
+        }
+
+        const group = [line];
+        for (let i = index + 1; i < lines.length; i += 1) {
+          const candidate = lines[i];
+          if (consumed.has(candidate.key)) continue;
+          const candidateParsed = parseAutoFieldEvent(candidate.text);
+          if (!candidateParsed || candidateParsed.subject !== parsed.subject) continue;
+
+          const timeGap = Math.abs(new Date(candidate.createdAt).getTime() - new Date(line.createdAt).getTime());
+          if (timeGap > 3000) continue;
+          group.push(candidate);
+        }
+
+        const statusLine = group.find((item) => parseAutoFieldEvent(item.text)?.field === 'status');
+        const progressLine = group.find((item) => parseAutoFieldEvent(item.text)?.field === 'progress');
+        const finishedLine = group.find((item) => parseAutoFieldEvent(item.text)?.field === 'finished');
+
+        if (statusLine && (progressLine || finishedLine)) {
+          compacted.push(statusLine);
+          group.forEach((item) => consumed.add(item.key));
+          return;
+        }
+
+        if (progressLine && finishedLine) {
+          compacted.push(progressLine);
+          group.forEach((item) => consumed.add(item.key));
+          return;
+        }
+
+        compacted.push(line);
+      });
+
+      return compacted;
+    };
+
     const getRootTaskId = (taskId: string) => {
       const task = taskById.get(taskId);
       if (!task) return taskId;
@@ -194,7 +251,7 @@ export function MyLogPage() {
         rootTaskId: group.rootTaskId,
         title: group.title,
         latestAt: group.latestAt,
-        lines: group.lineOrder.map((key) => group.linesByKey.get(key)).filter(Boolean) as { key: string; text: string; log: LogEntry; createdAt: string }[],
+        lines: compactSystemLines(group.lineOrder.map((key) => group.linesByKey.get(key)).filter(Boolean) as { key: string; text: string; log: LogEntry; createdAt: string }[]),
       }))
       .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime());
   }, [filteredLogs, taskById, taskMap]);
