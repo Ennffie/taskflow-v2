@@ -19,6 +19,7 @@ export function MyLogPage() {
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [editingLog, setEditingLog] = useState<LogEntry | null>(null);
+  const [nextDayDeleteLog, setNextDayDeleteLog] = useState<LogEntry | null>(null);
   const [editEvent, setEditEvent] = useState('');
   const [editCategory, setEditCategory] = useState<LogCategory>('design');
   const [editTimeSpent, setEditTimeSpent] = useState('');
@@ -248,6 +249,7 @@ export function MyLogPage() {
   const handleEditClick = (log: LogEntry) => {
     const rootTask = getRootTask(log.task_id);
     setEditingLog(log);
+    setNextDayDeleteLog(null);
     setEditingTask(rootTask);
     setEditEvent(log.event);
     setEditCategory(log.category as LogCategory || 'design');
@@ -260,7 +262,13 @@ export function MyLogPage() {
 
   const handleNextDayEditClick = (task: TaskItem) => {
     const rootTask = getRootTask(task.id) ?? task;
+    const matchedNextDayLog = logs
+      .filter((log) => log.date === tomorrowDate && /^\[Next Day Focus\]/i.test(log.event.trim()))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .find((log) => getRootTask(log.task_id)?.id === rootTask.id) ?? null;
+
     setEditingLog(null);
+    setNextDayDeleteLog(matchedNextDayLog);
     setEditingTask(rootTask);
     setEditEvent(rootTask.today_update?.trim() || '');
     setEditCategory('design');
@@ -300,6 +308,7 @@ export function MyLogPage() {
       
       setShowEditModal(false);
       setEditingLog(null);
+      setNextDayDeleteLog(null);
       setEditingTask(null);
       setEditEvent('');
       setEditCategory('design');
@@ -314,14 +323,27 @@ export function MyLogPage() {
   };
 
   const handleLogDelete = async () => {
-    if (!editingLog) return;
+    if (!editingLog && !editingTask) return;
     setDeletingLog(true);
     try {
-      await deleteLog(editingLog.id);
-      const updatedLogs = await fetchMyLogs();
+      if (editingLog) {
+        await deleteLog(editingLog.id);
+      } else if (editingTask) {
+        if (nextDayDeleteLog) {
+          await deleteLog(nextDayDeleteLog.id);
+        }
+        await updateTask(editingTask.id, {
+          next_day_focus: null,
+          is_focus: false,
+        });
+      }
+
+      const [updatedLogs, updatedTasks] = await Promise.all([fetchMyLogs(), fetchTasks()]);
       setLogs(updatedLogs);
+      setTasks(updatedTasks);
       setShowEditModal(false);
       setEditingLog(null);
+      setNextDayDeleteLog(null);
       setEditingTask(null);
       setEditEvent('');
       setEditCategory('design');
@@ -704,7 +726,7 @@ export function MyLogPage() {
 
         {/* Edit Log Modal - Updated to match LogFormModal */}
         {showEditModal && (editingLog || editingTask) && (
-          <div onClick={() => { setShowEditModal(false); setEditingLog(null); setEditingTask(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
+          <div onClick={() => { setShowEditModal(false); setEditingLog(null); setNextDayDeleteLog(null); setEditingTask(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <div>
@@ -715,7 +737,7 @@ export function MyLogPage() {
                 </div>
                 <button 
                   onClick={handleLogDelete}
-                  disabled={deletingLog || !editingLog}
+                  disabled={deletingLog || (!editingLog && !editingTask)}
                   style={{ 
                     width: '36px', 
                     height: '36px', 
@@ -725,8 +747,8 @@ export function MyLogPage() {
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    cursor: (deletingLog || !editingLog) ? 'not-allowed' : 'pointer',
-                    opacity: (deletingLog || !editingLog) ? 0.35 : 1,
+                    cursor: (deletingLog || (!editingLog && !editingTask)) ? 'not-allowed' : 'pointer',
+                    opacity: (deletingLog || (!editingLog && !editingTask)) ? 0.35 : 1,
                   }}
                   title="Delete Log"
                 >
