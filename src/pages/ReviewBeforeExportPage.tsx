@@ -24,7 +24,7 @@ export function ReviewBeforeExportPage() {
   const [draftNextDayFocus, setDraftNextDayFocus] = useState('');
   const [draftDueDate, setDraftDueDate] = useState('');
   const [draftAssigneeId, setDraftAssigneeId] = useState('');
-  const [reportDate] = useState<string>(getReportDate());
+  const [reportDate, setReportDate] = useState<string>(getReportDate());
   const [tab, setTab] = useState<ReviewTab>('issues');
   const [activeWarning, setActiveWarning] = useState<ReviewWarningKind | 'all'>('all');
 
@@ -135,10 +135,17 @@ export function ReviewBeforeExportPage() {
               <p style={{ fontSize: '14px', color: '#6b7280', margin: '8px 0 0 0' }}>Final cleanup before generating the xlsx report.</p>
             </div>
             <div style={{ display: 'grid', gap: '8px', justifyItems: 'end' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <label htmlFor="review-export-date" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
                 <Calendar size={16} color="#7c3aed" />
                 <span style={{ fontSize: '14px', fontWeight: 700 }}>{formatDate(reportDate)}</span>
-              </div>
+              </label>
+              <input
+                id="review-export-date"
+                type="date"
+                value={reportDate}
+                onChange={(e) => setReportDate(e.target.value || getReportDate())}
+                style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }}
+              />
               <div style={{ fontSize: '13px', color: '#475569' }}>File: <strong>{buildTaskReportFilename(reportDate)}</strong></div>
             </div>
           </div>
@@ -192,7 +199,7 @@ export function ReviewBeforeExportPage() {
           <div style={{ fontSize: '13px', color: '#6b7280' }}>Quick links: <Link to="/tracker/member">Tracker by Member</Link> · <Link to="/tracker/task">Tracker by Task</Link></div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <Link to="/tracker/member" style={secondaryLinkStyle}><Save size={16} /> Save Changes in Tracker</Link>
-            <Link to="/settings" style={primaryLinkStyle}><Download size={16} /> Export from Team Logs</Link>
+            <Link to="/team-logs" state={{ selectedDate: reportDate }} style={primaryLinkStyle}><Download size={16} /> Export from Team Logs</Link>
           </div>
         </section>
       </div>

@@ -8,6 +8,7 @@ import { loadXlsx, writeWorkbookFile } from '../lib/xlsx';
 import type { LogEntry, Profile, TaskItem } from '../types';
 import { panelStyle } from './TaskListPage';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 async function exportWorkbook(rows: TrackerRow[], reportDate: string) {
   const XLSX = await loadXlsx();
@@ -78,11 +79,12 @@ async function exportWorkbook(rows: TrackerRow[], reportDate: string) {
 
 export function AdminLogsPage() {
   const { profile } = useAuth();
+  const location = useLocation();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<string>(getReportDate());
+  const [selectedDate, setSelectedDate] = useState<string>(() => location.state?.selectedDate || getReportDate());
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showExport, setShowExport] = useState(false);
