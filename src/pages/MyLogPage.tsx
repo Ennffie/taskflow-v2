@@ -246,6 +246,20 @@ export function MyLogPage() {
     return currentTask.parent_id ? (taskById.get(currentTask.parent_id) ?? currentTask) : currentTask;
   };
 
+  const formatMyLogLineText = (text: string, rootTaskId: string, lineTaskId: string) => {
+    if (rootTaskId !== lineTaskId) return text;
+
+    const rootTitle = taskMap.get(rootTaskId)?.trim();
+    if (!rootTitle) return text;
+
+    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const normalized = text.trim();
+    const prefixPattern = new RegExp(`^Main Task\\s+${escapeRegExp(rootTitle)}\\s*`, 'i');
+    const trimmed = normalized.replace(prefixPattern, '').trim();
+
+    return trimmed || normalized;
+  };
+
   const handleEditClick = (log: LogEntry) => {
     const rootTask = getRootTask(log.task_id);
     setEditingLog(log);
@@ -905,7 +919,7 @@ export function MyLogPage() {
                       }}
                     >
                       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '8px 12px', alignItems: 'start' }}>
-                        <div style={{ fontSize: '15px', color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{line.text}</div>
+                        <div style={{ fontSize: '15px', color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{formatMyLogLineText(line.text, group.rootTaskId, line.log.task_id)}</div>
                         <div style={{ fontSize: '12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{formatDateTime(line.createdAt).split(' ').slice(-1)[0]}</div>
                       </div>
                     </button>
