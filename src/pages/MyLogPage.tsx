@@ -253,13 +253,15 @@ export function MyLogPage() {
   };
 
   const formatMyLogLineText = (text: string, rootTaskId: string, lineTaskId: string) => {
-    if (rootTaskId !== lineTaskId) return text;
+    const withoutDailyLabel = text.replace(/^\[What I have done\]\s*/i, '').trim();
+
+    if (rootTaskId !== lineTaskId) return withoutDailyLabel || text;
 
     const rootTitle = taskMap.get(rootTaskId)?.trim();
-    if (!rootTitle) return text;
+    if (!rootTitle) return withoutDailyLabel || text;
 
     const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const normalized = text.trim();
+    const normalized = (withoutDailyLabel || text).trim();
     const prefixPattern = new RegExp(`^Main Task\\s+${escapeRegExp(rootTitle)}\\s*`, 'i');
     const trimmed = normalized.replace(prefixPattern, '').trim();
 
