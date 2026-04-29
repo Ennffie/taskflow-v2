@@ -504,21 +504,6 @@ export function MyLogPage() {
             <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>My logs</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <button
-                onClick={() => setShowTaskSelector(true)}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  border: '1px solid #d1d5db',
-                  background: '#fff',
-                  color: '#111827',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                + Daily Log
-              </button>
-              <button
                 onClick={handleGenTodayLogs}
                 disabled={genLoading}
                 style={{
@@ -922,6 +907,29 @@ export function MyLogPage() {
                       <span style={{ fontSize: '12px', fontWeight: 600, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '2px 8px', background: '#ede9fe', borderRadius: '6px' }}>
                         My Log
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const task = taskById.get(group.rootTaskId);
+                          if (!task) return;
+                          setSelectedTask(task);
+                          setTodayWork('');
+                          setTomorrowWork('');
+                          setShowDailyLogModal(true);
+                        }}
+                        style={{
+                          border: '1px solid #d8b4fe',
+                          background: '#fff',
+                          color: '#7c3aed',
+                          borderRadius: '999px',
+                          padding: '4px 10px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        + Daily Log
+                      </button>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDateTime(group.latestAt)}</div>
