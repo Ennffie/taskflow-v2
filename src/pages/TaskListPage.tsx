@@ -610,7 +610,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       const parsed: ImportRow[] = [];
       let startRow = 0;
       let lastMember = '';
-      let format: 'A' | 'B' | null = null; // A = Member,Date; B = Date,Member
+      let format: 'A' | 'B' | 'C' | null = null; // A = Member,Date; B = Date,Member; C = Member,Task ID,Task Name,Description,Update,Status,Due Date
       
       // Detect header row and format
       for (let i = 0; i < Math.min(data.length, 15); i++) {
@@ -631,6 +631,17 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         if ((col0.includes('name') || col0.includes('member')) && col1.includes('date')) {
           startRow = i + 1;
           format = 'A';
+          break;
+        }
+
+        // Format C: Member, Task ID, Task Name, Description, Update, Status, Due Date
+        const col2 = String(row[2] || '').toLowerCase().trim();
+        const col4 = String(row[4] || '').toLowerCase().trim();
+        const col5 = String(row[5] || '').toLowerCase().trim();
+        const col6 = String(row[6] || '').toLowerCase().trim();
+        if ((col0.includes('name') || col0.includes('member')) && col1.includes('task') && col2.includes('task') && col4.includes('update') && col5.includes('status') && col6.includes('due')) {
+          startRow = i + 1;
+          format = 'C';
           break;
         }
         
@@ -690,6 +701,19 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           
           // Update = detailed progress if available, else task name
           update = detailCell !== undefined ? String(detailCell || '').trim() : taskName;
+        } else if (format === 'C') {
+          // Format C: Member, Task ID, Task Name, Description, Update, Status, Due Date
+          member = String(row[0] || '').trim();
+          taskId = String(row[1] || '').trim();
+          taskName = String(row[2] || '').trim();
+          const description = String(row[3] || '').trim();
+          const updateCell = String(row[4] || '').trim();
+          const statusCell = String(row[5] || '').trim();
+          const dueDateCell = row[6];
+
+          date = parseDate(dueDateCell);
+          status = statusCell || 'New';
+          update = updateCell || description || taskName;
         } else {
           // Format A: Member, Date, Task Name, Update, Size
           member = String(row[0] || '').trim();
