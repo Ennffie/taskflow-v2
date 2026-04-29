@@ -274,11 +274,12 @@ export function MyTasksPage() {
     return groups;
   }, [filtered]);
 
-  // Stats for compact cards
-  const focusCount = filtered.filter(t => t.is_focus).length;
-  const overdueCount = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
-  const otherCount = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
-  const allCount = filtered.length;
+  // Stats for compact cards - match All Tasks counting (root tasks only)
+  const rootTasks = filtered.filter(t => !t.parent_id);
+  const focusCount = rootTasks.filter(t => t.is_focus).length;
+  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const allCount = rootTasks.length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
