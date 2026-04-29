@@ -77,7 +77,7 @@ export function ReviewBeforeExportPage() {
   }, {}), [rows]);
 
   if (!isAdmin) {
-    return <AppShell><div style={panelStyle}>Only admins can access Review Before Export.</div></AppShell>;
+    return <AppShell><div style={panelStyle}>Only admins can access Final Review.</div></AppShell>;
   }
 
   const handleStartEdit = (row: (typeof rows)[number], index: number) => {
@@ -131,7 +131,7 @@ export function ReviewBeforeExportPage() {
         <section style={panelStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>Review Before Export</div>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>Final Review</div>
               <p style={{ fontSize: '14px', color: '#6b7280', margin: '8px 0 0 0' }}>Final cleanup before generating the xlsx report.</p>
             </div>
             <div style={{ display: 'grid', gap: '8px', justifyItems: 'end' }}>
@@ -199,7 +199,7 @@ export function ReviewBeforeExportPage() {
           <div style={{ fontSize: '13px', color: '#6b7280' }}>Quick links: <Link to="/tracker/member">Tracker by Member</Link> · <Link to="/tracker/task">Tracker by Task</Link></div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <Link to="/tracker/member" style={secondaryLinkStyle}><Save size={16} /> Save Changes in Tracker</Link>
-            <Link to="/team-logs" state={{ selectedDate: reportDate }} style={primaryLinkStyle}><Download size={16} /> Export from Team Logs</Link>
+            <Link to="/team-logs" state={{ selectedDate: reportDate }} style={primaryLinkStyle}><Download size={16} /> Export from Raw Logs</Link>
           </div>
         </section>
       </div>

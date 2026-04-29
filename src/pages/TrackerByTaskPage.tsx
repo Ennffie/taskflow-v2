@@ -110,7 +110,7 @@ export function TrackerByTaskPage() {
               <span style={{ fontSize: '14px', fontWeight: 700 }}>{formatDate(selectedDate)}</span>
             </div>
             <Link to="/review-export" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', background: '#111827', color: '#fff', textDecoration: 'none', fontWeight: 700 }}>
-              <FileSpreadsheet size={16} /> Review Before Export
+              <FileSpreadsheet size={16} /> Final Review
             </Link>
           </div>
         </section>

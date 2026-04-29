@@ -110,8 +110,8 @@ export function SettingsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
               <TrackerLink to="/tracker/member" title="Tracker by Member" desc="People management view" icon={<Users size={20} color="#7c3aed" />} />
               <TrackerLink to="/tracker/task" title="Tracker by Task" desc="Main task group view" icon={<FolderKanban size={20} color="#7c3aed" />} />
-              <TrackerLink to="/review-export" title="Review Before Export" desc="Warnings + final cleanup" icon={<FileSpreadsheet size={20} color="#7c3aed" />} />
-              <TrackerLink to="/team-logs" title="Team Logs" desc="Admin log history + export" icon={<ScrollText size={20} color="#7c3aed" />} />
+              <TrackerLink to="/review-export" title="Final Review" desc="Warnings + final cleanup" icon={<FileSpreadsheet size={20} color="#7c3aed" />} />
+              <TrackerLink to="/team-logs" title="Raw Logs" desc="Admin log history + export" icon={<ScrollText size={20} color="#7c3aed" />} />
             </div>
           </section>
         )}

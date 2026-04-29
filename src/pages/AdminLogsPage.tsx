@@ -264,7 +264,7 @@ export function AdminLogsPage() {
         <section style={panelStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>Team Logs</div>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>Raw Logs</div>
               <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
                 View and export daily logs from all team members.
               </p>
