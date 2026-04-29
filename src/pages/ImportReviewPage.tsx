@@ -55,13 +55,21 @@ function parseStatus(statusStr: string): TaskStatus | null {
   return STATUS_MAP[statusStr.trim()] || null;
 }
 
+function normalizeTaskCode(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const compact = value.trim().toUpperCase().replace(/\s+/g, '');
+  const match = compact.match(/^([A-Z]{2,6})-?(\d{2,6})$/i);
+  if (!match) return compact || null;
+  return `${match[1].toUpperCase()}-${match[2]}`;
+}
+
 function extractTaskId(title: string): string | null {
-  const match = title.match(/^([A-Z]{2,6}-\d{2,6})/i);
-  return match ? match[1].toUpperCase() : null;
+  const match = title.match(/^([A-Z]{2,6})-?(\d{2,6})/i);
+  return match ? normalizeTaskCode(`${match[1]}-${match[2]}`) : null;
 }
 
 function cleanTitle(title: string): string {
-  return title.replace(/^([A-Z]{2,6}-\d{2,6})[\s:-]*/i, '').trim();
+  return title.replace(/^([A-Z]{2,6})-?(\d{2,6})[\s:-]*/i, '').trim();
 }
 
 function similarityScore(str1: string, str2: string): number {
@@ -138,6 +146,7 @@ export function ImportReviewPage() {
     profs: Profile[],
     taskLogMap: Map<string, Set<string>>
   ): MatchResult[] => {
+    const rootTasks = tasks.filter((task) => !task.parent_id);
     // Detect Day 2: all unique dates, earliest = Day 1, others = Day 2
     const allDates = [...new Set(rows.map(r => r.dueDate).filter(Boolean) as string[])].sort();
     const day1Date = allDates.length > 0 ? allDates[0] : null;
@@ -146,24 +155,25 @@ export function ImportReviewPage() {
       const isDay2 = Boolean(day1Date && row.dueDate && row.dueDate !== day1Date);
       // Day 2 rows force focus flag while keeping a normal status
       const parsedStatus = isDay2 ? 'in_progress' : parseStatus(row.status);
-      const rowTaskId = row.taskId || extractTaskId(row.title);
+      const rowTaskId = normalizeTaskCode(row.taskId || extractTaskId(row.title));
       const cleanTitleStr = cleanTitle(row.title);
       const matchedAssignees = findAssigneesByName(row.assigneeNames, profs);
       
       // 1. Try find by Task ID
-      let matchedTask = tasks.find(t => extractTaskId(t.title) === rowTaskId) || null;
+      let matchedTask = rootTasks.find(t => extractTaskId(t.title) === rowTaskId) || null;
       
       // 2. Try find by exact title
       if (!matchedTask) {
-        matchedTask = tasks.find(t => 
+        const normalizedFullTitle = rowTaskId ? `${rowTaskId} - ${cleanTitleStr}` : row.title;
+        matchedTask = rootTasks.find(t => 
           t.title === row.title || 
-          t.title === `${row.taskId} - ${row.title}`
+          t.title === normalizedFullTitle
         ) || null;
       }
       
       // 3. Try fuzzy match
       if (!matchedTask) {
-        const bestMatch = tasks
+        const bestMatch = rootTasks
           .map(t => ({ task: t, score: similarityScore(cleanTitleStr, t.title) }))
           .filter(t => t.score > 0.6)
           .sort((a, b) => b.score - a.score)[0];
@@ -288,7 +298,7 @@ export function ImportReviewPage() {
             logsAdded++;
           }
         } else if (result.action === 'create') {
-          const taskKey = result.row.taskId || result.row.title;
+          const taskKey = normalizeTaskCode(result.row.taskId) || result.row.title;
           const existingCreatedTask = createdTasksMap.get(taskKey);
           
           if (existingCreatedTask) {
@@ -325,8 +335,9 @@ export function ImportReviewPage() {
             }
           } else {
             // Create new task
-            const fullTitle = result.row.taskId 
-              ? `${result.row.taskId} - ${result.row.title}` 
+            const normalizedTaskId = normalizeTaskCode(result.row.taskId);
+            const fullTitle = normalizedTaskId 
+              ? `${normalizedTaskId} - ${result.row.title}` 
               : result.row.title;
             
             const newTask = await createTask({
