@@ -95,8 +95,34 @@ export function MyLogPage() {
     return map;
   }, [tasks]);
 
-  // For Tomorrow tab: keep focus tasks concise
+  // For Next Day tab: prefer the saved next-day list for that calendar day
   const tomorrowData = useMemo(() => {
+    const normalizeNextDayContent = (event: string) => event.replace(/^\[Next Day Focus\]\s*/i, '').trim();
+    const getRootTask = (taskId: string) => {
+      const task = taskById.get(taskId);
+      if (!task) return null;
+      return task.parent_id ? (taskById.get(task.parent_id) ?? task) : task;
+    };
+
+    const savedNextDayLogs = logs
+      .filter((log) => log.date === tomorrowDate && /^\[Next Day Focus\]/i.test(log.event.trim()))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const savedMap = new Map<string, { task: TaskItem; content: string; sourceLog: LogEntry }>();
+    savedNextDayLogs.forEach((log) => {
+      const rootTask = getRootTask(log.task_id);
+      if (!rootTask) return;
+      savedMap.set(rootTask.id, {
+        task: rootTask,
+        content: normalizeNextDayContent(log.event),
+        sourceLog: log,
+      });
+    });
+
+    if (savedMap.size > 0) {
+      return Array.from(savedMap.values());
+    }
+
     const focusTasks = tasks.filter(t => t.is_focus);
 
     const hasRelatedChangeToday = (task: TaskItem) => {
@@ -117,11 +143,11 @@ export function MyLogPage() {
 
       return {
         task,
-        latestLog,
+        sourceLog: null,
         content: shouldShowContinueTomorrow ? 'Continues tomorrow' : (task.next_day_focus?.trim() || latestLog?.event || task.description || ''),
       };
     });
-  }, [tasks, logs, selectedDate, taskById]);
+  }, [tasks, logs, selectedDate, tomorrowDate, taskById]);
 
   // Task name lookup map
   const taskMap = useMemo(() => {
@@ -491,25 +517,23 @@ export function MyLogPage() {
           
           {/* Date Navigation - show for both tabs */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '12px 16px', background: '#f8fafc', borderRadius: '12px' }}>
+            <button onClick={goToPreviousDay} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <ChevronLeft size={18} color="#374151" />
+            </button>
             {activeTab === 'today' ? (
-              <>
-                <button onClick={goToPreviousDay} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                  <ChevronLeft size={18} color="#374151" />
-                </button>
-                <button onClick={() => setShowDatePicker(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: '2px solid #7c3aed', background: '#fff', cursor: 'pointer', fontSize: '16px', fontWeight: 700 }}>
-                  <Calendar size={18} color="#7c3aed" />
-                  {formatDate(selectedDate)}
-                </button>
-                <button onClick={goToNextDay} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                  <ChevronRight size={18} color="#374151" />
-                </button>
-              </>
+              <button onClick={() => setShowDatePicker(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: '2px solid #7c3aed', background: '#fff', cursor: 'pointer', fontSize: '16px', fontWeight: 700 }}>
+                <Calendar size={18} color="#7c3aed" />
+                {formatDate(selectedDate)}
+              </button>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: '2px solid #7c3aed', background: '#fff', fontSize: '16px', fontWeight: 700, color: '#7c3aed' }}>
                 <Calendar size={18} color="#7c3aed" />
                 {formatDate(tomorrowDate)}
               </div>
             )}
+            <button onClick={goToNextDay} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <ChevronRight size={18} color="#374151" />
+            </button>
           </div>
           {activeTab === 'today' && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>

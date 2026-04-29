@@ -63,13 +63,14 @@ export function MyTasksPage() {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [showModal, setShowModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
+  const [activeCompactCard, setActiveCompactCard] = useState<'Focus' | 'Overdue' | 'Other' | 'All'>('Focus');
 
-  // Section expand/collapse state - default: Other collapsed, others expanded
+  // Section expand/collapse state - match All Tasks behavior
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    "Focus": true,
-    'Overdue': true,
+    'Focus': true,
+    'Overdue': false,
     'Other': false,
-    'Done': true,
+    'Done': false,
   });
 
   // Selected tasks for logging
@@ -135,11 +136,26 @@ export function MyTasksPage() {
     }
   };
 
+  const showAllSections = () => {
+    setExpandedSections({
+      'Focus': true,
+      'Overdue': true,
+      'Other': true,
+      'Done': true,
+    });
+    setActiveCompactCard('All');
+  };
+
   const toggleSection = (sectionName: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionName]: !prev[sectionName]
-    }));
+    setExpandedSections({
+      'Focus': sectionName === 'Focus',
+      'Overdue': sectionName === 'Overdue',
+      'Other': sectionName === 'Other',
+      'Done': false,
+    });
+    if (sectionName === 'Focus' || sectionName === 'Overdue' || sectionName === 'Other') {
+      setActiveCompactCard(sectionName);
+    }
   };
 
   const toggleTaskCheck = async (taskId: string, e: React.MouseEvent) => {
@@ -217,12 +233,25 @@ export function MyTasksPage() {
   const clearFilters = () => {
     setQuery('');
     setStatusFilter('all');
+    setExpandedSections({
+      'Focus': true,
+      'Overdue': false,
+      'Other': false,
+      'Done': false,
+    });
+    setActiveCompactCard('Focus');
   };
 
   useEffect(() => {
     if (authLoading || !session || !user) return;
     void loadTasks();
   }, [authLoading, session, user?.id]);
+
+  useEffect(() => {
+    if (query.trim()) {
+      showAllSections();
+    }
+  }, [query]);
 
   const filtered = useMemo(() => tasks.filter((task) => {
     const matchesQuery = `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());
@@ -249,6 +278,7 @@ export function MyTasksPage() {
   const focusCount = filtered.filter(t => t.is_focus).length;
   const overdueCount = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
   const otherCount = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const allCount = filtered.length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -258,7 +288,7 @@ export function MyTasksPage() {
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>My Tasks</h1>
         </div>
 
-        {/* Horizontal Scrollable Compact Cards - 3 cards */}
+        {/* Horizontal Scrollable Compact Cards */}
         <div style={{
           display: 'flex',
           gap: '12px',
@@ -275,7 +305,8 @@ export function MyTasksPage() {
             subLabel="priority"
             bgColor="#ede9fe"
             iconBgColor="#ddd6fe"
-            active
+            active={activeCompactCard === 'Focus'}
+            onToggle={() => toggleSection('Focus')}
           />
           <CompactCard
             icon={<AlertTriangle size={20} color="#ef4444" />}
@@ -284,6 +315,8 @@ export function MyTasksPage() {
             subLabel="needs attention"
             bgColor="#fef2f2"
             iconBgColor="#fee2e2"
+            active={activeCompactCard === 'Overdue'}
+            onToggle={() => toggleSection('Overdue')}
           />
           <CompactCard
             icon={<Inbox size={20} color="#3b82f6" />}
@@ -292,6 +325,18 @@ export function MyTasksPage() {
             subLabel="remaining"
             bgColor="#eff6ff"
             iconBgColor="#dbeafe"
+            active={activeCompactCard === 'Other'}
+            onToggle={() => toggleSection('Other')}
+          />
+          <CompactCard
+            icon={<CheckCircle2 size={20} color="#0f172a" />}
+            label="All"
+            count={allCount}
+            subLabel="all tasks"
+            bgColor="#f1f5f9"
+            iconBgColor="#e2e8f0"
+            active={activeCompactCard === 'All'}
+            onToggle={showAllSections}
           />
         </div>
 
@@ -301,7 +346,11 @@ export function MyTasksPage() {
             <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                const nextQuery = e.target.value;
+                setQuery(nextQuery);
+                if (nextQuery.trim()) showAllSections();
+              }}
               placeholder="Search my tasks..."
               style={{ width: '100%', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '12px 14px 12px 42px', fontSize: '14px', outline: 'none', background: '#fff' }}
             />
@@ -452,11 +501,15 @@ interface CompactCardProps {
   bgColor: string;
   iconBgColor: string;
   active?: boolean;
+  onToggle?: () => void;
 }
 
-function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, active }: CompactCardProps) {
+function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, active, onToggle }: CompactCardProps) {
   return (
-    <div style={{
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
       background: active ? bgColor : '#f8fafc',
       borderRadius: '16px',
       padding: '16px',
@@ -469,6 +522,8 @@ function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, activ
       cursor: 'pointer',
       flexShrink: 0,
       border: active ? '2px solid #7c3aed' : '2px solid transparent',
+      appearance: 'none',
+      textAlign: 'left',
     }}>
       <div style={{
         width: '32px',
@@ -490,6 +545,6 @@ function CompactCard({ icon, label, count, subLabel, bgColor, iconBgColor, activ
           {subLabel}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
