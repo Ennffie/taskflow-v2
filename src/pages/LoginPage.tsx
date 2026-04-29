@@ -14,34 +14,31 @@ export function LoginPage() {
   // Load saved credentials on mount
   useEffect(() => {
     const savedEmail = localStorage.getItem('taskflow_email');
-    const savedPassword = localStorage.getItem('taskflow_password');
+    const rememberFlag = localStorage.getItem('taskflow_remember_me') === 'true';
     if (savedEmail) {
       setEmail(savedEmail);
-      setRememberMe(true);
+      setRememberMe(rememberFlag);
     }
-    if (savedPassword) {
-      setPassword(savedPassword);
-    }
+    localStorage.removeItem('taskflow_password');
   }, []);
 
   const handleSubmit = async () => {
     setLoading(true);
     setError('');
-    const result = await signIn(email, password);
+    const result = await signIn(email, password, rememberMe);
     setLoading(false);
     if (result.error) {
       setError(result.error);
       return;
     }
     
-    // Save or clear credentials based on rememberMe
+    // Save or clear remembered email only; never store plaintext password
     if (rememberMe) {
       localStorage.setItem('taskflow_email', email);
-      localStorage.setItem('taskflow_password', password);
     } else {
       localStorage.removeItem('taskflow_email');
-      localStorage.removeItem('taskflow_password');
     }
+    localStorage.removeItem('taskflow_password');
     
     navigate('/');
   };

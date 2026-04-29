@@ -9,7 +9,7 @@ interface AuthContextValue {
   profile: Profile | null;
   loading: boolean;
   error: string | null;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string, rememberMe: boolean) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -90,9 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     loading,
     error,
-    signIn: async (email, password) => {
+    signIn: async (email, password, rememberMe) => {
       try {
         setLoading(true);
+        try {
+          localStorage.setItem('taskflow_remember_me', rememberMe ? 'true' : 'false');
+        } catch {
+          // ignore storage issues
+        }
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) return { error: error.message };
         setUser(data.user);
