@@ -123,11 +123,17 @@ export function SettingsPage() {
                 <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>{profile.email}</div>
               </div>
               <div style={{ fontSize: '13px', color: '#6b7280' }}>Current role: <strong style={{ color: '#111827' }}>{profile.role}</strong></div>
-              <select value={profile.role} onChange={(e) => updateRole(profile.id, e.target.value as Role)} style={{ borderRadius: '16px', border: '1px solid #e5e7eb', background: '#fff', padding: '12px 14px', fontWeight: 700 }}>
-                <option value="admin">Admin</option>
-                <option value="member">Member</option>
-                <option value="viewer">Viewer</option>
-              </select>
+              {isAdmin ? (
+                <select value={profile.role} onChange={(e) => updateRole(profile.id, e.target.value as Role)} style={{ borderRadius: '16px', border: '1px solid #e5e7eb', background: '#fff', padding: '12px 14px', fontWeight: 700 }}>
+                  <option value="admin">Admin</option>
+                  <option value="member">Member</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              ) : (
+                <div style={{ borderRadius: '16px', border: '1px solid #e5e7eb', background: '#f8fafc', padding: '12px 14px', fontWeight: 700, color: '#475569', textAlign: 'center' }}>
+                  {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+                </div>
+              )}
             </div>
           ))}
         </section>
