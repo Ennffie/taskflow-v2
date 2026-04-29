@@ -225,7 +225,8 @@ export function MyLogPage() {
   const shouldHideMyLogLine = (text: string) => {
     const normalized = text.trim();
     return /(?:^|\s)Today Update edited$/i.test(normalized)
-      || /(?:^|\s)Next Day Focus edited$/i.test(normalized);
+      || /(?:^|\s)Next Day Focus edited$/i.test(normalized)
+      || /^\[Next Day Focus\]/i.test(normalized);
   };
 
   const formatMyLogLineText = (text: string, rootTaskId: string, lineTaskId: string) => {
