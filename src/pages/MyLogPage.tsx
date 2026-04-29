@@ -123,6 +123,11 @@ export function MyLogPage() {
       return Array.from(savedMap.values());
     }
 
+    const isViewingToday = selectedDate === getReportDate();
+    if (!isViewingToday) {
+      return [];
+    }
+
     const focusTasks = tasks.filter(t => t.is_focus);
 
     const hasRelatedChangeToday = (task: TaskItem) => {
