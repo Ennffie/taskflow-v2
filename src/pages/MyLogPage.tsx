@@ -502,23 +502,40 @@ export function MyLogPage() {
         <section style={panelStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
             <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>My logs</div>
-            <button
-              onClick={handleGenTodayLogs}
-              disabled={genLoading}
-              style={{
-                padding: '10px 16px',
-                borderRadius: '10px',
-                border: 'none',
-                background: '#7c3aed',
-                color: '#fff',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                opacity: genLoading ? 0.6 : 1,
-              }}
-            >
-              {genLoading ? 'Generating...' : "Generate Today's Logs"}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowTaskSelector(true)}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid #d1d5db',
+                  background: '#fff',
+                  color: '#111827',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                + Daily Log
+              </button>
+              <button
+                onClick={handleGenTodayLogs}
+                disabled={genLoading}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#7c3aed',
+                  color: '#fff',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  opacity: genLoading ? 0.6 : 1,
+                }}
+              >
+                {genLoading ? 'Generating...' : "Generate Today's Logs"}
+              </button>
+            </div>
           </div>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0' }}>
             A clean list of updates you have posted across the workspace.
