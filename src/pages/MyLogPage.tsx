@@ -543,11 +543,9 @@ export function MyLogPage() {
               <ChevronRight size={18} color="#374151" />
             </button>
           </div>
-          {activeTab === 'today' && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-              <button onClick={goToToday} style={{ fontSize: '12px', fontWeight: 600, color: '#7c3aed', background: 'transparent', border: 'none', cursor: 'pointer' }}>Go to Today</button>
-            </div>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+            <button onClick={goToToday} style={{ fontSize: '12px', fontWeight: 600, color: '#7c3aed', background: 'transparent', border: 'none', cursor: 'pointer' }}>Go to Today</button>
+          </div>
         </section>
 
         {/* Task Selector */}
