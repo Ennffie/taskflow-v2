@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Target } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { generateTodayLogs, fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
+import { fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
 import { addDays, formatDate, formatDateTime, getReportDate } from '../lib/date';
 import type { LogEntry, TaskItem, LogCategory, TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
@@ -28,30 +28,6 @@ export function MyLogPage() {
   const [editNextDayFocus, setEditNextDayFocus] = useState('');
   const [todayWork, setTodayWork] = useState('');
   const [tomorrowWork, setTomorrowWork] = useState('');
-  const [genLoading, setGenLoading] = useState(false);
-  const [genSummary, setGenSummary] = useState<{todayCount: number; tomorrowCount: number} | null>(null);
-
-  const handleGenTodayLogs = async () => {
-    setGenLoading(true);
-    try {
-      const draft = await generateTodayLogs();
-      setTodayWork(draft.todayWork);
-      setTomorrowWork(draft.tomorrowWork);
-      const todayCount = draft.todayWork ? draft.todayWork.split('\n').filter(Boolean).length : 0;
-      const tomorrowCount = draft.tomorrowWork ? draft.tomorrowWork.split('\n').filter(Boolean).length : 0;
-      setGenSummary({ todayCount, tomorrowCount });
-      // Auto-select first focus task or first task for the log
-      const focusTasks = tasks.filter(t => t.is_focus);
-      const targetTask = focusTasks[0] || tasks[0];
-      if (targetTask) {
-        setSelectedTask(targetTask);
-      }
-    } catch (error: any) {
-      alert(`Generate today's logs failed: ${error?.message || 'Unknown error'}`);
-    } finally {
-      setGenLoading(false);
-    }
-  };
 
   const [saving, setSaving] = useState(false);
   const [deletingLog, setDeletingLog] = useState(false);
@@ -504,25 +480,6 @@ export function MyLogPage() {
         <section style={panelStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
             <div style={{ fontSize: '28px', fontWeight: 800, color: '#111827' }}>My logs</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button
-                onClick={handleGenTodayLogs}
-                disabled={genLoading}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: '#7c3aed',
-                  color: '#fff',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  opacity: genLoading ? 0.6 : 1,
-                }}
-              >
-                {genLoading ? 'Generating...' : "Generate Today's Logs"}
-              </button>
-            </div>
           </div>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0' }}>
             A clean list of updates you have posted across the workspace.
@@ -608,89 +565,6 @@ export function MyLogPage() {
                 ))}
               </div>
               <button onClick={() => setShowTaskSelector(false)} style={{ width: '100%', marginTop: '16px', padding: '12px', borderRadius: '10px', border: 'none', background: '#f3f4f6', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        {/* Gen Summary Modal */}
-        {genSummary && (
-          <div onClick={() => setGenSummary(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: '24px' }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '360px', textAlign: 'center' }}>
-              <div style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>✨ Logs Generated</div>
-              <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>Based on your today's activity</div>
-              
-              <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
-                <div style={{ padding: '14px 16px', background: '#f3e8ff', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#7c3aed' }}>{genSummary.todayCount}</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600 }}>Today updates</div>
-                </div>
-                <div style={{ padding: '14px 16px', background: '#ede9fe', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#6d28d9' }}>{genSummary.tomorrowCount}</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600 }}>Next Day Focus</div>
-                </div>
-              </div>
-              
-              <div style={{ display: 'grid', gap: '10px' }}>
-                <button
-                  onClick={() => { setGenSummary(null); setShowDailyLogModal(true); }}
-                  style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: '#111827', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Review & Edit
-                </button>
-                <button
-                  onClick={async () => {
-                    setGenSummary(null);
-                    if (!selectedTask) {
-                      alert('No task selected. Please try again.');
-                      return;
-                    }
-                    setSaving(true);
-                    try {
-                      const today = getReportDate();
-                      const tomorrow = addDays(today, 1);
-                      if (todayWork.trim()) {
-                        await createLog({
-                          task_id: selectedTask.id,
-                          date: today,
-                          event: `[What I have done]\n${todayWork.trim()}`,
-                          category: 'other',
-                          time_spent: '',
-                          file_name: '',
-                          next_status: ''
-                        });
-                        await updateTask(selectedTask.id, { today_update: todayWork.trim() });
-                      }
-                      if (tomorrowWork.trim()) {
-                        await createLog({
-                          task_id: selectedTask.id,
-                          date: tomorrow,
-                          event: `[Next Day Focus]\n${tomorrowWork.trim()}`,
-                          category: 'other',
-                          time_spent: '',
-                          file_name: '',
-                          next_status: ''
-                        });
-                        await updateTask(selectedTask.id, { is_focus: true });
-                        await updateTask(selectedTask.id, { next_day_focus: tomorrowWork.trim() });
-                      }
-                      const updatedLogs = await fetchMyLogs();
-                      setLogs(updatedLogs);
-                      setTodayWork('');
-                      setTomorrowWork('');
-                      setSelectedTask(null);
-                      alert('Logs saved successfully!');
-                    } catch (error: any) {
-                      alert(`Save failed: ${error?.message || 'Unknown error'}`);
-                    } finally {
-                      setSaving(false);
-                    }
-                  }}
-                  disabled={saving}
-                  style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#fff', color: '#111827', fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
-                >
-                  {saving ? 'Saving...' : 'Save Directly'}
-                </button>
-              </div>
             </div>
           </div>
         )}
