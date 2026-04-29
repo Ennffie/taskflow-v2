@@ -605,6 +605,14 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     setParsing(true);
 
     sheetToJsonRows(wb, sheetName).then((data: any) => {
+      const looksLikeStatus = (value: string) => {
+        const normalized = value.trim().toLowerCase();
+        return [
+          'wip', 'in progress', 'done', 'new', 'waiting', 'planning', 'focus', 'priority',
+          'pending for approval', 'pending on tech team', 'pending for further requirement',
+          'to do', 'todo', 'submitted', 'review', 'internal review',
+        ].some((keyword) => normalized === keyword || normalized.includes(keyword));
+      };
       
       // Parse rows
       const parsed: ImportRow[] = [];
@@ -707,13 +715,21 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           taskId = String(row[1] || '').trim();
           taskName = String(row[2] || '').trim();
           const description = String(row[3] || '').trim();
-          const updateCell = String(row[4] || '').trim();
-          const statusCell = String(row[5] || '').trim();
+          const rawCol4 = String(row[4] || '').trim();
+          const rawCol5 = String(row[5] || '').trim();
           const dueDateCell = row[6];
 
           date = parseDate(dueDateCell);
-          status = statusCell || 'New';
-          update = updateCell || description || taskName;
+          const col4IsStatus = looksLikeStatus(rawCol4);
+          const col5IsStatus = looksLikeStatus(rawCol5);
+
+          if (col5IsStatus || !col4IsStatus) {
+            status = rawCol5 || 'New';
+            update = rawCol4 || description || taskName;
+          } else {
+            status = rawCol4 || 'New';
+            update = rawCol5 || description || taskName;
+          }
         } else {
           // Format A: Member, Date, Task Name, Update, Size
           member = String(row[0] || '').trim();
