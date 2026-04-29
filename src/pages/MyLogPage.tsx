@@ -246,6 +246,12 @@ export function MyLogPage() {
     return currentTask.parent_id ? (taskById.get(currentTask.parent_id) ?? currentTask) : currentTask;
   };
 
+  const shouldHideMyLogLine = (text: string) => {
+    const normalized = text.trim();
+    return /(?:^|\s)Today Update edited$/i.test(normalized)
+      || /(?:^|\s)Next Day Focus edited$/i.test(normalized);
+  };
+
   const formatMyLogLineText = (text: string, rootTaskId: string, lineTaskId: string) => {
     if (rootTaskId !== lineTaskId) return text;
 
@@ -880,8 +886,8 @@ export function MyLogPage() {
         {/* Logs List - Today Tab */}
         {activeTab === 'today' && (
           <section style={{ display: 'grid', gap: '14px' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>{todayLogGroups.length} main task log{todayLogGroups.length !== 1 ? 's' : ''} for {formatDate(selectedDate)}</h2>
-            {loading ? <div style={panelStyle}>Loading...</div> : todayLogGroups.length === 0 ? <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}><p>No log entries for this date.</p></div> : todayLogGroups.map((group) => (
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#374151', margin: 0 }}>{todayLogGroups.filter((group) => group.lines.some((line) => !shouldHideMyLogLine(line.text))).length} main task log{todayLogGroups.filter((group) => group.lines.some((line) => !shouldHideMyLogLine(line.text))).length !== 1 ? 's' : ''} for {formatDate(selectedDate)}</h2>
+            {loading ? <div style={panelStyle}>Loading...</div> : todayLogGroups.filter((group) => group.lines.some((line) => !shouldHideMyLogLine(line.text))).length === 0 ? <div style={{ ...panelStyle, textAlign: 'center', color: '#9ca3af', padding: '40px' }}><p>No log entries for this date.</p></div> : todayLogGroups.filter((group) => group.lines.some((line) => !shouldHideMyLogLine(line.text))).map((group) => (
               <article 
                 key={group.rootTaskId}
                 style={{ 
@@ -905,7 +911,7 @@ export function MyLogPage() {
                 </div>
 
                 <div style={{ display: 'grid', gap: '10px' }}>
-                  {group.lines.map((line, index) => (
+                  {group.lines.filter((line) => !shouldHideMyLogLine(line.text)).map((line, index) => (
                     <button
                       key={line.key}
                       onClick={() => handleEditClick(line.log)}
