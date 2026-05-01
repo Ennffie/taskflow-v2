@@ -125,9 +125,9 @@ export function CantonModePage() {
                   <button onClick={() => setShowModal(true)} style={{ width: 42, height: 42, borderRadius: 16, border: 'none', background: '#111827', color: '#fff', display: 'grid', placeItems: 'center' }}><Plus size={20} /></button>
                 </div>
 
-                <div style={{ position: 'relative', minHeight: 420, borderRadius: 30, overflow: 'hidden', background: 'radial-gradient(circle at 50% 42%, #fff 0%, #f7f2ff 44%, #edf6ff 100%)' }}>
-                  <div style={{ position: 'absolute', inset: '58px 24px 72px', border: '2px dashed #e8ddff', borderRadius: '50%' }} />
-                  <div style={{ position: 'absolute', inset: '106px 70px 86px', border: '2px dashed #efe7ff', borderRadius: '50%' }} />
+                <div style={{ position: 'relative', minHeight: 340, borderRadius: 30, overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 42%, #fff 0%, #f7f2ff 44%, #edf6ff 100%)' }}>
+                  <div style={{ position: 'absolute', inset: '44px 18px 58px', border: '2px dashed #e8ddff', borderRadius: '50%' }} />
+                  <div style={{ position: 'absolute', inset: '80px 52px 68px', border: '2px dashed #efe7ff', borderRadius: '50%' }} />
                   {visibleTasks.length === 0 ? (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
                       <div><div style={{ fontSize: 28, marginBottom: 8 }}>🌙</div><strong>暫時冇浮面 task</strong><div style={{ marginTop: 6, fontSize: 13 }}>可以撳 + 加新 task。</div></div>
@@ -160,11 +160,11 @@ export function CantonModePage() {
 function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem; index: number; total: number; allTasks: TaskItem[]; onClick: () => void }) {
   const subtasks = allTasks.filter((item) => item.parent_id === task.id);
   const angle = total === 1 ? -90 : -150 + (300 / Math.max(total - 1, 1)) * index;
-  const radius = index === 0 ? 0 : 150;
-  const centerX = 50 + (Math.cos((angle * Math.PI) / 180) * radius) / 3.5;
-  const centerY = 48 + (Math.sin((angle * Math.PI) / 180) * radius) / 4.2;
+  const radius = index === 0 ? 0 : 180;
+  const centerX = 50 + (Math.cos((angle * Math.PI) / 180) * radius) / 3.0;
+  const centerY = 46 + (Math.sin((angle * Math.PI) / 180) * radius) / 3.6;
   const isFocusBubble = task.is_focus || index === 0;
-  const size = isFocusBubble ? 178 : isOverdue(task) ? 126 : 104;
+  const size = isFocusBubble ? 136 : isOverdue(task) ? 96 : 80;
   const bg = isOverdue(task)
     ? 'radial-gradient(circle at 34% 24%, #fee2e2 0%, #fecaca 46%, #fca5a5 100%)'
     : task.is_focus
@@ -176,13 +176,13 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
     <button className={isFocusBubble ? 'canton-focus-bubble' : 'canton-main-bubble'} onClick={onClick} style={{ position: 'absolute', left: `${centerX}%`, top: `${centerY}%`, width: size, height: size, transform: 'translate(-50%, -50%)', animation: `${isFocusBubble ? 'canton-focus-float' : 'canton-main-drift'} ${driftDuration}s ease-in-out infinite`, animationDelay: driftDelay, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.75)', background: bg, boxShadow: isFocusBubble ? '0 24px 48px rgba(124, 58, 237, 0.24)' : '0 18px 36px rgba(124, 58, 237, 0.18)', padding: 14, textAlign: 'center', cursor: 'pointer', color: '#3b0764' }}>
       <div style={{ position: 'absolute', left: '18%', top: '15%', width: '28%', height: '28%', borderRadius: '50%', background: 'rgba(255,255,255,0.18)' }} />
       <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: index === 0 ? 18 : 13, lineHeight: 1.15, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
-        <div style={{ marginTop: 7, fontSize: 11, fontWeight: 800, opacity: 0.82 }}>{dueLabel(task.due_date)}</div>
+        <div style={{ fontSize: index === 0 ? 15 : 11, lineHeight: 1.15, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
+        <div style={{ marginTop: 5, fontSize: 10, fontWeight: 800, opacity: 0.82 }}>{dueLabel(task.due_date)}</div>
         {isFocusBubble && <div style={{ marginTop: 4, fontSize: 10, opacity: 0.78 }}>{assigneeLabel(task)}</div>}
       </div>
       {subtasks.slice(0, 8).map((subtask, subIndex) => {
         const subAngle = (360 / Math.max(Math.min(subtasks.length, 8), 1)) * subIndex - 90;
-        const orbitRadius = size / 2 + 12;
+        const orbitRadius = size / 2 + 10;
         const dotSize = subtask.is_finished || subtask.status === 'done' ? 14 : 18;
         const orbitSpeed = 26 + subIndex * 2.5;
         return (
