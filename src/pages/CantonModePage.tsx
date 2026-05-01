@@ -200,8 +200,8 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
     : task.is_focus
       ? 'radial-gradient(circle at 34% 24%, #f1e5ff 0%, #ddd0fe 50%, #c4b5fd 100%)'
       : 'radial-gradient(circle at 34% 24%, #e0f2fe 0%, #bae6fd 50%, #93c5fd 100%)';
-  const floatDelay = `${index * -1.8}s`;
-  const floatDur = 5.5 + (index % 3) * 0.9;
+  const floatDelay = `${index * -2.6}s`;
+  const floatDur = index === 0 ? 9.5 : 7.2 + (index % 3) * 1.3;
   return (
     <button
       onClick={onClick}
