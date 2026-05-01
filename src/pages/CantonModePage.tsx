@@ -126,15 +126,13 @@ export function CantonModePage() {
                 </div>
 
                 <div style={{ position: 'relative', height: 560, borderRadius: 30, overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 42%, #fff 0%, #f7f2ff 44%, #edf6ff 100%)' }}>
-                  <div style={{ position: 'relative', width: 680, height: 560 }}>
-                    {visibleTasks.length === 0 ? (
-                      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
-                        <div><div style={{ fontSize: 28, marginBottom: 8 }}>🌙</div><strong>暫時冇浮面 task</strong><div style={{ marginTop: 6, fontSize: 13 }}>可以撳 + 加新 task。</div></div>
-                      </div>
-                    ) : visibleTasks.map((task, index) => (
-                      <TaskBubble key={task.id} task={task} index={index} total={visibleTasks.length} allTasks={tasks} onClick={() => navigate(`/tasks/${task.id}`)} />
-                    ))}
-                  </div>
+                  {visibleTasks.length === 0 ? (
+                    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
+                      <div><div style={{ fontSize: 28, marginBottom: 8 }}>🌙</div><strong>暫時冇浮面 task</strong><div style={{ marginTop: 6, fontSize: 13 }}>可以撳 + 加新 task。</div></div>
+                    </div>
+                  ) : visibleTasks.map((task, index) => (
+                    <TaskBubble key={task.id} task={task} index={index} total={visibleTasks.length} allTasks={tasks} onClick={() => navigate(`/tasks/${task.id}`)} />
+                  ))}
                 </div>
               </section>
 
