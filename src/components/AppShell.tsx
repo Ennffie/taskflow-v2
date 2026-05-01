@@ -1,4 +1,4 @@
-import { CheckSquare, ScrollText, Settings, Home, Plus } from 'lucide-react';
+import { CheckSquare, ScrollText, Settings, Home, Plus, Sparkles } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
@@ -111,6 +111,7 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
             }}
           >
             <BottomNavLink to="/" icon={<Home size={20} />} label="All" />
+            <BottomNavLink to="/canton-mode" icon={<Sparkles size={20} />} label="Canton" />
             <BottomNavLink to="/my-tasks" icon={<CheckSquare size={20} />} label="Me" />
             <BottomNavLink to="/my-log" icon={<ScrollText size={20} />} label="Logs" />
             
