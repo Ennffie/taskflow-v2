@@ -13,6 +13,29 @@ html, body, #root { margin: 0; min-height: 100%; }
 body { min-width: 320px; }
 button, input, select, textarea { font: inherit; }
 
+@keyframes canton-subtask-orbit {
+  from { transform: translate(-50%, -50%) rotate(var(--orbit-start, 0deg)); }
+  to { transform: translate(-50%, -50%) rotate(calc(var(--orbit-start, 0deg) + 360deg)); }
+}
+
+@keyframes canton-subtask-counter-orbit {
+  from { transform: translate(-50%, -50%) rotate(calc(-1 * var(--orbit-start, 0deg))); }
+  to { transform: translate(-50%, -50%) rotate(calc(-1 * (var(--orbit-start, 0deg) + 360deg))); }
+}
+
+@keyframes canton-focus-float {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50% { transform: translate(-50%, -50%) translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canton-orbit-ring,
+  .canton-orbit-dot,
+  .canton-focus-bubble {
+    animation: none !important;
+  }
+}
+
 @media (max-width: 1100px) {
   .app-shell-grid,
   .login-layout,

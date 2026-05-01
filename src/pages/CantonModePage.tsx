@@ -128,6 +128,7 @@ export function CantonModePage() {
                 <div style={{ position: 'relative', minHeight: 420, borderRadius: 30, overflow: 'hidden', background: 'radial-gradient(circle at 50% 42%, #fff 0%, #f7f2ff 44%, #edf6ff 100%)' }}>
                   <div style={{ position: 'absolute', inset: '58px 24px 72px', border: '2px dashed #e8ddff', borderRadius: '50%' }} />
                   <div style={{ position: 'absolute', inset: '106px 70px 86px', border: '2px dashed #efe7ff', borderRadius: '50%' }} />
+                  <div style={{ position: 'absolute', left: 18, top: 16, padding: '7px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.74)', color: '#7c3aed', fontSize: 11, fontWeight: 900, border: '1px solid #ede9fe' }}>Focus = 浮面</div>
                   {visibleTasks.length === 0 ? (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
                       <div><div style={{ fontSize: 28, marginBottom: 8 }}>🌙</div><strong>暫時冇浮面 task</strong><div style={{ marginTop: 6, fontSize: 13 }}>可以撳 + 加新 task。</div></div>
@@ -163,24 +164,66 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
   const radius = index === 0 ? 0 : 150;
   const centerX = 50 + (Math.cos((angle * Math.PI) / 180) * radius) / 3.5;
   const centerY = 48 + (Math.sin((angle * Math.PI) / 180) * radius) / 4.2;
-  const size = index === 0 ? 178 : task.is_focus || isOverdue(task) ? 126 : 104;
+  const isFocusBubble = task.is_focus || index === 0;
+  const size = isFocusBubble ? 178 : isOverdue(task) ? 126 : 104;
   const bg = isOverdue(task)
     ? 'radial-gradient(circle at 34% 24%, #fee2e2 0%, #fecaca 46%, #fca5a5 100%)'
     : task.is_focus
       ? 'radial-gradient(circle at 34% 24%, #f1e5ff 0%, #ddd0fe 50%, #c4b5fd 100%)'
       : 'radial-gradient(circle at 34% 24%, #e0f2fe 0%, #bae6fd 50%, #93c5fd 100%)';
   return (
-    <button onClick={onClick} style={{ position: 'absolute', left: `${centerX}%`, top: `${centerY}%`, width: size, height: size, transform: 'translate(-50%, -50%)', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.75)', background: bg, boxShadow: '0 18px 36px rgba(124, 58, 237, 0.18)', padding: 14, textAlign: 'center', cursor: 'pointer', color: '#3b0764' }}>
+    <button className={isFocusBubble ? 'canton-focus-bubble' : undefined} onClick={onClick} style={{ position: 'absolute', left: `${centerX}%`, top: `${centerY}%`, width: size, height: size, transform: 'translate(-50%, -50%)', animation: isFocusBubble ? 'canton-focus-float 6s ease-in-out infinite' : undefined, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.75)', background: bg, boxShadow: isFocusBubble ? '0 24px 48px rgba(124, 58, 237, 0.24)' : '0 18px 36px rgba(124, 58, 237, 0.18)', padding: 14, textAlign: 'center', cursor: 'pointer', color: '#3b0764' }}>
       <div style={{ position: 'absolute', left: '18%', top: '15%', width: '28%', height: '28%', borderRadius: '50%', background: 'rgba(255,255,255,0.18)' }} />
       <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ fontSize: index === 0 ? 18 : 13, lineHeight: 1.15, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
         <div style={{ marginTop: 7, fontSize: 11, fontWeight: 800, opacity: 0.82 }}>{dueLabel(task.due_date)}</div>
-        {index === 0 && <div style={{ marginTop: 4, fontSize: 10, opacity: 0.78 }}>{assigneeLabel(task)}</div>}
+        {isFocusBubble && <div style={{ marginTop: 4, fontSize: 10, opacity: 0.78 }}>{assigneeLabel(task)}</div>}
+        {task.is_focus && <div style={{ marginTop: 6, padding: '3px 7px', borderRadius: 999, background: 'rgba(255,255,255,0.42)', color: '#5b21b6', fontSize: 10, fontWeight: 900 }}>FOCUS</div>}
       </div>
       {subtasks.slice(0, 8).map((subtask, subIndex) => {
         const subAngle = (360 / Math.max(Math.min(subtasks.length, 8), 1)) * subIndex - 90;
+        const orbitRadius = size / 2 + 12;
         const dotSize = subtask.is_finished || subtask.status === 'done' ? 14 : 18;
-        return <span key={subtask.id} style={{ position: 'absolute', left: `calc(50% + ${Math.cos((subAngle * Math.PI) / 180) * (size / 2 + 7)}px)`, top: `calc(50% + ${Math.sin((subAngle * Math.PI) / 180) * (size / 2 + 7)}px)`, width: dotSize, height: dotSize, transform: 'translate(-50%, -50%)', borderRadius: '50%', background: subtask.is_finished || subtask.status === 'done' ? '#22c55e' : '#8b5cf6', border: '2px solid #fff', boxShadow: '0 4px 10px rgba(15,23,42,0.16)' }} />;
+        const orbitSpeed = 26 + subIndex * 2.5;
+        return (
+          <span
+            key={subtask.id}
+            className="canton-orbit-ring"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: orbitRadius * 2,
+              height: orbitRadius * 2,
+              transform: `translate(-50%, -50%) rotate(${subAngle}deg)`,
+              transformOrigin: '50% 50%',
+              animation: `canton-subtask-orbit ${orbitSpeed}s linear infinite`,
+              animationDelay: `${subIndex * -2.4}s`,
+              ['--orbit-start' as string]: `${subAngle}deg`,
+              pointerEvents: 'none',
+            }}
+          >
+            <span
+              className="canton-orbit-dot"
+              title={subtask.title}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: 0,
+                width: dotSize,
+                height: dotSize,
+                transform: `translate(-50%, -50%) rotate(${-subAngle}deg)`,
+                animation: `canton-subtask-counter-orbit ${orbitSpeed}s linear infinite`,
+                animationDelay: `${subIndex * -2.4}s`,
+                ['--orbit-start' as string]: `${subAngle}deg`,
+                borderRadius: '50%',
+                background: subtask.is_finished || subtask.status === 'done' ? '#22c55e' : '#8b5cf6',
+                border: '2px solid #fff',
+                boxShadow: '0 4px 12px rgba(15,23,42,0.2)',
+              }}
+            />
+          </span>
+        );
       })}
     </button>
   );
