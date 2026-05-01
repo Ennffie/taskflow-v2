@@ -125,7 +125,7 @@ export function CantonModePage() {
                   <button onClick={() => setShowModal(true)} style={{ width: 42, height: 42, borderRadius: 16, border: 'none', background: '#111827', color: '#fff', display: 'grid', placeItems: 'center' }}><Plus size={20} /></button>
                 </div>
 
-                <div style={{ position: 'relative', height: 560, borderRadius: 30, overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 42%, #fff 0%, #f7f2ff 44%, #edf6ff 100%)' }}>
+                <div style={{ position: 'relative', height: 560, borderRadius: 30, overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 42%, #fff 0%, #f7f2ff 44%, #edf6ff 100%)', padding: '28px 18px' }}>
                   {visibleTasks.length === 0 ? (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
                       <div><div style={{ fontSize: 28, marginBottom: 8 }}>🌙</div><strong>暫時冇浮面 task</strong><div style={{ marginTop: 6, fontSize: 13 }}>可以撳 + 加新 task。</div></div>
@@ -158,9 +158,9 @@ export function CantonModePage() {
 function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem; index: number; total: number; allTasks: TaskItem[]; onClick: () => void }) {
   const subtasks = allTasks.filter((item) => item.parent_id === task.id);
   const angle = total === 1 ? -90 : -150 + (300 / Math.max(total - 1, 1)) * index;
-  const radius = index === 0 ? 0 : 180;
-  const centerX = 50 + (Math.cos((angle * Math.PI) / 180) * radius) / 3.0;
-  const centerY = 46 + (Math.sin((angle * Math.PI) / 180) * radius) / 3.6;
+  const radius = index === 0 ? 0 : 120;
+  const centerX = 50 + (Math.cos((angle * Math.PI) / 180) * radius) / 4.2;
+  const centerY = 46 + (Math.sin((angle * Math.PI) / 180) * radius) / 4.8;
   const isFocusBubble = task.is_focus || index === 0;
   const size = isFocusBubble ? 136 : isOverdue(task) ? 96 : 80;
   const bg = isOverdue(task)
