@@ -171,8 +171,10 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
     : task.is_focus
       ? 'radial-gradient(circle at 34% 24%, #f1e5ff 0%, #ddd0fe 50%, #c4b5fd 100%)'
       : 'radial-gradient(circle at 34% 24%, #e0f2fe 0%, #bae6fd 50%, #93c5fd 100%)';
+  const driftDuration = isFocusBubble ? 9.5 : 7 + (index % 4) * 1.4;
+  const driftDelay = `${index * -1.15}s`;
   return (
-    <button className={isFocusBubble ? 'canton-focus-bubble' : undefined} onClick={onClick} style={{ position: 'absolute', left: `${centerX}%`, top: `${centerY}%`, width: size, height: size, transform: 'translate(-50%, -50%)', animation: isFocusBubble ? 'canton-focus-float 6s ease-in-out infinite' : undefined, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.75)', background: bg, boxShadow: isFocusBubble ? '0 24px 48px rgba(124, 58, 237, 0.24)' : '0 18px 36px rgba(124, 58, 237, 0.18)', padding: 14, textAlign: 'center', cursor: 'pointer', color: '#3b0764' }}>
+    <button className={isFocusBubble ? 'canton-focus-bubble' : 'canton-main-bubble'} onClick={onClick} style={{ position: 'absolute', left: `${centerX}%`, top: `${centerY}%`, width: size, height: size, transform: 'translate(-50%, -50%)', animation: `${isFocusBubble ? 'canton-focus-float' : 'canton-main-drift'} ${driftDuration}s ease-in-out infinite`, animationDelay: driftDelay, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.75)', background: bg, boxShadow: isFocusBubble ? '0 24px 48px rgba(124, 58, 237, 0.24)' : '0 18px 36px rgba(124, 58, 237, 0.18)', padding: 14, textAlign: 'center', cursor: 'pointer', color: '#3b0764' }}>
       <div style={{ position: 'absolute', left: '18%', top: '15%', width: '28%', height: '28%', borderRadius: '50%', background: 'rgba(255,255,255,0.18)' }} />
       <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ fontSize: index === 0 ? 18 : 13, lineHeight: 1.15, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>

@@ -23,14 +23,24 @@ button, input, select, textarea { font: inherit; }
   to { transform: translate(-50%, -50%) rotate(calc(-1 * (var(--orbit-start, 0deg) + 360deg))); }
 }
 
+@keyframes canton-main-drift {
+  0%, 100% { transform: translate(-50%, -50%) translate(0, 0) rotate(-0.35deg); }
+  25% { transform: translate(-50%, -50%) translate(3px, -4px) rotate(0.25deg); }
+  50% { transform: translate(-50%, -50%) translate(-2px, -7px) rotate(0.45deg); }
+  75% { transform: translate(-50%, -50%) translate(-4px, -2px) rotate(-0.2deg); }
+}
+
 @keyframes canton-focus-float {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
-  50% { transform: translate(-50%, -50%) translateY(-8px); }
+  0%, 100% { transform: translate(-50%, -50%) translate(0, 0) rotate(-0.2deg); }
+  25% { transform: translate(-50%, -50%) translate(2px, -3px) rotate(0.18deg); }
+  50% { transform: translate(-50%, -50%) translate(-2px, -8px) rotate(0.28deg); }
+  75% { transform: translate(-50%, -50%) translate(-3px, -2px) rotate(-0.16deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .canton-orbit-ring,
   .canton-orbit-dot,
+  .canton-main-bubble,
   .canton-focus-bubble {
     animation: none !important;
   }
