@@ -128,7 +128,6 @@ export function CantonModePage() {
                 <div style={{ position: 'relative', minHeight: 420, borderRadius: 30, overflow: 'hidden', background: 'radial-gradient(circle at 50% 42%, #fff 0%, #f7f2ff 44%, #edf6ff 100%)' }}>
                   <div style={{ position: 'absolute', inset: '58px 24px 72px', border: '2px dashed #e8ddff', borderRadius: '50%' }} />
                   <div style={{ position: 'absolute', inset: '106px 70px 86px', border: '2px dashed #efe7ff', borderRadius: '50%' }} />
-                  <div style={{ position: 'absolute', left: 18, top: 16, padding: '7px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.74)', color: '#7c3aed', fontSize: 11, fontWeight: 900, border: '1px solid #ede9fe' }}>Focus = 浮面</div>
                   {visibleTasks.length === 0 ? (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
                       <div><div style={{ fontSize: 28, marginBottom: 8 }}>🌙</div><strong>暫時冇浮面 task</strong><div style={{ marginTop: 6, fontSize: 13 }}>可以撳 + 加新 task。</div></div>
@@ -180,7 +179,6 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
         <div style={{ fontSize: index === 0 ? 18 : 13, lineHeight: 1.15, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
         <div style={{ marginTop: 7, fontSize: 11, fontWeight: 800, opacity: 0.82 }}>{dueLabel(task.due_date)}</div>
         {isFocusBubble && <div style={{ marginTop: 4, fontSize: 10, opacity: 0.78 }}>{assigneeLabel(task)}</div>}
-        {task.is_focus && <div style={{ marginTop: 6, padding: '3px 7px', borderRadius: 999, background: 'rgba(255,255,255,0.42)', color: '#5b21b6', fontSize: 10, fontWeight: 900 }}>FOCUS</div>}
       </div>
       {subtasks.slice(0, 8).map((subtask, subIndex) => {
         const subAngle = (360 / Math.max(Math.min(subtasks.length, 8), 1)) * subIndex - 90;
