@@ -23,6 +23,11 @@ button, input, select, textarea { font: inherit; }
   to { transform: translate(-50%, -50%) rotate(calc(-1 * (var(--orbit-start, 0deg) + 360deg))); }
 }
 
+@keyframes canton-bubble-breathe {
+  0%, 100% { transform: translate(-50%, -50%) translate(0, 0); }
+  50% { transform: translate(-50%, -50%) translate(0, -5px); }
+}
+
 @keyframes canton-main-orbit {
   0%   { transform: translate(-50%, -50%) translate(0, -10px); }
   16.6%  { transform: translate(-50%, -50%) translate(9px, -5px); }

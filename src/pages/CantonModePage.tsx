@@ -85,7 +85,7 @@ export function CantonModePage() {
         if (!b.due_date) return -1;
         return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
       })
-      .slice(0, 5);
+      .slice(0, 4);
   }, [rootTasks]);
 
   const todayTasks = useMemo(() => rootTasks.filter(isToday).slice(0, 4), [rootTasks]);
@@ -125,7 +125,7 @@ export function CantonModePage() {
                   <button onClick={() => setShowModal(true)} style={{ width: 42, height: 42, borderRadius: 16, border: 'none', background: '#111827', color: '#fff', display: 'grid', placeItems: 'center' }}><Plus size={20} /></button>
                 </div>
 
-                <div style={{ position: 'relative', height: 560, borderRadius: 30, overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '36px 24px' }}>
+                <div style={{ position: 'relative', height: 520, borderRadius: 30, overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '32px 20px' }}>
                   <SunCenter />
                   {visibleTasks.length === 0 ? (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
@@ -185,88 +185,74 @@ function SunCenter() {
 
 function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem; index: number; total: number; allTasks: TaskItem[]; onClick: () => void }) {
   const subtasks = allTasks.filter((item) => item.parent_id === task.id);
-  // Each bubble has its own orbital lane
-  const laneRadius = 88 + (index % 3) * 42; // 88, 130, 172
-  const orbitDuration = 32 + (index % 4) * 7; // 32, 39, 46, 53 seconds
-  const startAngle = (360 / Math.max(total, 1)) * index;
-  const size = index === 0 ? 118 : isOverdue(task) ? 86 : 74;
+  // Fixed orbital positions around the sun, evenly spread
+  const angles = total <= 1 ? [270] : total === 2 ? [210, 330] : total === 3 ? [210, 270, 330] : total === 4 ? [200, 260, 300, 340] : [180, 220, 270, 320, 0];
+  const angleDeg = angles[index % angles.length];
+  const angleRad = (angleDeg * Math.PI) / 180;
+  const laneRadius = 110;
+  // Convert to percentage offsets (container is responsive)
+  const xPct = (Math.cos(angleRad) * laneRadius) / 3.6; // ≈360px basis
+  const yPct = (Math.sin(angleRad) * laneRadius) / 5.2; // ≈520px basis
+  const size = index === 0 ? 108 : isOverdue(task) ? 80 : 72;
   const isFocusBubble = task.is_focus || index === 0;
   const bg = isOverdue(task)
     ? 'radial-gradient(circle at 34% 24%, #fee2e2 0%, #fecaca 46%, #fca5a5 100%)'
     : task.is_focus
       ? 'radial-gradient(circle at 34% 24%, #f1e5ff 0%, #ddd0fe 50%, #c4b5fd 100%)'
       : 'radial-gradient(circle at 34% 24%, #e0f2fe 0%, #bae6fd 50%, #93c5fd 100%)';
-  const driftDelay = `${index * -6.2}s`;
+  const floatDelay = `${index * -1.8}s`;
+  const floatDur = 5.5 + (index % 3) * 0.9;
   return (
-    <span
-      className="canton-orbit-ring"
+    <button
+      onClick={onClick}
+      className={isFocusBubble ? 'canton-focus-bubble' : 'canton-main-bubble'}
       style={{
         position: 'absolute',
-        left: '50%',
-        top: '46%',
-        width: laneRadius * 2,
-        height: laneRadius * 2,
-        transform: `translate(-50%, -50%) rotate(${startAngle}deg)`,
-        transformOrigin: '50% 50%',
-        animation: `canton-subtask-orbit ${orbitDuration}s linear infinite`,
-        animationDelay: driftDelay,
-        ['--orbit-start' as string]: `${startAngle}deg`,
-        pointerEvents: 'none',
+        left: `calc(50% + ${xPct}%)`,
+        top: `calc(46% + ${yPct}%)`,
+        width: size,
+        height: size,
+        transform: 'translate(-50%, -50%)',
+        animation: `canton-bubble-breathe ${floatDur}s ease-in-out infinite`,
+        animationDelay: floatDelay,
+        borderRadius: '50%',
+        border: '1px solid rgba(255,255,255,0.75)',
+        background: bg,
+        boxShadow: isFocusBubble ? '0 18px 36px rgba(124, 58, 237, 0.22)' : '0 14px 28px rgba(124, 58, 237, 0.16)',
+        padding: 12,
+        textAlign: 'center',
+        cursor: 'pointer',
+        color: '#3b0764',
         zIndex: 5 + index,
       }}
     >
-      <button
-        onClick={onClick}
-        className={isFocusBubble ? 'canton-focus-bubble' : 'canton-main-bubble'}
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: 0,
-          width: size,
-          height: size,
-          transform: `translate(-50%, -50%) rotate(${-startAngle}deg)`,
-          animation: `canton-subtask-counter-orbit ${orbitDuration}s linear infinite`,
-          animationDelay: driftDelay,
-          ['--orbit-start' as string]: `${startAngle}deg`,
-          borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.75)',
-          background: bg,
-          boxShadow: isFocusBubble ? '0 18px 36px rgba(124, 58, 237, 0.22)' : '0 14px 28px rgba(124, 58, 237, 0.16)',
-          padding: 12,
-          textAlign: 'center',
-          cursor: 'pointer',
-          color: '#3b0764',
-          pointerEvents: 'auto',
-        }}
-      >
-        <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ fontSize: index === 0 ? 14 : 11, lineHeight: 1.15, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
-          <div style={{ marginTop: 5, fontSize: 10, fontWeight: 800, opacity: 0.82 }}>{dueLabel(task.due_date)}</div>
-          {isFocusBubble && <div style={{ marginTop: 3, fontSize: 9, opacity: 0.78 }}>{assigneeLabel(task)}</div>}
-        </div>
-        {subtasks.slice(0, 8).map((subtask, subIndex) => {
-          const subAngle = (360 / Math.max(Math.min(subtasks.length, 8), 1)) * subIndex - 90;
-          const dotSize = subtask.is_finished || subtask.status === 'done' ? 12 : 15;
-          return (
-            <span
-              key={subtask.id}
-              style={{
-                position: 'absolute',
-                left: `calc(50% + ${Math.cos((subAngle * Math.PI) / 180) * (size / 2 + 6)}px)`,
-                top: `calc(50% + ${Math.sin((subAngle * Math.PI) / 180) * (size / 2 + 6)}px)`,
-                width: dotSize,
-                height: dotSize,
-                transform: 'translate(-50%, -50%)',
-                borderRadius: '50%',
-                background: subtask.is_finished || subtask.status === 'done' ? '#22c55e' : '#8b5cf6',
-                border: '2px solid #fff',
-                boxShadow: '0 3px 8px rgba(15,23,42,0.18)',
-              }}
-            />
-          );
-        })}
-      </button>
-    </span>
+      <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: index === 0 ? 13 : 10.5, lineHeight: 1.15, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
+        <div style={{ marginTop: 4, fontSize: 9.5, fontWeight: 800, opacity: 0.82 }}>{dueLabel(task.due_date)}</div>
+        {isFocusBubble && <div style={{ marginTop: 3, fontSize: 9, opacity: 0.78 }}>{assigneeLabel(task)}</div>}
+      </div>
+      {subtasks.slice(0, 6).map((subtask, subIndex) => {
+        const subAngle = (360 / Math.max(Math.min(subtasks.length, 6), 1)) * subIndex - 90;
+        const dotSize = subtask.is_finished || subtask.status === 'done' ? 11 : 13;
+        return (
+          <span
+            key={subtask.id}
+            style={{
+              position: 'absolute',
+              left: `calc(50% + ${Math.cos((subAngle * Math.PI) / 180) * (size / 2 + 5)}px)`,
+              top: `calc(50% + ${Math.sin((subAngle * Math.PI) / 180) * (size / 2 + 5)}px)`,
+              width: dotSize,
+              height: dotSize,
+              transform: 'translate(-50%, -50%)',
+              borderRadius: '50%',
+              background: subtask.is_finished || subtask.status === 'done' ? '#22c55e' : '#8b5cf6',
+              border: '2px solid #fff',
+              boxShadow: '0 2px 6px rgba(15,23,42,0.16)',
+            }}
+          />
+        );
+      })}
+    </button>
   );
 }
 
