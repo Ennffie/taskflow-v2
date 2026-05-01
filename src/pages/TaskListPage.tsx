@@ -139,15 +139,21 @@ export function TaskListPage() {
   };
 
   const toggleSection = (sectionName: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionName]: !(prev[sectionName] ?? false),
+    }));
+    setActiveCompactCard('All');
+  };
+
+  const showSingleSection = (sectionName: 'Focus' | 'Overdue' | 'Other') => {
     setExpandedSections({
       'Focus': sectionName === 'Focus',
       'Overdue': sectionName === 'Overdue',
       'Other': sectionName === 'Other',
       'Done': false,
     });
-    if (sectionName === 'Focus' || sectionName === 'Overdue' || sectionName === 'Other') {
-      setActiveCompactCard(sectionName);
-    }
+    setActiveCompactCard(sectionName);
   };
 
   const clearFilters = () => {
@@ -287,7 +293,7 @@ export function TaskListPage() {
             bgColor="#ede9fe"
             iconBgColor="#ddd6fe"
             active={activeCompactCard === 'Focus'}
-            onToggle={() => toggleSection('Focus')}
+            onToggle={() => showSingleSection('Focus')}
           />
           <CompactCard 
             icon={<AlertTriangle size={20} color="#ef4444" />}
@@ -296,7 +302,7 @@ export function TaskListPage() {
             bgColor="#fef2f2"
             iconBgColor="#fee2e2"
             active={activeCompactCard === 'Overdue'}
-            onToggle={() => toggleSection('Overdue')}
+            onToggle={() => showSingleSection('Overdue')}
           />
           <CompactCard 
             icon={<Inbox size={20} color="#3b82f6" />}
@@ -305,7 +311,7 @@ export function TaskListPage() {
             bgColor="#eff6ff"
             iconBgColor="#dbeafe"
             active={activeCompactCard === 'Other'}
-            onToggle={() => toggleSection('Other')}
+            onToggle={() => showSingleSection('Other')}
           />
           <CompactCard 
             icon={<CheckCircle2 size={20} color="#0f172a" />}

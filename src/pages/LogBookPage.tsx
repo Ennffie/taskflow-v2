@@ -119,6 +119,7 @@ export function LogBookPage() {
   }, [task, subtasks]);
 
   const canFinishParentTask = !task?.parent_id && (subtasks.length === 0 ? true : derivedParentState.progress >= 90);
+  const canManuallyEditMainTaskProgress = !task?.parent_id && subtasks.length === 0 && canEditTask && !derivedParentState.isFinished;
 
   const saveTaskProgress = async (nextProgress: number, nextFinished?: boolean) => {
     if (!task || !canEditTask) return;
@@ -373,7 +374,7 @@ export function LogBookPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>Progress</div>
                   <span style={{ fontSize: '13px', fontWeight: 800, color: '#6d28d9', background: '#ede9fe', padding: '6px 10px', borderRadius: '999px', minWidth: '52px', textAlign: 'center' }}>
-                    {task.parent_id ? draftTaskProgress : derivedParentState.progress}%
+                    {task.parent_id ? draftTaskProgress : (canManuallyEditMainTaskProgress ? draftTaskProgress : derivedParentState.progress)}%
                   </span>
                   {progressStatus !== 'idle' && (
                     <span style={{ fontSize: '12px', fontWeight: 700, color: progressStatus === 'saving' ? '#6d28d9' : '#047857' }}>
@@ -412,6 +413,22 @@ export function LogBookPage() {
                 ) : (
                   <div style={{ fontSize: '12px', color: '#94a3b8' }}>Progress is editable by this sub-task assignee or admin only.</div>
                 )
+              ) : canManuallyEditMainTaskProgress ? (
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={draftTaskProgress}
+                    onInput={(e) => setDraftTaskProgress(Number((e.target as HTMLInputElement).value))}
+                    onChange={(e) => setDraftTaskProgress(Number(e.target.value))}
+                    onMouseUp={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
+                    onTouchEnd={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
+                    style={{ width: '100%', height: '52px', accentColor: '#6d28d9', cursor: 'pointer' }}
+                  />
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>No sub-task yet — drag to update main task progress directly.</div>
+                </div>
               ) : (
                 <div style={{ fontSize: '12px', color: '#94a3b8' }}>{subtasks.length > 0 ? (canFinishParentTask ? 'Parent progress is calculated from sub-tasks and rounds. You can finish this main task now.' : 'Parent progress is calculated from sub-tasks and rounds. Finish unlocks only at the final round.') : 'Main task progress can be updated if you are assigned to this task.'}</div>
               )}
