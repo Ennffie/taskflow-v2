@@ -85,7 +85,7 @@ export function CantonModePage() {
         if (!b.due_date) return -1;
         return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
       })
-      .slice(0, 7);
+      .slice(0, 5);
   }, [rootTasks]);
 
   const todayTasks = useMemo(() => rootTasks.filter(isToday).slice(0, 4), [rootTasks]);
@@ -157,12 +157,12 @@ export function CantonModePage() {
 
 function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem; index: number; total: number; allTasks: TaskItem[]; onClick: () => void }) {
   const subtasks = allTasks.filter((item) => item.parent_id === task.id);
-  const angle = total === 1 ? -90 : -150 + (300 / Math.max(total - 1, 1)) * index;
-  const radius = index === 0 ? 0 : 120;
+  const angle = total === 1 ? -90 : -120 + (240 / Math.max(total - 1, 1)) * index;
+  const radius = index === 0 ? 0 : 90;
   const centerX = 50 + (Math.cos((angle * Math.PI) / 180) * radius) / 4.2;
   const centerY = 46 + (Math.sin((angle * Math.PI) / 180) * radius) / 4.8;
   const isFocusBubble = task.is_focus || index === 0;
-  const size = isFocusBubble ? 136 : isOverdue(task) ? 96 : 80;
+  const size = isFocusBubble ? 118 : isOverdue(task) ? 82 : 68;
   const bg = isOverdue(task)
     ? 'radial-gradient(circle at 34% 24%, #fee2e2 0%, #fecaca 46%, #fca5a5 100%)'
     : task.is_focus
