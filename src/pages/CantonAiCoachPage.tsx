@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createTask, fetchTasks } from '../lib/api';
+import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees } from '../lib/api';
 import { AppShell } from '../components/AppShell';
-import { STATUS_META, type TaskItem } from '../types';
+import { STATUS_META, type Profile, type TaskItem, type TaskStatus } from '../types';
 
 const cardStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.94)',
@@ -53,6 +53,7 @@ function assigneeLabel(task: TaskItem) {
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -66,7 +67,7 @@ export function CantonAiCoachPage() {
     try { setTasks(await fetchTasks()); } finally { setLoading(false); }
   };
 
-  useEffect(() => { void loadTasks(); }, []);
+  useEffect(() => { void loadTasks(); fetchProfiles().then(setProfiles).catch(console.error); }, []);
 
   const rootTasks = tasks.filter((task) => !task.parent_id);
   const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task) => `• ${task.title}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}｜${STATUS_META[task.status].label}`).join('\n') : empty;
@@ -96,6 +97,82 @@ export function CantonAiCoachPage() {
     return `${task.title}\n仲差：${missing.join('、')}。\n而家狀態：${STATUS_META[task.status].label}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}`;
   };
 
+  const parseDate = (lower: string) => {
+    const today = new Date();
+    const toIso = (date: Date) => date.toISOString().slice(0, 10);
+    if (/今日|today/.test(lower)) return toIso(today);
+    if (/聽日|明日|tomorrow/.test(lower)) { const d = new Date(today); d.setDate(d.getDate() + 1); return toIso(d); }
+    const weekdayMap: Record<string, number> = { '星期日': 0, '禮拜日': 0, sun: 0, sunday: 0, '星期一': 1, '禮拜一': 1, mon: 1, monday: 1, '星期二': 2, '禮拜二': 2, tue: 2, tuesday: 2, '星期三': 3, '禮拜三': 3, wed: 3, wednesday: 3, '星期四': 4, '禮拜四': 4, thu: 4, thursday: 4, '星期五': 5, '禮拜五': 5, fri: 5, friday: 5, '星期六': 6, '禮拜六': 6, sat: 6, saturday: 6 };
+    const weekday = Object.entries(weekdayMap).find(([key]) => lower.includes(key));
+    if (weekday) {
+      const target = weekday[1];
+      const d = new Date(today);
+      let delta = (target - d.getDay() + 7) % 7;
+      if (delta === 0) delta = 7;
+      d.setDate(d.getDate() + delta);
+      return toIso(d);
+    }
+    const md = lower.match(/(\d{1,2})\s*[月/.-]\s*(\d{1,2})/);
+    if (md) {
+      const d = new Date(today.getFullYear(), Number(md[1]) - 1, Number(md[2]));
+      return toIso(d);
+    }
+    return null;
+  };
+
+  const findProfileFromText = (lower: string) => profiles.find((profile) => {
+    const name = profile.name.toLowerCase();
+    const initialsText = profile.name.split(/\s+/).map((part) => part[0]).join('').toLowerCase();
+    return lower.includes(name) || (initialsText.length >= 2 && lower.includes(initialsText)) || profile.name.split(/\s+/).some((part) => part.length >= 2 && lower.includes(part.toLowerCase()));
+  }) ?? null;
+
+  const parseStatus = (lower: string): TaskStatus | null => {
+    if (/done|完成|搞掂/.test(lower)) return 'done';
+    if (/planning|plan|準備|諗緊/.test(lower)) return 'planning';
+    if (/progress|doing|wip|做緊|進行/.test(lower)) return 'in_progress';
+    if (/review|睇緊|審/.test(lower)) return 'review';
+    if (/todo|未開始/.test(lower)) return 'todo';
+    return null;
+  };
+
+  const applyTaskActions = async (task: TaskItem, lower: string) => {
+    const updates: Partial<{ due_date: string | null; status: TaskStatus; is_focus: boolean }> = {};
+    const notes: string[] = [];
+    const date = parseDate(lower);
+    const profile = findProfileFromText(lower);
+    const status = parseStatus(lower);
+
+    if (date && /(deadline|due|交|前|星期|聽日|明日|today|tomorrow|\d{1,2}\s*[月/.-])/.test(lower)) {
+      updates.due_date = date;
+      notes.push(`deadline → ${dueLabel(date)}`);
+    }
+    if (/未定|冇 deadline|no deadline|clear deadline/.test(lower)) {
+      updates.due_date = null;
+      notes.push('deadline → 未定');
+    }
+    if (status) {
+      updates.status = status;
+      notes.push(`status → ${STATUS_META[status].label}`);
+    }
+    if (/focus|重點|優先|先搞/.test(lower)) {
+      updates.is_focus = true;
+      notes.push('focus → Yes');
+    }
+    if (/唔 focus|not focus|取消 focus/.test(lower)) {
+      updates.is_focus = false;
+      notes.push('focus → No');
+    }
+
+    if (Object.keys(updates).length) await updateTask(task.id, updates);
+    if (profile) {
+      await updateTaskAssignees(task.id, [profile.id]);
+      notes.push(`負責人 → ${profile.name}`);
+    }
+    if (!notes.length) return null;
+    await loadTasks();
+    return `${task.title}\n已幫你更新：${notes.join('、')}`;
+  };
+
   const getReply = async (text: string) => {
     const trimmed = text.trim();
     const lower = trimmed.toLowerCase();
@@ -113,6 +190,8 @@ export function CantonAiCoachPage() {
     const matchedTask = findTaskFromText(lower) ?? (/佢|呢個|this|that/.test(lower) ? rootTasks.find((task) => task.id === lastTaskId) ?? null : null);
     if (matchedTask) {
       setLastTaskId(matchedTask.id);
+      const actionReply = await applyTaskActions(matchedTask, lower);
+      if (actionReply) return actionReply;
       const subtasks = tasks.filter((task) => task.parent_id === matchedTask.id);
       if (/差乜|未有|缺|missing|補|資料|仲差/.test(lower)) return missingInfoReply(matchedTask);
       return `${matchedTask.title}\n狀態：${STATUS_META[matchedTask.status].label}\nDeadline：${dueLabel(matchedTask.due_date)}\n負責：${assigneeLabel(matchedTask)}\nProgress：${matchedTask.is_finished ? 100 : (matchedTask.progress_percent ?? 0)}%\nSubtasks：${subtasks.length}`;
