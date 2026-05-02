@@ -200,21 +200,35 @@ function SunCenter() {
       position: 'absolute',
       left: '50%',
       top: '46%',
-      width: 96,
-      height: 96,
+      width: 132,
+      height: 132,
       transform: 'translate(-50%, -50%)',
       borderRadius: '50%',
-      background: 'radial-gradient(circle at 38% 28%, #fef3c7 0%, #fde68a 45%, #fbbf24 100%)',
-      boxShadow: '0 8px 32px rgba(251, 191, 36, 0.32), inset 0 -4px 12px rgba(245, 158, 11, 0.2)',
-      border: '2px solid rgba(255,255,255,0.8)',
+      background: 'repeating-conic-gradient(from 8deg, rgba(251,191,36,0.34) 0deg 8deg, rgba(251,191,36,0.03) 8deg 18deg)',
+      boxShadow: '0 0 44px rgba(251, 191, 36, 0.22)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       textAlign: 'center',
-      zIndex: 10,
+      zIndex: 9,
       pointerEvents: 'none',
     }}>
-      <div style={{ color: '#92400e', fontWeight: 900, fontSize: 13, lineHeight: 1.2, letterSpacing: '0.04em' }}>
+      <div style={{
+        position: 'absolute',
+        inset: 18,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle at 38% 28%, #fff7cc 0%, #fde68a 44%, #fbbf24 78%, #f59e0b 100%)',
+        boxShadow: '0 10px 38px rgba(251, 191, 36, 0.42), 0 0 72px rgba(253, 230, 138, 0.55), inset 0 -5px 14px rgba(245, 158, 11, 0.22), inset 0 4px 12px rgba(255,255,255,0.42)',
+        border: '2px solid rgba(255,255,255,0.82)',
+      }} />
+      <div style={{
+        position: 'absolute',
+        inset: 4,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(254,240,138,0.3) 0%, rgba(254,240,138,0.12) 44%, rgba(254,240,138,0) 70%)',
+        filter: 'blur(6px)',
+      }} />
+      <div style={{ position: 'relative', color: '#92400e', fontWeight: 900, fontSize: 13, lineHeight: 1.2, letterSpacing: '0.04em', textShadow: '0 1px 0 rgba(255,255,255,0.6)' }}>
         UXUI<br />Team
       </div>
     </div>
