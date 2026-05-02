@@ -270,6 +270,19 @@ export function CantonAiCoachPage() {
     }
   };
 
+  const renderMessageText = (text: string, role: 'ai' | 'user') => {
+    if (role === 'user') return text;
+    return text.split('\n').map((line, index) => {
+      const isTaskName = /^\d+\.\s/.test(line);
+      const isHeading = index === 0 && /：$/.test(line.trim());
+      return (
+        <span key={`${line}-${index}`} style={{ display: 'block', fontWeight: isTaskName || isHeading ? 900 : 500, marginTop: isTaskName && index > 0 ? 16 : 0 }}>
+          {line || ' '}
+        </span>
+      );
+    });
+  };
+
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
       <header style={{ padding: '14px 16px 10px', background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(226,232,240,0.9)' }}>
@@ -282,7 +295,7 @@ export function CantonAiCoachPage() {
       <main style={{ overflowY: 'auto', padding: '14px 16px 12px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
           {loading ? <div style={{ padding: 14, color: '#64748b', fontWeight: 800 }}>Loading tasks…</div> : null}
-          {messages.map((message, index) => <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '90%', whiteSpace: 'pre-wrap', padding: message.role === 'user' ? '13px 15px' : '16px 17px', borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '20px 20px 20px 4px', background: message.role === 'user' ? '#111827' : '#fff', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: message.role === 'user' ? 16 : 17, lineHeight: 1.48, fontWeight: message.role === 'user' ? 800 : 850, letterSpacing: '-0.01em', boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' }}>{message.text}</div>)}
+          {messages.map((message, index) => <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '90%', whiteSpace: 'pre-wrap', padding: message.role === 'user' ? '13px 15px' : '16px 17px', borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '20px 20px 20px 4px', background: message.role === 'user' ? '#111827' : '#fff', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: message.role === 'user' ? 16 : 17, lineHeight: 1.48, fontWeight: message.role === 'user' ? 800 : 500, letterSpacing: '-0.01em', boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' }}>{renderMessageText(message.text, message.role)}</div>)}
         </div>
       </main>
 
