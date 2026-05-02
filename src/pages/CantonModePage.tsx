@@ -381,8 +381,8 @@ function CantonAiCoach({ tasks }: { tasks: TaskItem[]; onTaskCreated: () => Prom
   const overdueCount = rootTasks.filter(isOverdue).length;
   const missingDeadlineCount = rootTasks.filter((task) => !isDone(task) && !task.due_date).length;
   const riskCount = rootTasks.filter((task) => !isDone(task) && (isOverdue(task) || !task.due_date || task.assignees.length === 0 || isStale(task))).length;
-  const headline = overdueCount > 0 ? `${overdueCount} 個 task 已過 deadline` : riskCount > 0 ? `${riskCount} 件事可能會漏` : '今日暫時幾穩陣';
-  const subline = overdueCount > 0 ? '我幫你排好邊啲要先追。' : missingDeadlineCount > 0 ? `${missingDeadlineCount} 個 task 未 set deadline。` : '入嚟問我今日要追咩。';
+  const headline = overdueCount > 0 ? `辛苦晒，仲有 ${overdueCount} 個要追` : riskCount > 0 ? `你已經做得好穩，仲有 ${riskCount} 件我幫你望住` : '今日幾穩陣，做得好好';
+  const subline = overdueCount > 0 ? '唔使一個人記晒，我陪你排先後，逐個追返。' : missingDeadlineCount > 0 ? '有啲未 set deadline，我幫你輕輕執順。' : '有咩想加 / 想問，入嚟即刻幫你拆。';
 
   return (
     <button onClick={() => navigate('/canton-ai')} style={{ ...cardStyle, width: '100%', textAlign: 'left', padding: '24px 22px', border: '1px solid rgba(186,230,253,0.95)', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 48%, #f5f3ff 100%)', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
