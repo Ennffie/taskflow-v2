@@ -43,13 +43,28 @@ function isStale(task: TaskItem) {
 
 function dueLabel(dueDate: string | null) {
   if (!dueDate) return '未 set deadline';
-  return new Intl.DateTimeFormat('zh-HK', { month: 'short', day: 'numeric' }).format(new Date(dueDate));
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays === -1) return 'Yesterday';
+  return new Intl.DateTimeFormat('zh-HK', { month: 'numeric', day: 'numeric' }).format(due);
 }
 
 function assigneeLabel(task: TaskItem) {
   if (!task.assignees.length) return '未分配';
-  if (task.assignees.length === 1) return task.assignees[0].name;
-  return `${task.assignees[0].name} +${task.assignees.length - 1}`;
+  if (task.assignees.length === 1) return initials(task.assignees[0].name);
+  return `${initials(task.assignees[0].name)} +${task.assignees.length - 1}`;
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '—';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return parts.map((part) => part[0]).join('').slice(0, 2).toUpperCase();
 }
 
 function getUserColor(task: TaskItem) {
@@ -210,8 +225,8 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
   const subtasks = allTasks.filter((item) => item.parent_id === task.id);
   const angles = total <= 1 ? [270] : total === 2 ? [210, 330] : total === 3 ? [210, 270, 330] : total === 4 ? [200, 260, 300, 340] : [180, 220, 270, 320, 0];
   const angleDeg = angles[index % angles.length];
-  const laneRadius = index === 0 ? 104 : 116 + (index % 2) * 8;
-  const size = index === 0 ? 108 : isOverdue(task) ? 80 : 72;
+  const laneRadius = index === 0 ? 108 : 112 + index * 10;
+  const size = index === 0 ? 84 : isOverdue(task) ? 68 : 60;
   const isFocusBubble = task.is_focus || index === 0;
   const userColor = getUserColor(task);
   const bg = isOverdue(task)
@@ -220,7 +235,7 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
   const textColor = isOverdue(task) ? '#7f1d1d' : '#312e81';
   const floatDelay = `${index * -2.6}s`;
   const floatDur = index === 0 ? 9.5 : 7.2 + (index % 3) * 1.3;
-  const mainOrbitDur = isFocusBubble ? 58 + index * 6 : 44 + index * 7;
+  const mainOrbitDur = 76;
   const completedSubtasks = subtasks.filter(isDone).length;
   const completion = subtasks.length ? completedSubtasks / subtasks.length : 1;
   const baseSubtaskOrbitDur = 5.2 + completion * 10.5;
@@ -263,16 +278,16 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
             border: '1px solid rgba(255,255,255,0.75)',
             background: bg,
             boxShadow: isFocusBubble ? `0 18px 36px ${hexToRgba(userColor, 0.24)}` : `0 14px 28px ${hexToRgba(userColor, 0.18)}`,
-            padding: 12,
+            padding: index === 0 ? 10 : 8,
             textAlign: 'center',
             cursor: 'pointer',
             color: textColor,
           }}
         >
           <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ fontSize: index === 0 ? 13 : 10.5, lineHeight: 1.15, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
-            <div style={{ marginTop: 4, fontSize: 9.5, fontWeight: 800, opacity: 0.82 }}>{dueLabel(task.due_date)}</div>
-            {isFocusBubble && <div style={{ marginTop: 3, fontSize: 9, opacity: 0.78 }}>{assigneeLabel(task)}</div>}
+            <div style={{ fontSize: index === 0 ? 11 : 9.2, lineHeight: 1.08, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
+            <div style={{ marginTop: 3, fontSize: index === 0 ? 8.8 : 7.8, fontWeight: 900, opacity: 0.84 }}>{dueLabel(task.due_date)}</div>
+            <div style={{ marginTop: 2, fontSize: index === 0 ? 8.4 : 7.4, opacity: 0.8, fontWeight: 800 }}>{assigneeLabel(task)}</div>
           </div>
           {subtasks.slice(0, 6).map((subtask, subIndex) => {
             const subAngle = (360 / Math.max(Math.min(subtasks.length, 6), 1)) * subIndex - 90;
