@@ -1,0 +1,62 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F2FF"/>
+      <stop offset="1" stop-color="#EEF6FF"/>
+    </linearGradient>
+    <linearGradient id="bubbleMain" x1="600" y1="330" x2="600" y2="870" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="1200" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#6D28D9" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="76" y="72" width="1048" height="1056" rx="40" fill="#FFFFFF" fill-opacity="0.88"/>
+  </g>
+
+  <text x="120" y="150" fill="#6D28D9" font-size="24" font-family="Arial, sans-serif" font-weight="700">Single-color subtask progress demo</text>
+  <text x="120" y="208" fill="#0F172A" font-size="48" font-family="Arial, sans-serif" font-weight="800">每個 section 等大，內線長度表達完成度</text>
+  <text x="120" y="254" fill="#64748B" font-size="24" font-family="Arial, sans-serif">全部跟返波波原本隻色，只用內線長短去表達每個 subtask progress</text>
+
+  <g transform="translate(600 600)">
+    <!-- outer equal segments -->
+    <path d="M 0 -330 A 330 330 0 0 1 206 -257.6" stroke="#CFC7FB" stroke-width="28" stroke-linecap="round"/>
+    <path d="M 233.3 -233.3 A 330 330 0 0 1 330 0" stroke="#CFC7FB" stroke-width="28" stroke-linecap="round"/>
+    <path d="M 311 95 A 330 330 0 0 1 233.3 233.3" stroke="#CFC7FB" stroke-width="28" stroke-linecap="round"/>
+    <path d="M 206 257.6 A 330 330 0 0 1 0 330" stroke="#CFC7FB" stroke-width="28" stroke-linecap="round"/>
+    <path d="M -95 311 A 330 330 0 0 1 -257.6 206" stroke="#CFC7FB" stroke-width="28" stroke-linecap="round"/>
+    <path d="M -233.3 233.3 A 330 330 0 0 1 -330 0" stroke="#CFC7FB" stroke-width="28" stroke-linecap="round"/>
+    <path d="M -311 -95 A 330 330 0 0 1 -233.3 -233.3" stroke="#CFC7FB" stroke-width="28" stroke-linecap="round"/>
+    <path d="M -206 -257.6 A 330 330 0 0 1 0 -330" stroke="#CFC7FB" stroke-width="28" stroke-linecap="round"/>
+
+    <!-- inner progress lines with different lengths but same color -->
+    <path d="M 0 -300 A 300 300 0 0 1 48 -296" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 212 -212 A 300 300 0 0 1 278 -112" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 286 87 A 300 300 0 0 1 245 173" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 170 247 A 300 300 0 0 1 37 298" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -65 293 A 300 300 0 0 1 -182 239" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -212 212 A 300 300 0 0 1 -298 18" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -286 -87 A 300 300 0 0 1 -188 -233" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -65 -293 A 300 300 0 0 1 -8 -300" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+
+    <circle cx="0" cy="0" r="235" fill="url(#bubbleMain)"/>
+    <circle cx="-58" cy="-72" r="72" fill="#FFFFFF" fill-opacity="0.22"/>
+
+    <text x="0" y="-8" text-anchor="middle" fill="#4338CA" font-size="44" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="44" text-anchor="middle" fill="#5B21B6" font-size="22" font-family="Arial, sans-serif" font-weight="700">8 subtasks</text>
+    <text x="0" y="80" text-anchor="middle" fill="#64748B" font-size="18" font-family="Arial, sans-serif">短線 = 低 progress｜長線 = 高 progress</text>
+  </g>
+
+  <g transform="translate(150 960)">
+    <text x="0" y="0" fill="#0F172A" font-size="30" font-family="Arial, sans-serif" font-weight="800">點讀呢個 ring</text>
+    <text x="0" y="52" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 1 個 section = 1 個 subtask</text>
+    <text x="0" y="92" fill="#475569" font-size="24" font-family="Arial, sans-serif">• section 等大，唔靠外圈長短表達意思</text>
+    <text x="0" y="132" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 裏面條線越長 = 該 subtask 完成度越高</text>
+    <text x="0" y="172" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 全部用返波波同色系，畫面更乾淨</text>
+  </g>
+</svg>

@@ -1,0 +1,40 @@
+<svg width="900" height="1100" viewBox="0 0 900 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="450" y1="0" x2="450" y2="1100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F3FF"/>
+      <stop offset="1" stop-color="#EEF7FF"/>
+    </linearGradient>
+    <radialGradient id="bubble" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 -60) rotate(54) scale(320)">
+      <stop stop-color="#F3E8FF"/>
+      <stop offset="0.5" stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1100" fill="url(#bg)"/>
+  <rect x="50" y="50" width="800" height="1000" rx="36" fill="white" fill-opacity="0.9"/>
+  <text x="90" y="120" fill="#0F172A" font-size="40" font-family="Arial, sans-serif" font-weight="800">A · mini pie charts</text>
+  <text x="90" y="168" fill="#64748B" font-size="24" font-family="Arial, sans-serif">似錶面 complication，清楚又得意</text>
+  <g transform="translate(450 500)">
+    <circle cx="0" cy="0" r="170" fill="url(#bubble)"/>
+    <circle cx="-48" cy="-60" r="54" fill="#FFF" fill-opacity="0.22"/>
+    <text x="0" y="8" text-anchor="middle" fill="#4338CA" font-size="34" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="46" text-anchor="middle" fill="#5B21B6" font-size="20" font-family="Arial, sans-serif" font-weight="700">main task</text>
+    <g transform="translate(-124 100)">
+      <circle cx="0" cy="0" r="40" fill="#F5F3FF"/>
+      <path d="M 0 -30 A 30 30 0 1 1 26 16" stroke="#D9D6FE" stroke-width="12" stroke-linecap="round"/>
+      <path d="M 0 -30 A 30 30 0 1 1 9 29" stroke="#8B5CF6" stroke-width="12" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(0 130)">
+      <circle cx="0" cy="0" r="40" fill="#F5F3FF"/>
+      <path d="M 0 -30 A 30 30 0 1 1 26 16" stroke="#D9D6FE" stroke-width="12" stroke-linecap="round"/>
+      <path d="M 0 -30 A 30 30 0 1 1 -16 26" stroke="#A78BFA" stroke-width="12" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(124 100)">
+      <circle cx="0" cy="0" r="40" fill="#F5F3FF"/>
+      <path d="M 0 -30 A 30 30 0 1 1 26 16" stroke="#D9D6FE" stroke-width="12" stroke-linecap="round"/>
+      <path d="M 0 -30 A 30 30 0 1 1 26 16" stroke="#7C3AED" stroke-width="12" stroke-linecap="round"/>
+    </g>
+  </g>
+  <text x="90" y="930" fill="#475569" font-size="24" font-family="Arial, sans-serif">優點：可愛、易分組、易理解</text>
+  <text x="90" y="972" fill="#475569" font-size="24" font-family="Arial, sans-serif">適合：想要得意啲，但又唔想太亂</text>
+</svg>

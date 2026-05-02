@@ -1,0 +1,94 @@
+<svg width="1200" height="1500" viewBox="0 0 1200 1500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="1500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF8FF"/>
+      <stop offset="1" stop-color="#F1F8FF"/>
+    </linearGradient>
+    <linearGradient id="phoneBg" x1="390" y1="0" x2="390" y2="844" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FCFAFF"/>
+      <stop offset="1" stop-color="#F6F9FF"/>
+    </linearGradient>
+    <radialGradient id="planet" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(280 170) rotate(55) scale(220)">
+      <stop stop-color="#F1E5FF"/>
+      <stop offset="0.5" stop-color="#DDD0FE"/>
+      <stop offset="1" stop-color="#C8B0FA"/>
+    </radialGradient>
+    <linearGradient id="orbit" x1="150" y1="80" x2="620" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F0E9FF"/>
+      <stop offset="1" stop-color="#DDD3FF"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="1500" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#8B5CF6" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1500" fill="url(#bg)"/>
+
+  <g transform="translate(210 120)">
+    <g filter="url(#shadow)">
+      <rect x="0" y="0" width="780" height="1260" rx="70" fill="url(#phoneBg)"/>
+    </g>
+    <rect x="246" y="18" width="288" height="36" rx="18" fill="#111827" fill-opacity="0.94"/>
+
+    <circle cx="80" cy="120" r="26" fill="#FFFFFF" fill-opacity="0.9"/>
+    <path d="M 90 120 L 72 120 M 80 110 L 72 120 L 80 130" stroke="#475569" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="120" y="110" fill="#0F172A" font-size="42" font-family="Arial, sans-serif" font-weight="800">task detail</text>
+    <text x="120" y="152" fill="#6B7280" font-size="20" font-family="Arial, sans-serif">detail page 先係真正管理層</text>
+
+    <g filter="url(#shadow)">
+      <rect x="34" y="196" width="712" height="420" rx="42" fill="#FFFFFF" fill-opacity="0.88"/>
+    </g>
+    <g transform="translate(390 334)">
+      <ellipse cx="0" cy="0" rx="146" ry="96" stroke="url(#orbit)" stroke-width="6" stroke-dasharray="7 12"/>
+      <ellipse cx="0" cy="0" rx="104" ry="146" stroke="url(#orbit)" stroke-width="4.5" stroke-dasharray="6 10" opacity="0.92"/>
+      <circle cx="0" cy="0" r="104" fill="url(#planet)"/>
+      <circle cx="-28" cy="-36" r="28" fill="#FFFFFF" fill-opacity="0.18"/>
+      <text x="0" y="-2" text-anchor="middle" fill="#5B21B6" font-size="28" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+      <text x="0" y="28" text-anchor="middle" fill="#6D28D9" font-size="15" font-family="Arial, sans-serif" font-weight="700">main task</text>
+      <circle cx="0" cy="-104" r="16" fill="#8B5CF6"/>
+      <circle cx="124" cy="0" r="14" fill="#A78BFA"/>
+      <circle cx="0" cy="108" r="12" fill="#DDD6FE"/>
+      <circle cx="-124" cy="0" r="14" fill="#E7D7FF"/>
+      <circle cx="80" cy="96" r="11" fill="#F0ABFC"/>
+    </g>
+
+    <text x="80" y="500" fill="#0F172A" font-size="38" font-family="Arial, sans-serif" font-weight="800">Benne UX review deck</text>
+    <rect x="80" y="526" width="124" height="42" rx="21" fill="#F3E8FF"/>
+    <text x="142" y="553" text-anchor="middle" fill="#6D28D9" font-size="18" font-family="Arial, sans-serif" font-weight="700">進行中</text>
+    <rect x="220" y="526" width="148" height="42" rx="21" fill="#FFF8ED"/>
+    <text x="294" y="553" text-anchor="middle" fill="#C2410C" font-size="18" font-family="Arial, sans-serif" font-weight="700">今日 3:30 PM</text>
+
+    <g filter="url(#shadow)">
+      <rect x="34" y="648" width="712" height="238" rx="34" fill="#FFFFFF" fill-opacity="0.88"/>
+    </g>
+    <text x="62" y="706" fill="#0F172A" font-size="28" font-family="Arial, sans-serif" font-weight="800">基本資料</text>
+    <rect x="62" y="734" width="300" height="60" rx="20" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="84" y="768" fill="#94A3B8" font-size="14" font-family="Arial, sans-serif" font-weight="800">ASSIGNEE</text>
+    <text x="84" y="791" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">Pamela</text>
+    <rect x="386" y="734" width="332" height="60" rx="20" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="408" y="768" fill="#94A3B8" font-size="14" font-family="Arial, sans-serif" font-weight="800">DEADLINE</text>
+    <text x="408" y="791" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">2026-05-08 1530</text>
+    <rect x="62" y="810" width="300" height="60" rx="20" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="84" y="844" fill="#94A3B8" font-size="14" font-family="Arial, sans-serif" font-weight="800">REMINDER</text>
+    <text x="84" y="867" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">30 分鐘前</text>
+    <rect x="386" y="810" width="332" height="60" rx="20" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="408" y="844" fill="#94A3B8" font-size="14" font-family="Arial, sans-serif" font-weight="800">SOURCE</text>
+    <text x="408" y="867" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">manual · guided add</text>
+
+    <g filter="url(#shadow)">
+      <rect x="34" y="914" width="712" height="238" rx="34" fill="#FFFFFF" fill-opacity="0.88"/>
+    </g>
+    <text x="62" y="972" fill="#0F172A" font-size="28" font-family="Arial, sans-serif" font-weight="800">Follow-up / Activity</text>
+    <rect x="62" y="1006" width="656" height="52" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="84" y="1038" fill="#6B7280" font-size="18" font-family="Arial, sans-serif" font-weight="700">Next follow-up：今日 2:30 PM</text>
+    <rect x="62" y="1074" width="656" height="52" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="84" y="1106" fill="#6B7280" font-size="18" font-family="Arial, sans-serif" font-weight="700">已提醒 Pamela</text>
+
+    <rect x="50" y="1180" width="196" height="66" rx="24" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="148" y="1223" text-anchor="middle" fill="#475569" font-size="22" font-family="Arial, sans-serif" font-weight="700">提一提</text>
+    <rect x="270" y="1180" width="220" height="66" rx="24" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="380" y="1223" text-anchor="middle" fill="#475569" font-size="22" font-family="Arial, sans-serif" font-weight="700">改 deadline</text>
+    <rect x="514" y="1180" width="236" height="66" rx="24" fill="#111827"/>
+    <text x="632" y="1223" text-anchor="middle" fill="#FFFFFF" font-size="22" font-family="Arial, sans-serif" font-weight="800">標記完成</text>
+  </g>
+</svg>

@@ -1,0 +1,116 @@
+<svg width="1600" height="1400" viewBox="0 0 1600 1400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="800" y1="0" x2="800" y2="1400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F2FF"/>
+      <stop offset="1" stop-color="#EEF6FF"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="0" y1="-160" x2="0" y2="160" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1600" height="1400" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#6D28D9" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1400" fill="url(#bg)"/>
+  <text x="80" y="110" fill="#6D28D9" font-size="28" font-family="Arial, sans-serif" font-weight="700">Single-tone subtask progress samples</text>
+  <text x="80" y="168" fill="#0F172A" font-size="54" font-family="Arial, sans-serif" font-weight="800">保持同一色調，但表達唔同 subtask 進度</text>
+  <text x="80" y="218" fill="#64748B" font-size="26" font-family="Arial, sans-serif">全部都只用同一套紫色系，分別用長度、透明度、密度去表達 progress</text>
+
+  <!-- cards -->
+  <g filter="url(#shadow)">
+    <rect x="80" y="280" width="680" height="460" rx="32" fill="white" fill-opacity="0.88"/>
+    <rect x="840" y="280" width="680" height="460" rx="32" fill="white" fill-opacity="0.88"/>
+    <rect x="80" y="800" width="680" height="460" rx="32" fill="white" fill-opacity="0.88"/>
+    <rect x="840" y="800" width="680" height="460" rx="32" fill="white" fill-opacity="0.88"/>
+  </g>
+
+  <!-- Sample A -->
+  <text x="120" y="340" fill="#0F172A" font-size="34" font-family="Arial, sans-serif" font-weight="800">A · 單一內圈 progress arc</text>
+  <text x="120" y="378" fill="#64748B" font-size="22" font-family="Arial, sans-serif">最簡潔，表達整體 progress，唔分 individual subtask</text>
+  <g transform="translate(420 525)">
+    <circle cx="0" cy="0" r="150" fill="url(#bubble)"/>
+    <circle cx="-40" cy="-54" r="46" fill="#FFFFFF" fill-opacity="0.22"/>
+    <path d="M 0 -116 A 116 116 0 1 1 -82 -82" stroke="#D9D6FE" stroke-width="18" stroke-linecap="round"/>
+    <path d="M 0 -116 A 116 116 0 1 1 -106 47" stroke="#7C3AED" stroke-width="18" stroke-linecap="round"/>
+    <text x="0" y="8" text-anchor="middle" fill="#4338CA" font-size="28" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="40" text-anchor="middle" fill="#5B21B6" font-size="16" font-family="Arial, sans-serif" font-weight="700">整體 68%</text>
+  </g>
+  <text x="120" y="690" fill="#475569" font-size="22" font-family="Arial, sans-serif">適合：想極簡、只睇主 task 進度</text>
+
+  <!-- Sample B -->
+  <text x="880" y="340" fill="#0F172A" font-size="34" font-family="Arial, sans-serif" font-weight="800">B · 等分 section + 內線長度</text>
+  <text x="880" y="378" fill="#64748B" font-size="22" font-family="Arial, sans-serif">一個 section 一個 subtask，線長代表各自 progress</text>
+  <g transform="translate(1180 525)">
+    <circle cx="0" cy="0" r="150" fill="url(#bubble)"/>
+    <circle cx="-40" cy="-54" r="46" fill="#FFFFFF" fill-opacity="0.22"/>
+    <!-- guides -->
+    <path d="M 0 -198 A 198 198 0 0 1 140 -140" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M 140 -140 A 198 198 0 0 1 198 0" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M 198 0 A 198 198 0 0 1 140 140" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M 140 140 A 198 198 0 0 1 0 198" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M 0 198 A 198 198 0 0 1 -140 140" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M -140 140 A 198 198 0 0 1 -198 0" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M -198 0 A 198 198 0 0 1 -140 -140" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M -140 -140 A 198 198 0 0 1 0 -198" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <!-- base lines -->
+    <path d="M 0 -174 A 174 174 0 0 1 66 -161" stroke="#CFC7FB" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 123 -123 A 174 174 0 0 1 171 -37" stroke="#CFC7FB" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 174 0 A 174 174 0 0 1 142 101" stroke="#CFC7FB" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 123 123 A 174 174 0 0 1 21 173" stroke="#CFC7FB" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 0 174 A 174 174 0 0 1 -101 142" stroke="#CFC7FB" stroke-width="8" stroke-linecap="round"/>
+    <path d="M -123 123 A 174 174 0 0 1 -171 37" stroke="#CFC7FB" stroke-width="8" stroke-linecap="round"/>
+    <path d="M -174 0 A 174 174 0 0 1 -142 -101" stroke="#CFC7FB" stroke-width="8" stroke-linecap="round"/>
+    <path d="M -123 -123 A 174 174 0 0 1 -21 -173" stroke="#CFC7FB" stroke-width="8" stroke-linecap="round"/>
+    <!-- overlays -->
+    <path d="M 0 -174 A 174 174 0 0 1 20 -173" stroke="#7C3AED" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 123 -123 A 174 174 0 0 1 160 -69" stroke="#7C3AED" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 174 0 A 174 174 0 0 1 151 87" stroke="#7C3AED" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 123 123 A 174 174 0 0 1 56 165" stroke="#7C3AED" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 0 174 A 174 174 0 0 1 -49 167" stroke="#7C3AED" stroke-width="8" stroke-linecap="round"/>
+    <path d="M -123 123 A 174 174 0 0 1 -171 37" stroke="#7C3AED" stroke-width="8" stroke-linecap="round"/>
+    <path d="M -174 0 A 174 174 0 0 1 -153 -84" stroke="#7C3AED" stroke-width="8" stroke-linecap="round"/>
+    <text x="0" y="8" text-anchor="middle" fill="#4338CA" font-size="28" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="40" text-anchor="middle" fill="#5B21B6" font-size="16" font-family="Arial, sans-serif" font-weight="700">8 subtasks</text>
+  </g>
+  <text x="880" y="690" fill="#475569" font-size="22" font-family="Arial, sans-serif">適合：想睇到 individual subtask progress</text>
+
+  <!-- Sample C -->
+  <text x="120" y="860" fill="#0F172A" font-size="34" font-family="Arial, sans-serif" font-weight="800">C · 等分 section + 實心密度</text>
+  <text x="120" y="898" fill="#64748B" font-size="22" font-family="Arial, sans-serif">唔用長度，用每格填滿深淺 / 密度表 progress</text>
+  <g transform="translate(420 1045)">
+    <circle cx="0" cy="0" r="150" fill="url(#bubble)"/>
+    <circle cx="-40" cy="-54" r="46" fill="#FFFFFF" fill-opacity="0.22"/>
+    <path d="M 0 -198 A 198 198 0 0 1 140 -140" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M 140 -140 A 198 198 0 0 1 198 0" stroke="#D6CCFB" stroke-width="20" stroke-linecap="round"/>
+    <path d="M 198 0 A 198 198 0 0 1 140 140" stroke="#C7B8FA" stroke-width="20" stroke-linecap="round"/>
+    <path d="M 140 140 A 198 198 0 0 1 0 198" stroke="#B89FF8" stroke-width="20" stroke-linecap="round"/>
+    <path d="M 0 198 A 198 198 0 0 1 -140 140" stroke="#A987F5" stroke-width="20" stroke-linecap="round"/>
+    <path d="M -140 140 A 198 198 0 0 1 -198 0" stroke="#9A70F3" stroke-width="20" stroke-linecap="round"/>
+    <path d="M -198 0 A 198 198 0 0 1 -140 -140" stroke="#8B5CF6" stroke-width="20" stroke-linecap="round"/>
+    <path d="M -140 -140 A 198 198 0 0 1 0 -198" stroke="#E9E5FF" stroke-width="20" stroke-linecap="round"/>
+    <text x="0" y="8" text-anchor="middle" fill="#4338CA" font-size="28" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="40" text-anchor="middle" fill="#5B21B6" font-size="16" font-family="Arial, sans-serif" font-weight="700">由淡到深</text>
+  </g>
+  <text x="120" y="1210" fill="#475569" font-size="22" font-family="Arial, sans-serif">適合：想更乾淨，但冇 B 咁精準</text>
+
+  <!-- Sample D -->
+  <text x="880" y="860" fill="#0F172A" font-size="34" font-family="Arial, sans-serif" font-weight="800">D · 外圈細點 / beads</text>
+  <text x="880" y="898" fill="#64748B" font-size="22" font-family="Arial, sans-serif">每個 subtask 一粒點，點嘅填滿程度表 progress</text>
+  <g transform="translate(1180 1045)">
+    <circle cx="0" cy="0" r="150" fill="url(#bubble)"/>
+    <circle cx="-40" cy="-54" r="46" fill="#FFFFFF" fill-opacity="0.22"/>
+    <circle cx="0" cy="-198" r="15" fill="#E9E5FF"/><circle cx="0" cy="-198" r="5" fill="#7C3AED"/>
+    <circle cx="140" cy="-140" r="15" fill="#E9E5FF"/><circle cx="140" cy="-140" r="10" fill="#7C3AED"/>
+    <circle cx="198" cy="0" r="15" fill="#E9E5FF"/><circle cx="198" cy="0" r="13" fill="#7C3AED"/>
+    <circle cx="140" cy="140" r="15" fill="#E9E5FF"/><circle cx="140" cy="140" r="15" fill="#7C3AED"/>
+    <circle cx="0" cy="198" r="15" fill="#E9E5FF"/><circle cx="0" cy="198" r="8" fill="#7C3AED"/>
+    <circle cx="-140" cy="140" r="15" fill="#E9E5FF"/><circle cx="-140" cy="140" r="15" fill="#7C3AED"/>
+    <circle cx="-198" cy="0" r="15" fill="#E9E5FF"/><circle cx="-198" cy="0" r="12" fill="#7C3AED"/>
+    <circle cx="-140" cy="-140" r="15" fill="#E9E5FF"/>
+    <text x="0" y="8" text-anchor="middle" fill="#4338CA" font-size="28" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="40" text-anchor="middle" fill="#5B21B6" font-size="16" font-family="Arial, sans-serif" font-weight="700">輕巧啲、玩味啲</text>
+  </g>
+  <text x="880" y="1210" fill="#475569" font-size="22" font-family="Arial, sans-serif">適合：想可愛啲，但資訊密度最低</text>
+</svg>

@@ -1,0 +1,71 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F2FF"/>
+      <stop offset="1" stop-color="#EEF6FF"/>
+    </linearGradient>
+    <linearGradient id="bubbleMain" x1="600" y1="330" x2="600" y2="870" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="1200" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#6D28D9" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    <rect x="76" y="72" width="1048" height="1056" rx="40" fill="#FFFFFF" fill-opacity="0.88"/>
+  </g>
+
+  <text x="120" y="150" fill="#6D28D9" font-size="24" font-family="Arial, sans-serif" font-weight="700">Overlay progress demo</text>
+  <text x="120" y="208" fill="#0F172A" font-size="48" font-family="Arial, sans-serif" font-weight="800">一條淺色底線 + 一條實色疊線</text>
+  <text x="120" y="254" fill="#64748B" font-size="24" font-family="Arial, sans-serif">每個 section 等大，淺色底線係 full length，實色疊線長度就係完成度</text>
+
+  <g transform="translate(600 600)">
+    <!-- outer section guides -->
+    <path d="M 0 -330 A 330 330 0 0 1 206 -257.6" stroke="#E9E5FF" stroke-width="28" stroke-linecap="round"/>
+    <path d="M 233.3 -233.3 A 330 330 0 0 1 330 0" stroke="#E9E5FF" stroke-width="28" stroke-linecap="round"/>
+    <path d="M 311 95 A 330 330 0 0 1 233.3 233.3" stroke="#E9E5FF" stroke-width="28" stroke-linecap="round"/>
+    <path d="M 206 257.6 A 330 330 0 0 1 0 330" stroke="#E9E5FF" stroke-width="28" stroke-linecap="round"/>
+    <path d="M -95 311 A 330 330 0 0 1 -257.6 206" stroke="#E9E5FF" stroke-width="28" stroke-linecap="round"/>
+    <path d="M -233.3 233.3 A 330 330 0 0 1 -330 0" stroke="#E9E5FF" stroke-width="28" stroke-linecap="round"/>
+    <path d="M -311 -95 A 330 330 0 0 1 -233.3 -233.3" stroke="#E9E5FF" stroke-width="28" stroke-linecap="round"/>
+    <path d="M -206 -257.6 A 330 330 0 0 1 0 -330" stroke="#E9E5FF" stroke-width="28" stroke-linecap="round"/>
+
+    <!-- base lines full length -->
+    <path d="M 0 -300 A 300 300 0 0 1 127 -272" stroke="#CFC7FB" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 212 -212 A 300 300 0 0 1 300 -8" stroke="#CFC7FB" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 286 87 A 300 300 0 0 1 186 235" stroke="#CFC7FB" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 170 247 A 300 300 0 0 1 -8 300" stroke="#CFC7FB" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -65 293 A 300 300 0 0 1 -239 181" stroke="#CFC7FB" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -212 212 A 300 300 0 0 1 -300 -8" stroke="#CFC7FB" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -286 -87 A 300 300 0 0 1 -186 -235" stroke="#CFC7FB" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -127 -272 A 300 300 0 0 1 0 -300" stroke="#CFC7FB" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- overlay progress lines -->
+    <path d="M 0 -300 A 300 300 0 0 1 32 -298" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 212 -212 A 300 300 0 0 1 270 -130" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 286 87 A 300 300 0 0 1 214 209" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 170 247 A 300 300 0 0 1 40 297" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -65 293 A 300 300 0 0 1 -140 265" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -212 212 A 300 300 0 0 1 -300 -8" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <path d="M -286 -87 A 300 300 0 0 1 -240 -180" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    <!-- last one zero progress: no overlay -->
+
+    <circle cx="0" cy="0" r="235" fill="url(#bubbleMain)"/>
+    <circle cx="-58" cy="-72" r="72" fill="#FFFFFF" fill-opacity="0.22"/>
+
+    <text x="0" y="-8" text-anchor="middle" fill="#4338CA" font-size="44" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="44" text-anchor="middle" fill="#5B21B6" font-size="22" font-family="Arial, sans-serif" font-weight="700">8 subtasks</text>
+    <text x="0" y="80" text-anchor="middle" fill="#64748B" font-size="18" font-family="Arial, sans-serif">0% · 25% · 50% · 75% · 100%</text>
+  </g>
+
+  <g transform="translate(150 960)">
+    <text x="0" y="0" fill="#0F172A" font-size="30" font-family="Arial, sans-serif" font-weight="800">點讀呢個 ring</text>
+    <text x="0" y="52" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 淺色底線 = 呢個 subtask 嘅 full length</text>
+    <text x="0" y="92" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 實色疊線 = 呢個 subtask 已完成幾多</text>
+    <text x="0" y="132" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 全部用返波波同色系，簡單乾淨</text>
+    <text x="0" y="172" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 唔使再用太多顏色，都睇到 progress 差異</text>
+  </g>
+</svg>

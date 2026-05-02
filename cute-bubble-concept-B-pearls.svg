@@ -1,0 +1,33 @@
+<svg width="900" height="1100" viewBox="0 0 900 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="450" y1="0" x2="450" y2="1100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F3FF"/>
+      <stop offset="1" stop-color="#EEF7FF"/>
+    </linearGradient>
+    <radialGradient id="bubble" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 -60) rotate(54) scale(320)">
+      <stop stop-color="#F3E8FF"/>
+      <stop offset="0.5" stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1100" fill="url(#bg)"/>
+  <rect x="50" y="50" width="800" height="1000" rx="36" fill="white" fill-opacity="0.9"/>
+  <text x="90" y="120" fill="#0F172A" font-size="40" font-family="Arial, sans-serif" font-weight="800">B · 小珠珠</text>
+  <text x="90" y="168" fill="#64748B" font-size="24" font-family="Arial, sans-serif">最療癒、最有生命感</text>
+  <g transform="translate(450 500)">
+    <circle cx="0" cy="0" r="170" fill="url(#bubble)"/>
+    <circle cx="-48" cy="-60" r="54" fill="#FFF" fill-opacity="0.22"/>
+
+    <circle cx="-62" cy="72" r="30" fill="#8B5CF6"/>
+    <circle cx="10" cy="92" r="24" fill="#A78BFA"/>
+    <circle cx="72" cy="52" r="20" fill="#C4B5FD"/>
+    <circle cx="36" cy="-10" r="22" fill="#7C3AED"/>
+    <circle cx="-10" cy="24" r="18" fill="#DDD6FE"/>
+    <circle cx="-76" cy="-4" r="16" fill="#B794F4"/>
+
+    <text x="0" y="-44" text-anchor="middle" fill="#4338CA" font-size="34" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="-6" text-anchor="middle" fill="#5B21B6" font-size="20" font-family="Arial, sans-serif" font-weight="700">subtasks as pearls</text>
+  </g>
+  <text x="90" y="930" fill="#475569" font-size="24" font-family="Arial, sans-serif">優點：最得意、最柔和、最似 bubble 世界觀</text>
+  <text x="90" y="972" fill="#475569" font-size="24" font-family="Arial, sans-serif">缺點：資訊精準度會低過 arc / pie</text>
+</svg>

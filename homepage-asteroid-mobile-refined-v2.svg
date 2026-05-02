@@ -1,0 +1,114 @@
+<svg width="1200" height="1500" viewBox="0 0 1200 1500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="1500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF8FF"/>
+      <stop offset="1" stop-color="#F1F8FF"/>
+    </linearGradient>
+    <linearGradient id="phoneBg" x1="390" y1="0" x2="390" y2="844" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FCFAFF"/>
+      <stop offset="1" stop-color="#F6F9FF"/>
+    </linearGradient>
+    <radialGradient id="planet" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(300 215) rotate(55) scale(320)">
+      <stop stop-color="#F4E6FF"/>
+      <stop offset="0.48" stop-color="#DDD0FE"/>
+      <stop offset="1" stop-color="#C8B0FA"/>
+    </radialGradient>
+    <linearGradient id="orbit" x1="120" y1="80" x2="660" y2="610" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F1EAFF"/>
+      <stop offset="1" stop-color="#DBD2FF"/>
+    </linearGradient>
+    <linearGradient id="cta" x1="0" y1="0" x2="0" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.86"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="1500" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#8B5CF6" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1500" fill="url(#bg)"/>
+
+  <g transform="translate(210 120)">
+    <g filter="url(#shadow)">
+      <rect x="0" y="0" width="780" height="1260" rx="70" fill="url(#phoneBg)"/>
+    </g>
+    <rect x="246" y="18" width="288" height="36" rx="18" fill="#111827" fill-opacity="0.94"/>
+
+    <text x="54" y="118" fill="#0F172A" font-size="42" font-family="Arial, sans-serif" font-weight="800">今日想先搞邊樣？</text>
+    <text x="54" y="160" fill="#6B7280" font-size="20" font-family="Arial, sans-serif">先睇最浮面嘅 main task，再慢慢跟落去</text>
+
+    <g filter="url(#shadow)">
+      <rect x="34" y="204" width="712" height="644" rx="42" fill="#FFFFFF" fill-opacity="0.88"/>
+    </g>
+
+    <g transform="translate(390 476)">
+      <ellipse cx="0" cy="0" rx="226" ry="150" stroke="url(#orbit)" stroke-width="8" stroke-dasharray="8 14"/>
+      <ellipse cx="0" cy="0" rx="165" ry="226" stroke="url(#orbit)" stroke-width="6" stroke-dasharray="7 12" opacity="0.92"/>
+
+      <circle cx="0" cy="0" r="160" fill="url(#planet)"/>
+      <circle cx="-48" cy="-64" r="48" fill="#FFFFFF" fill-opacity="0.18"/>
+      <circle cx="40" cy="88" r="22" fill="#FFFFFF" fill-opacity="0.10"/>
+
+      <text x="0" y="-4" text-anchor="middle" fill="#5B21B6" font-size="42" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+      <text x="0" y="40" text-anchor="middle" fill="#6D28D9" font-size="20" font-family="Arial, sans-serif" font-weight="700">main task</text>
+      <text x="0" y="72" text-anchor="middle" fill="#6B7280" font-size="16" font-family="Arial, sans-serif">5 subtasks orbiting around</text>
+
+      <g transform="translate(0 -160)">
+        <circle cx="0" cy="0" r="28" fill="#8B5CF6"/>
+        <circle cx="-7" cy="-8" r="7" fill="#F6EEFF" fill-opacity="0.72"/>
+        <circle cx="7" cy="8" r="11" fill="#D8C1FF" fill-opacity="0.55"/>
+      </g>
+      <g transform="translate(192 0)">
+        <circle cx="0" cy="0" r="22" fill="#A78BFA"/>
+        <circle cx="-5" cy="-6" r="5" fill="#F6EEFF" fill-opacity="0.7"/>
+        <circle cx="0" cy="0" r="10" fill="#7D3AED" fill-opacity="0.28"/>
+      </g>
+      <g transform="translate(0 164)">
+        <circle cx="0" cy="0" r="18" fill="#DDD6FE"/>
+        <circle cx="0" cy="0" r="8" fill="#7D3AED" fill-opacity="0.58"/>
+      </g>
+      <g transform="translate(-194 4)">
+        <circle cx="0" cy="0" r="24" fill="#E7D7FF"/>
+        <circle cx="-6" cy="-6" r="6" fill="#FFF" fill-opacity="0.62"/>
+        <circle cx="0" cy="0" r="14" fill="#7D3AED" fill-opacity="0.14"/>
+      </g>
+      <g transform="translate(118 150)">
+        <circle cx="0" cy="0" r="16" fill="#F0ABFC"/>
+        <circle cx="-4" cy="-4" r="4" fill="#FFF" fill-opacity="0.62"/>
+        <circle cx="0" cy="0" r="12" fill="#7D3AED" fill-opacity="0.92"/>
+      </g>
+    </g>
+
+    <g>
+      <rect x="72" y="778" width="156" height="54" rx="27" fill="#111827"/>
+      <text x="150" y="811" text-anchor="middle" fill="#FFFFFF" font-size="18" font-family="Arial, sans-serif" font-weight="700">一步步加</text>
+      <rect x="242" y="778" width="124" height="54" rx="27" fill="url(#cta)"/>
+      <text x="304" y="811" text-anchor="middle" fill="#4B5563" font-size="18" font-family="Arial, sans-serif" font-weight="700">直接打</text>
+      <rect x="380" y="778" width="152" height="54" rx="27" fill="url(#cta)"/>
+      <text x="456" y="811" text-anchor="middle" fill="#4B5563" font-size="18" font-family="Arial, sans-serif" font-weight="700">貼內容入嚟</text>
+      <rect x="548" y="778" width="126" height="54" rx="27" fill="url(#cta)"/>
+      <text x="611" y="811" text-anchor="middle" fill="#4B5563" font-size="18" font-family="Arial, sans-serif" font-weight="700">語音記低</text>
+    </g>
+
+    <g filter="url(#shadow)">
+      <rect x="34" y="882" width="332" height="308" rx="34" fill="#FFFFFF" fill-opacity="0.88"/>
+      <rect x="414" y="882" width="332" height="308" rx="34" fill="#FFFFFF" fill-opacity="0.88"/>
+    </g>
+
+    <text x="62" y="940" fill="#0F172A" font-size="28" font-family="Arial, sans-serif" font-weight="800">今日要搞</text>
+    <rect x="62" y="972" width="276" height="88" rx="24" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="88" y="1022" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">跟進 onboarding page</text>
+    <text x="88" y="1050" fill="#6B7280" font-size="14" font-family="Arial, sans-serif">交俾：Alice · 今日 5:30 PM</text>
+    <rect x="62" y="1078" width="276" height="88" rx="24" fill="#FFF8ED" stroke="#FDE2B8"/>
+    <text x="88" y="1128" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">Benne UX review deck</text>
+    <text x="88" y="1156" fill="#6B7280" font-size="14" font-family="Arial, sans-serif">交俾：我自己 · 今日 3:30 PM</text>
+
+    <text x="442" y="940" fill="#0F172A" font-size="28" font-family="Arial, sans-serif" font-weight="800">唔好漏咗</text>
+    <rect x="442" y="980" width="276" height="58" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="466" y="1015" fill="#0F172A" font-size="18" font-family="Arial, sans-serif" font-weight="700">未設定 deadline</text>
+    <rect x="442" y="1052" width="276" height="58" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="466" y="1087" fill="#0F172A" font-size="18" font-family="Arial, sans-serif" font-weight="700">等緊人覆</text>
+    <rect x="442" y="1124" width="276" height="58" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="466" y="1159" fill="#0F172A" font-size="18" font-family="Arial, sans-serif" font-weight="700">未確認 assignee</text>
+  </g>
+</svg>

@@ -1,0 +1,105 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF8FF"/>
+      <stop offset="1" stop-color="#F2F8FF"/>
+    </linearGradient>
+    <radialGradient id="planet" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(520 360) rotate(56) scale(560)">
+      <stop stop-color="#EEDFFF"/>
+      <stop offset="0.48" stop-color="#D7C2FB"/>
+      <stop offset="1" stop-color="#C1A9F7"/>
+    </radialGradient>
+    <radialGradient id="satellite" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 -8) rotate(55) scale(52)">
+      <stop stop-color="#B56BFF"/>
+      <stop offset="1" stop-color="#7D3AED"/>
+    </radialGradient>
+    <linearGradient id="orbit" x1="250" y1="160" x2="980" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EFE7FF"/>
+      <stop offset="1" stop-color="#DDD3FF"/>
+    </linearGradient>
+    <linearGradient id="chipFill" x1="0" y1="0" x2="0" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.84"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="1200" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#8B5CF6" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+
+  <text x="88" y="100" fill="#0F172A" font-size="54" font-family="Arial, sans-serif" font-weight="800">今日想先搞邊樣？</text>
+  <text x="88" y="148" fill="#6B7280" font-size="24" font-family="Arial, sans-serif">先睇最浮面嘅 main task，再慢慢跟落去</text>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="182" width="1072" height="640" rx="42" fill="#FFFFFF" fill-opacity="0.90"/>
+  </g>
+
+  <g transform="translate(600 470)">
+    <ellipse cx="0" cy="0" rx="338" ry="228" stroke="url(#orbit)" stroke-width="10" stroke-dasharray="9 18"/>
+    <ellipse cx="0" cy="0" rx="248" ry="332" stroke="url(#orbit)" stroke-width="7" stroke-dasharray="7 15" opacity="0.92"/>
+
+    <circle cx="0" cy="0" r="230" fill="url(#planet)"/>
+    <circle cx="-72" cy="-90" r="66" fill="#FFFFFF" fill-opacity="0.18"/>
+    <circle cx="58" cy="118" r="34" fill="#FFFFFF" fill-opacity="0.10"/>
+
+    <text x="0" y="-6" text-anchor="middle" fill="#5A21B6" font-size="64" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="56" text-anchor="middle" fill="#6D28D9" font-size="30" font-family="Arial, sans-serif" font-weight="700">main task</text>
+    <text x="0" y="102" text-anchor="middle" fill="#6B7280" font-size="22" font-family="Arial, sans-serif">5 subtasks orbiting around</text>
+
+    <g transform="translate(0 -228)">
+      <circle cx="0" cy="0" r="38" fill="url(#satellite)"/>
+      <circle cx="-10" cy="-12" r="9" fill="#F5EFFF" fill-opacity="0.70"/>
+      <circle cx="10" cy="12" r="15" fill="#D8C1FF" fill-opacity="0.55"/>
+    </g>
+    <g transform="translate(286 0)">
+      <circle cx="0" cy="0" r="32" fill="url(#satellite)"/>
+      <circle cx="-8" cy="-8" r="8" fill="#F5EFFF" fill-opacity="0.68"/>
+      <circle cx="0" cy="0" r="17" fill="#C9A9FF" fill-opacity="0.34"/>
+    </g>
+    <g transform="translate(0 230)">
+      <circle cx="0" cy="0" r="28" fill="url(#satellite)"/>
+      <circle cx="0" cy="0" r="12" fill="#EBDFFF" fill-opacity="0.52"/>
+    </g>
+    <g transform="translate(-286 0)">
+      <circle cx="0" cy="0" r="34" fill="#E6D6FF"/>
+      <circle cx="-9" cy="-9" r="8" fill="#FFF" fill-opacity="0.60"/>
+      <circle cx="0" cy="0" r="22" fill="#7D3AED" fill-opacity="0.14"/>
+    </g>
+    <g transform="translate(170 222)">
+      <circle cx="0" cy="0" r="24" fill="#F0ABFC"/>
+      <circle cx="-6" cy="-6" r="6" fill="#FFF" fill-opacity="0.60"/>
+      <circle cx="0" cy="0" r="18" fill="#7D3AED" fill-opacity="0.92"/>
+    </g>
+  </g>
+
+  <g>
+    <rect x="118" y="744" width="164" height="54" rx="27" fill="#111827"/>
+    <text x="200" y="777" text-anchor="middle" fill="#FFFFFF" font-size="20" font-family="Arial, sans-serif" font-weight="700">一步步加</text>
+    <rect x="298" y="744" width="136" height="54" rx="27" fill="url(#chipFill)"/>
+    <text x="366" y="777" text-anchor="middle" fill="#4B5563" font-size="20" font-family="Arial, sans-serif" font-weight="700">直接打</text>
+    <rect x="450" y="744" width="170" height="54" rx="27" fill="url(#chipFill)"/>
+    <text x="535" y="777" text-anchor="middle" fill="#4B5563" font-size="20" font-family="Arial, sans-serif" font-weight="700">貼內容入嚟</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="860" width="504" height="274" rx="34" fill="#FFFFFF" fill-opacity="0.88"/>
+    <rect x="632" y="860" width="504" height="274" rx="34" fill="#FFFFFF" fill-opacity="0.88"/>
+  </g>
+
+  <text x="102" y="920" fill="#0F172A" font-size="32" font-family="Arial, sans-serif" font-weight="800">今日要搞</text>
+  <rect x="102" y="952" width="428" height="72" rx="22" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="132" y="996" fill="#0F172A" font-size="24" font-family="Arial, sans-serif" font-weight="700">跟進 onboarding page</text>
+  <text x="132" y="1024" fill="#6B7280" font-size="16" font-family="Arial, sans-serif">交俾：Alice · 今日 5:30 PM</text>
+  <rect x="102" y="1044" width="428" height="72" rx="22" fill="#FFF8ED" stroke="#FDE2B8"/>
+  <text x="132" y="1088" fill="#0F172A" font-size="24" font-family="Arial, sans-serif" font-weight="700">Benne UX review deck</text>
+  <text x="132" y="1116" fill="#6B7280" font-size="16" font-family="Arial, sans-serif">交俾：我自己 · 今日 3:30 PM</text>
+
+  <text x="670" y="920" fill="#0F172A" font-size="32" font-family="Arial, sans-serif" font-weight="800">唔好漏咗</text>
+  <rect x="670" y="956" width="426" height="54" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="700" y="990" fill="#0F172A" font-size="21" font-family="Arial, sans-serif" font-weight="700">未設定 deadline</text>
+  <rect x="670" y="1026" width="426" height="54" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="700" y="1060" fill="#0F172A" font-size="21" font-family="Arial, sans-serif" font-weight="700">等緊人覆</text>
+  <rect x="670" y="1096" width="426" height="54" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="700" y="1130" fill="#0F172A" font-size="21" font-family="Arial, sans-serif" font-weight="700">未確認 assignee</text>
+</svg>

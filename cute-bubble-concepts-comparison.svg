@@ -1,0 +1,87 @@
+<svg width="1800" height="900" viewBox="0 0 1800 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="900" y1="0" x2="900" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F3FF"/>
+      <stop offset="1" stop-color="#EEF7FF"/>
+    </linearGradient>
+    <radialGradient id="bubble" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 -60) rotate(54) scale(320)">
+      <stop stop-color="#F3E8FF"/>
+      <stop offset="0.5" stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </radialGradient>
+    <filter id="shadow" x="0" y="0" width="1800" height="900" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#7C3AED" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1800" height="900" fill="url(#bg)"/>
+  <text x="72" y="88" fill="#6D28D9" font-size="24" font-family="Arial, sans-serif" font-weight="700">Cute bubble concept directions</text>
+  <text x="72" y="140" fill="#0F172A" font-size="44" font-family="Arial, sans-serif" font-weight="800">唔用 3 條 arc，仲可以點樣做到得意啲？</text>
+  <text x="72" y="182" fill="#64748B" font-size="24" font-family="Arial, sans-serif">我幫你試 3 個方向：mini pie、珠珠、花瓣。都 keep 同一色系。</text>
+
+  <g filter="url(#shadow)">
+    <rect x="60" y="240" width="520" height="590" rx="32" fill="white" fill-opacity="0.9"/>
+    <rect x="640" y="240" width="520" height="590" rx="32" fill="white" fill-opacity="0.9"/>
+    <rect x="1220" y="240" width="520" height="590" rx="32" fill="white" fill-opacity="0.9"/>
+  </g>
+
+  <!-- A mini pies -->
+  <text x="96" y="300" fill="#0F172A" font-size="32" font-family="Arial, sans-serif" font-weight="800">A · Mini pie charts</text>
+  <text x="96" y="336" fill="#64748B" font-size="20" font-family="Arial, sans-serif">似錶面 complication，清楚又得意</text>
+  <g transform="translate(320 520)">
+    <circle cx="0" cy="0" r="150" fill="url(#bubble)"/>
+    <circle cx="-42" cy="-52" r="48" fill="#FFF" fill-opacity="0.22"/>
+    <text x="0" y="8" text-anchor="middle" fill="#4338CA" font-size="28" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="40" text-anchor="middle" fill="#5B21B6" font-size="16" font-family="Arial, sans-serif" font-weight="700">main task</text>
+    <g transform="translate(-108 86)">
+      <circle cx="0" cy="0" r="34" fill="#F5F3FF"/>
+      <path d="M 0 -26 A 26 26 0 1 1 22 14" stroke="#D9D6FE" stroke-width="10" stroke-linecap="round"/>
+      <path d="M 0 -26 A 26 26 0 1 1 8 25" stroke="#8B5CF6" stroke-width="10" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(0 114)">
+      <circle cx="0" cy="0" r="34" fill="#F5F3FF"/>
+      <path d="M 0 -26 A 26 26 0 1 1 22 14" stroke="#D9D6FE" stroke-width="10" stroke-linecap="round"/>
+      <path d="M 0 -26 A 26 26 0 1 1 -14 22" stroke="#A78BFA" stroke-width="10" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(108 86)">
+      <circle cx="0" cy="0" r="34" fill="#F5F3FF"/>
+      <path d="M 0 -26 A 26 26 0 1 1 22 14" stroke="#D9D6FE" stroke-width="10" stroke-linecap="round"/>
+      <path d="M 0 -26 A 26 26 0 1 1 22 14" stroke="#7C3AED" stroke-width="10" stroke-linecap="round"/>
+    </g>
+  </g>
+  <text x="96" y="772" fill="#475569" font-size="20" font-family="Arial, sans-serif">優點：可愛、易分組、易理解</text>
+
+  <!-- B pearls -->
+  <text x="676" y="300" fill="#0F172A" font-size="32" font-family="Arial, sans-serif" font-weight="800">B · 小珠珠</text>
+  <text x="676" y="336" fill="#64748B" font-size="20" font-family="Arial, sans-serif">最療癒、最有生命感</text>
+  <g transform="translate(900 520)">
+    <circle cx="0" cy="0" r="150" fill="url(#bubble)"/>
+    <circle cx="-42" cy="-52" r="48" fill="#FFF" fill-opacity="0.22"/>
+    <circle cx="-54" cy="52" r="26" fill="#8B5CF6"/>
+    <circle cx="4" cy="78" r="22" fill="#A78BFA"/>
+    <circle cx="58" cy="44" r="18" fill="#C4B5FD"/>
+    <circle cx="30" cy="-8" r="20" fill="#7C3AED"/>
+    <circle cx="-10" cy="18" r="16" fill="#DDD6FE"/>
+    <text x="0" y="-36" text-anchor="middle" fill="#4338CA" font-size="28" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="-4" text-anchor="middle" fill="#5B21B6" font-size="16" font-family="Arial, sans-serif" font-weight="700">subtasks as pearls</text>
+  </g>
+  <text x="676" y="772" fill="#475569" font-size="20" font-family="Arial, sans-serif">優點：最得意、最柔和；缺點：資訊精準度較低</text>
+
+  <!-- C petals -->
+  <text x="1256" y="300" fill="#0F172A" font-size="32" font-family="Arial, sans-serif" font-weight="800">C · 花瓣 / 小耳仔</text>
+  <text x="1256" y="336" fill="#64748B" font-size="20" font-family="Arial, sans-serif">最有 icon 感，記憶點高</text>
+  <g transform="translate(1480 520)">
+    <ellipse cx="0" cy="-188" rx="22" ry="42" fill="#E9E5FF"/>
+    <ellipse cx="133" cy="-133" rx="22" ry="42" transform="rotate(45 133 -133)" fill="#DDD6FE"/>
+    <ellipse cx="188" cy="0" rx="22" ry="42" transform="rotate(90 188 0)" fill="#CFC7FB"/>
+    <ellipse cx="133" cy="133" rx="22" ry="42" transform="rotate(135 133 133)" fill="#C4B5FD"/>
+    <ellipse cx="0" cy="188" rx="22" ry="42" fill="#A78BFA"/>
+    <ellipse cx="-133" cy="133" rx="22" ry="42" transform="rotate(-135 -133 133)" fill="#8B5CF6"/>
+    <ellipse cx="-188" cy="0" rx="22" ry="42" transform="rotate(90 -188 0)" fill="#DDD6FE"/>
+    <ellipse cx="-133" cy="-133" rx="22" ry="42" transform="rotate(-45 -133 -133)" fill="#E9E5FF"/>
+    <circle cx="0" cy="0" r="150" fill="url(#bubble)"/>
+    <circle cx="-42" cy="-52" r="48" fill="#FFF" fill-opacity="0.22"/>
+    <text x="0" y="8" text-anchor="middle" fill="#4338CA" font-size="28" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="40" text-anchor="middle" fill="#5B21B6" font-size="16" font-family="Arial, sans-serif" font-weight="700">petal progress</text>
+  </g>
+  <text x="1256" y="772" fill="#475569" font-size="20" font-family="Arial, sans-serif">優點：icon 感強、幾得意；缺點：偏卡通少少</text>
+</svg>

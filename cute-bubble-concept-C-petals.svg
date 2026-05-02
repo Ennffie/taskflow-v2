@@ -1,0 +1,35 @@
+<svg width="900" height="1100" viewBox="0 0 900 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="450" y1="0" x2="450" y2="1100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F3FF"/>
+      <stop offset="1" stop-color="#EEF7FF"/>
+    </linearGradient>
+    <radialGradient id="bubble" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 -60) rotate(54) scale(320)">
+      <stop stop-color="#F3E8FF"/>
+      <stop offset="0.5" stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1100" fill="url(#bg)"/>
+  <rect x="50" y="50" width="800" height="1000" rx="36" fill="white" fill-opacity="0.9"/>
+  <text x="90" y="120" fill="#0F172A" font-size="40" font-family="Arial, sans-serif" font-weight="800">C · 花瓣 / 小耳仔</text>
+  <text x="90" y="168" fill="#64748B" font-size="24" font-family="Arial, sans-serif">最有 icon 感，記憶點高</text>
+  <g transform="translate(450 500)">
+    <ellipse cx="0" cy="-206" rx="24" ry="48" fill="#E9E5FF"/>
+    <ellipse cx="146" cy="-146" rx="24" ry="48" transform="rotate(45 146 -146)" fill="#DDD6FE"/>
+    <ellipse cx="206" cy="0" rx="24" ry="48" transform="rotate(90 206 0)" fill="#CFC7FB"/>
+    <ellipse cx="146" cy="146" rx="24" ry="48" transform="rotate(135 146 146)" fill="#C4B5FD"/>
+    <ellipse cx="0" cy="206" rx="24" ry="48" fill="#A78BFA"/>
+    <ellipse cx="-146" cy="146" rx="24" ry="48" transform="rotate(-135 -146 146)" fill="#8B5CF6"/>
+    <ellipse cx="-206" cy="0" rx="24" ry="48" transform="rotate(90 -206 0)" fill="#DDD6FE"/>
+    <ellipse cx="-146" cy="-146" rx="24" ry="48" transform="rotate(-45 -146 -146)" fill="#E9E5FF"/>
+
+    <circle cx="0" cy="0" r="170" fill="url(#bubble)"/>
+    <circle cx="-48" cy="-60" r="54" fill="#FFF" fill-opacity="0.22"/>
+
+    <text x="0" y="8" text-anchor="middle" fill="#4338CA" font-size="34" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="46" text-anchor="middle" fill="#5B21B6" font-size="20" font-family="Arial, sans-serif" font-weight="700">petal progress</text>
+  </g>
+  <text x="90" y="930" fill="#475569" font-size="24" font-family="Arial, sans-serif">優點：icon 感強、幾得意、記得住</text>
+  <text x="90" y="972" fill="#475569" font-size="24" font-family="Arial, sans-serif">缺點：會偏卡通少少，資訊感冇 A 咁清楚</text>
+</svg>

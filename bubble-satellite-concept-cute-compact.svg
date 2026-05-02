@@ -1,0 +1,67 @@
+<svg width="1080" height="1350" viewBox="0 0 1080 1350" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="540" y1="0" x2="540" y2="1350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FCF7FF"/>
+      <stop offset="1" stop-color="#F1F8FF"/>
+    </linearGradient>
+    <radialGradient id="planet" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(-24 -60) rotate(54) scale(320)">
+      <stop stop-color="#FAE8FF"/>
+      <stop offset="0.45" stop-color="#E9D5FF"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </radialGradient>
+    <linearGradient id="orbit" x1="260" y1="240" x2="820" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5EFFF"/>
+      <stop offset="1" stop-color="#DDD6FE"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1350" fill="url(#bg)"/>
+  <rect x="60" y="60" width="960" height="1230" rx="40" fill="white" fill-opacity="0.92"/>
+
+  <text x="100" y="130" fill="#0F172A" font-size="46" font-family="Arial, sans-serif" font-weight="800">小行星 + 衛星（可愛版）</text>
+  <text x="100" y="182" fill="#64748B" font-size="28" font-family="Arial, sans-serif">首頁 hero / overview 用呢種 feel</text>
+
+  <g transform="translate(540 650)">
+    <ellipse cx="0" cy="4" rx="290" ry="188" stroke="url(#orbit)" stroke-width="10" stroke-dasharray="8 16"/>
+    <ellipse cx="0" cy="4" rx="210" ry="286" stroke="url(#orbit)" stroke-width="7" stroke-dasharray="7 14" opacity="0.9"/>
+
+    <circle cx="0" cy="0" r="188" fill="url(#planet)"/>
+    <circle cx="-56" cy="-74" r="58" fill="#FFF" fill-opacity="0.22"/>
+    <circle cx="42" cy="92" r="28" fill="#FFF" fill-opacity="0.12"/>
+
+    <text x="0" y="0" text-anchor="middle" fill="#5B21B6" font-size="40" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="44" text-anchor="middle" fill="#7C3AED" font-size="22" font-family="Arial, sans-serif" font-weight="700">main task</text>
+
+    <g transform="translate(0 -188)">
+      <circle cx="0" cy="0" r="34" fill="#8B5CF6"/>
+      <circle cx="-8" cy="-10" r="10" fill="#F5EFFF" fill-opacity="0.72"/>
+      <circle cx="8" cy="10" r="18" fill="#C4B5FD" fill-opacity="0.55"/>
+    </g>
+    <g transform="translate(244 0)">
+      <circle cx="0" cy="0" r="28" fill="#A78BFA"/>
+      <circle cx="-7" cy="-8" r="8" fill="#F5EFFF" fill-opacity="0.68"/>
+      <circle cx="0" cy="0" r="14" fill="#7C3AED" fill-opacity="0.28"/>
+    </g>
+    <g transform="translate(0 192)">
+      <circle cx="0" cy="0" r="24" fill="#DDD6FE"/>
+      <circle cx="0" cy="0" r="10" fill="#7C3AED" fill-opacity="0.55"/>
+    </g>
+    <g transform="translate(-244 8)">
+      <circle cx="0" cy="0" r="30" fill="#E9D5FF"/>
+      <circle cx="-8" cy="-8" r="8" fill="#FFF" fill-opacity="0.58"/>
+      <circle cx="0" cy="0" r="20" fill="#7C3AED" fill-opacity="0.12"/>
+    </g>
+    <g transform="translate(148 206)">
+      <circle cx="0" cy="0" r="22" fill="#F0ABFC"/>
+      <circle cx="-6" cy="-6" r="6" fill="#FFF" fill-opacity="0.6"/>
+      <circle cx="0" cy="0" r="18" fill="#7C3AED" fill-opacity="0.92"/>
+    </g>
+    <g transform="translate(-146 -198)">
+      <circle cx="0" cy="0" r="18" fill="#DDD6FE"/>
+      <circle cx="0" cy="0" r="7" fill="#7C3AED" fill-opacity="0.35"/>
+    </g>
+  </g>
+
+  <text x="100" y="1120" fill="#475569" font-size="28" font-family="Arial, sans-serif">• 主星 = 主 task</text>
+  <text x="100" y="1170" fill="#475569" font-size="28" font-family="Arial, sans-serif">• 衛星 = subtasks</text>
+  <text x="100" y="1220" fill="#475569" font-size="28" font-family="Arial, sans-serif">• 同色系深淺 / 內部填滿感代表 progress</text>
+</svg>

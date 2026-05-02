@@ -1,0 +1,105 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF7FF"/>
+      <stop offset="1" stop-color="#EEF7FF"/>
+    </linearGradient>
+    <radialGradient id="heroBubble" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(520 350) rotate(55) scale(520)">
+      <stop stop-color="#F5E8FF"/>
+      <stop offset="0.48" stop-color="#E6D7FF"/>
+      <stop offset="1" stop-color="#C7B8FA"/>
+    </radialGradient>
+    <linearGradient id="orbit" x1="250" y1="210" x2="950" y2="890" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F2EBFF"/>
+      <stop offset="1" stop-color="#DDD6FE"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.82"/>
+    </linearGradient>
+    <filter id="softShadow" x="0" y="0" width="1200" height="1200" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#8B5CF6" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+
+  <text x="90" y="100" fill="#0F172A" font-size="52" font-family="Arial, sans-serif" font-weight="800">今日想先搞邊樣？</text>
+  <text x="90" y="150" fill="#64748B" font-size="24" font-family="Arial, sans-serif">波波做主角，首頁先睇最值得留意嘅 task</text>
+
+  <g filter="url(#softShadow)">
+    <rect x="70" y="190" width="1060" height="620" rx="42" fill="url(#card)"/>
+  </g>
+
+  <!-- hero zone -->
+  <g transform="translate(600 500)">
+    <ellipse cx="0" cy="8" rx="360" ry="218" stroke="url(#orbit)" stroke-width="10" stroke-dasharray="10 18"/>
+    <ellipse cx="0" cy="8" rx="256" ry="340" stroke="url(#orbit)" stroke-width="7" stroke-dasharray="8 16" opacity="0.92"/>
+
+    <circle cx="0" cy="0" r="230" fill="url(#heroBubble)"/>
+    <circle cx="-66" cy="-86" r="68" fill="#FFFFFF" fill-opacity="0.22"/>
+    <circle cx="56" cy="120" r="32" fill="#FFFFFF" fill-opacity="0.12"/>
+
+    <text x="0" y="-8" text-anchor="middle" fill="#5B21B6" font-size="46" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="44" text-anchor="middle" fill="#7C3AED" font-size="24" font-family="Arial, sans-serif" font-weight="700">main task</text>
+    <text x="0" y="82" text-anchor="middle" fill="#6B7280" font-size="18" font-family="Arial, sans-serif">5 subtasks orbiting around</text>
+
+    <!-- satellites -->
+    <g transform="translate(0 -228)">
+      <circle cx="0" cy="0" r="38" fill="#8B5CF6"/>
+      <circle cx="-10" cy="-12" r="11" fill="#F7EEFF" fill-opacity="0.72"/>
+      <circle cx="10" cy="12" r="18" fill="#C4B5FD" fill-opacity="0.55"/>
+    </g>
+    <g transform="translate(302 8)">
+      <circle cx="0" cy="0" r="30" fill="#A78BFA"/>
+      <circle cx="-8" cy="-9" r="8" fill="#F6EFFF" fill-opacity="0.68"/>
+      <circle cx="0" cy="0" r="16" fill="#7C3AED" fill-opacity="0.28"/>
+    </g>
+    <g transform="translate(0 236)">
+      <circle cx="0" cy="0" r="26" fill="#DDD6FE"/>
+      <circle cx="0" cy="0" r="12" fill="#7C3AED" fill-opacity="0.56"/>
+    </g>
+    <g transform="translate(-300 14)">
+      <circle cx="0" cy="0" r="34" fill="#E9D5FF"/>
+      <circle cx="-8" cy="-8" r="9" fill="#FFF" fill-opacity="0.6"/>
+      <circle cx="0" cy="0" r="22" fill="#7C3AED" fill-opacity="0.12"/>
+    </g>
+    <g transform="translate(182 246)">
+      <circle cx="0" cy="0" r="24" fill="#F0ABFC"/>
+      <circle cx="-6" cy="-6" r="6" fill="#FFF" fill-opacity="0.64"/>
+      <circle cx="0" cy="0" r="20" fill="#7C3AED" fill-opacity="0.92"/>
+    </g>
+  </g>
+
+  <!-- helper chips -->
+  <g>
+    <rect x="116" y="742" width="160" height="46" rx="23" fill="#111827"/>
+    <text x="196" y="771" text-anchor="middle" fill="#FFFFFF" font-size="18" font-family="Arial, sans-serif" font-weight="700">一步步加</text>
+    <rect x="292" y="742" width="136" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.86"/>
+    <text x="360" y="771" text-anchor="middle" fill="#475569" font-size="18" font-family="Arial, sans-serif" font-weight="700">直接打</text>
+    <rect x="444" y="742" width="162" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.86"/>
+    <text x="525" y="771" text-anchor="middle" fill="#475569" font-size="18" font-family="Arial, sans-serif" font-weight="700">貼內容入嚟</text>
+  </g>
+
+  <!-- supporting cards -->
+  <g filter="url(#softShadow)">
+    <rect x="70" y="850" width="500" height="260" rx="32" fill="url(#card)"/>
+    <rect x="630" y="850" width="500" height="260" rx="32" fill="url(#card)"/>
+  </g>
+
+  <text x="110" y="910" fill="#0F172A" font-size="30" font-family="Arial, sans-serif" font-weight="800">今日要搞</text>
+  <rect x="110" y="940" width="420" height="66" rx="22" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="140" y="980" fill="#0F172A" font-size="22" font-family="Arial, sans-serif" font-weight="700">跟進 onboarding page</text>
+  <text x="140" y="1012" fill="#64748B" font-size="16" font-family="Arial, sans-serif">交俾：Alice · 今日 5:30 PM</text>
+  <rect x="110" y="1026" width="420" height="66" rx="22" fill="#FFF7ED" stroke="#FDE68A"/>
+  <text x="140" y="1066" fill="#0F172A" font-size="22" font-family="Arial, sans-serif" font-weight="700">Benne UX review deck</text>
+  <text x="140" y="1098" fill="#64748B" font-size="16" font-family="Arial, sans-serif">交俾：我自己 · 今日 3:30 PM</text>
+
+  <text x="670" y="910" fill="#0F172A" font-size="30" font-family="Arial, sans-serif" font-weight="800">唔好漏咗</text>
+  <rect x="670" y="946" width="420" height="52" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="700" y="978" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">未設定 deadline</text>
+  <rect x="670" y="1014" width="420" height="52" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="700" y="1046" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">等緊人覆</text>
+  <rect x="670" y="1082" width="420" height="52" rx="18" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="700" y="1114" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="700">未確認 assignee</text>
+</svg>

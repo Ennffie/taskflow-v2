@@ -1,0 +1,20 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F2FF"/>
+      <stop offset="1" stop-color="#EEF6FF"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="600" y1="330" x2="600" y2="870" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <circle cx="600" cy="600" r="250" fill="url(#bubble)"/>
+  <circle cx="530" cy="500" r="84" fill="white" fill-opacity="0.22"/>
+  <path d="M 600 410 A 190 190 0 1 1 466 466" stroke="#E6E0FF" stroke-width="18" stroke-linecap="round"/>
+  <path d="M 600 410 A 190 190 0 1 1 426 677" stroke="#7C3AED" stroke-width="18" stroke-linecap="round"/>
+  <text x="600" y="588" text-anchor="middle" fill="#4338CA" font-size="58" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+  <text x="600" y="648" text-anchor="middle" fill="#5B21B6" font-size="28" font-family="Arial, sans-serif" font-weight="700">整體 progress</text>
+  <text x="600" y="890" text-anchor="middle" fill="#475569" font-size="30" font-family="Arial, sans-serif">最簡潔版：波內 progress arc，淡色 full、實色 progress</text>
+</svg>

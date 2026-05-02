@@ -1,0 +1,68 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F3FF"/>
+      <stop offset="0.55" stop-color="#F2F4FF"/>
+      <stop offset="1" stop-color="#EEF7FF"/>
+    </linearGradient>
+    <radialGradient id="bubble" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(520 470) rotate(53) scale(420 420)">
+      <stop stop-color="#F3E8FF"/>
+      <stop offset="0.45" stop-color="#DDD6FE"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </radialGradient>
+
+    <linearGradient id="lineBase1" x1="356" y1="352" x2="844" y2="848" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3EDFF"/>
+      <stop offset="1" stop-color="#DDD6FE"/>
+    </linearGradient>
+    <linearGradient id="lineBase2" x1="372" y1="372" x2="828" y2="828" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F0E9FF"/>
+      <stop offset="1" stop-color="#D9D6FE"/>
+    </linearGradient>
+    <linearGradient id="lineBase3" x1="388" y1="392" x2="812" y2="808" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ECE6FF"/>
+      <stop offset="1" stop-color="#D7CCFF"/>
+    </linearGradient>
+
+    <linearGradient id="lineProgress1" x1="360" y1="340" x2="846" y2="858" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7DD3FC"/>
+      <stop offset="0.38" stop-color="#A78BFA"/>
+      <stop offset="0.72" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#EC4899"/>
+    </linearGradient>
+    <linearGradient id="lineProgress2" x1="382" y1="360" x2="826" y2="840" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C4B5FD"/>
+      <stop offset="0.52" stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="lineProgress3" x1="396" y1="390" x2="808" y2="810" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F0ABFC"/>
+      <stop offset="0.48" stop-color="#C4B5FD"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+
+    <filter id="softShadow" x="0" y="0" width="1200" height="1200" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#7C3AED" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <g filter="url(#softShadow)">
+    <circle cx="600" cy="600" r="250" fill="url(#bubble)"/>
+  </g>
+  <circle cx="528" cy="496" r="86" fill="white" fill-opacity="0.20"/>
+
+  <!-- base arcs -->
+  <path d="M 600 352 A 248 248 0 1 1 425 425" stroke="url(#lineBase1)" stroke-width="12" stroke-linecap="round"/>
+  <path d="M 600 372 A 228 228 0 1 1 439 439" stroke="url(#lineBase2)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 600 392 A 208 208 0 1 1 453 453" stroke="url(#lineBase3)" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- progress arcs -->
+  <path d="M 600 352 A 248 248 0 1 1 392 741" stroke="url(#lineProgress1)" stroke-width="12" stroke-linecap="round"/>
+  <path d="M 600 372 A 228 228 0 1 1 463 782" stroke="url(#lineProgress2)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 600 392 A 208 208 0 1 1 571 806" stroke="url(#lineProgress3)" stroke-width="8" stroke-linecap="round"/>
+
+  <text x="600" y="590" text-anchor="middle" fill="#4338CA" font-size="58" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+  <text x="600" y="650" text-anchor="middle" fill="#6D28D9" font-size="28" font-family="Arial, sans-serif" font-weight="700">整體 progress</text>
+  <text x="600" y="892" text-anchor="middle" fill="#475569" font-size="30" font-family="Arial, sans-serif">3 條線版：柔和藍紫粉漸變，保持同色系但更通透</text>
+</svg>

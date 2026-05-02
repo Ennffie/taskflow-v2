@@ -1,0 +1,88 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="600" y1="0" x2="600" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F2FF"/>
+      <stop offset="1" stop-color="#EEF6FF"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="720" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#6D28D9" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="720" rx="0" fill="url(#bg)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="56" width="1072" height="608" rx="36" fill="rgba(255,255,255,0.88)"/>
+    <rect x="64" y="56" width="1072" height="608" rx="36" fill="#FFFFFF" fill-opacity="0.84"/>
+  </g>
+
+  <text x="96" y="122" fill="#6D28D9" font-size="20" font-family="Arial, sans-serif" font-weight="700">Task segment arc · 4-stage 試作</text>
+  <text x="96" y="168" fill="#0F172A" font-size="42" font-family="Arial, sans-serif" font-weight="800">一個 segment = 一個 subtask</text>
+  <text x="96" y="206" fill="#64748B" font-size="22" font-family="Arial, sans-serif">用 4 個 stage 先最清楚：未開始、做緊、等緊、完成</text>
+
+  <g transform="translate(150 290)">
+    <circle cx="120" cy="120" r="78" fill="url(#bubble1)"/>
+    <defs>
+      <linearGradient id="bubble1" x1="120" y1="42" x2="120" y2="198" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#DDD6FE"/>
+        <stop offset="1" stop-color="#C4B5FD"/>
+      </linearGradient>
+    </defs>
+    <circle cx="120" cy="120" r="101" stroke="#D8DCE8" stroke-width="16" stroke-dasharray="32 22" transform="rotate(-90 120 120)"/>
+    <text x="120" y="126" text-anchor="middle" fill="#4338CA" font-size="20" font-family="Arial, sans-serif" font-weight="800">未開始</text>
+    <text x="120" y="266" text-anchor="middle" fill="#475569" font-size="22" font-family="Arial, sans-serif" font-weight="700">Stage 1</text>
+    <text x="120" y="296" text-anchor="middle" fill="#94A3B8" font-size="18" font-family="Arial, sans-serif">#D8DCE8</text>
+  </g>
+
+  <g transform="translate(395 290)">
+    <circle cx="120" cy="120" r="78" fill="url(#bubble2)"/>
+    <defs>
+      <linearGradient id="bubble2" x1="120" y1="42" x2="120" y2="198" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#DBEAFE"/>
+        <stop offset="1" stop-color="#BFDBFE"/>
+      </linearGradient>
+    </defs>
+    <circle cx="120" cy="120" r="101" stroke="#D8DCE8" stroke-width="16" stroke-dasharray="32 22" transform="rotate(-90 120 120)"/>
+    <circle cx="120" cy="120" r="101" stroke="#60A5FA" stroke-width="16" stroke-linecap="round" stroke-dasharray="32 22" stroke-dashoffset="0" pathLength="324" transform="rotate(-90 120 120)"/>
+    <text x="120" y="126" text-anchor="middle" fill="#1D4ED8" font-size="20" font-family="Arial, sans-serif" font-weight="800">做緊</text>
+    <text x="120" y="266" text-anchor="middle" fill="#475569" font-size="22" font-family="Arial, sans-serif" font-weight="700">Stage 2</text>
+    <text x="120" y="296" text-anchor="middle" fill="#94A3B8" font-size="18" font-family="Arial, sans-serif">#60A5FA</text>
+  </g>
+
+  <g transform="translate(640 290)">
+    <circle cx="120" cy="120" r="78" fill="url(#bubble3)"/>
+    <defs>
+      <linearGradient id="bubble3" x1="120" y1="42" x2="120" y2="198" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FEF3C7"/>
+        <stop offset="1" stop-color="#FDE68A"/>
+      </linearGradient>
+    </defs>
+    <circle cx="120" cy="120" r="101" stroke="#D8DCE8" stroke-width="16" stroke-dasharray="32 22" transform="rotate(-90 120 120)"/>
+    <circle cx="120" cy="120" r="101" stroke="#F59E0B" stroke-width="16" stroke-linecap="round" stroke-dasharray="32 22" stroke-dashoffset="54" pathLength="324" transform="rotate(-90 120 120)"/>
+    <text x="120" y="126" text-anchor="middle" fill="#B45309" font-size="20" font-family="Arial, sans-serif" font-weight="800">等緊</text>
+    <text x="120" y="266" text-anchor="middle" fill="#475569" font-size="22" font-family="Arial, sans-serif" font-weight="700">Stage 3</text>
+    <text x="120" y="296" text-anchor="middle" fill="#94A3B8" font-size="18" font-family="Arial, sans-serif">#F59E0B</text>
+  </g>
+
+  <g transform="translate(885 290)">
+    <circle cx="120" cy="120" r="78" fill="url(#bubble4)"/>
+    <defs>
+      <linearGradient id="bubble4" x1="120" y1="42" x2="120" y2="198" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#DDD6FE"/>
+        <stop offset="1" stop-color="#C4B5FD"/>
+      </linearGradient>
+    </defs>
+    <circle cx="120" cy="120" r="101" stroke="#8B5CF6" stroke-width="16" stroke-linecap="round" stroke-dasharray="32 22" transform="rotate(-90 120 120)"/>
+    <text x="120" y="126" text-anchor="middle" fill="#6D28D9" font-size="20" font-family="Arial, sans-serif" font-weight="800">完成</text>
+    <text x="120" y="266" text-anchor="middle" fill="#475569" font-size="22" font-family="Arial, sans-serif" font-weight="700">Stage 4</text>
+    <text x="120" y="296" text-anchor="middle" fill="#94A3B8" font-size="18" font-family="Arial, sans-serif">#8B5CF6</text>
+  </g>
+
+  <g transform="translate(96 604)">
+    <text x="0" y="0" fill="#0F172A" font-size="20" font-family="Arial, sans-serif" font-weight="800">建議規則</text>
+    <text x="0" y="34" fill="#475569" font-size="18" font-family="Arial, sans-serif">• Segment 數量 = subtask 數量</text>
+    <text x="0" y="66" fill="#475569" font-size="18" font-family="Arial, sans-serif">• 已完成嘅 segment 用實色</text>
+    <text x="0" y="98" fill="#475569" font-size="18" font-family="Arial, sans-serif">• 做緊 / 等緊可用藍 / 黃橙分開</text>
+    <text x="0" y="130" fill="#475569" font-size="18" font-family="Arial, sans-serif">• 如果想再簡單啲，最後可以收窄成 3-stage</text>
+  </g>
+</svg>

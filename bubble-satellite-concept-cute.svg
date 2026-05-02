@@ -1,0 +1,70 @@
+<svg width="900" height="1100" viewBox="0 0 900 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="450" y1="0" x2="450" y2="1100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FCF7FF"/>
+      <stop offset="1" stop-color="#F1F8FF"/>
+    </linearGradient>
+    <radialGradient id="planet" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(-30 -70) rotate(54) scale(360)">
+      <stop stop-color="#FAE8FF"/>
+      <stop offset="0.45" stop-color="#E9D5FF"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </radialGradient>
+    <linearGradient id="orbit" x1="240" y1="250" x2="650" y2="650" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5EFFF"/>
+      <stop offset="1" stop-color="#DDD6FE"/>
+    </linearGradient>
+    <filter id="soft" x="0" y="0" width="900" height="1100" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#A855F7" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="900" height="1100" fill="url(#bg)"/>
+  <rect x="50" y="50" width="800" height="1000" rx="36" fill="white" fill-opacity="0.9"/>
+  <text x="90" y="120" fill="#0F172A" font-size="40" font-family="Arial, sans-serif" font-weight="800">小行星 + 衛星 concept（可愛版）</text>
+  <text x="90" y="168" fill="#64748B" font-size="24" font-family="Arial, sans-serif">更圓潤、更療癒，保留首頁 hero 感</text>
+
+  <g transform="translate(450 500)" filter="url(#soft)">
+    <ellipse cx="0" cy="6" rx="252" ry="172" stroke="url(#orbit)" stroke-width="10" stroke-dasharray="8 16"/>
+    <ellipse cx="0" cy="6" rx="184" ry="252" stroke="url(#orbit)" stroke-width="7" stroke-dasharray="7 14" opacity="0.9"/>
+
+    <circle cx="0" cy="0" r="174" fill="url(#planet)"/>
+    <circle cx="-52" cy="-70" r="54" fill="#FFF" fill-opacity="0.22"/>
+    <circle cx="38" cy="88" r="26" fill="#FFF" fill-opacity="0.12"/>
+
+    <text x="0" y="4" text-anchor="middle" fill="#5B21B6" font-size="34" font-family="Arial, sans-serif" font-weight="800">UX Review</text>
+    <text x="0" y="42" text-anchor="middle" fill="#7C3AED" font-size="20" font-family="Arial, sans-serif" font-weight="700">main task</text>
+
+    <!-- satellites -->
+    <g transform="translate(0 -172)">
+      <circle cx="0" cy="0" r="32" fill="#8B5CF6"/>
+      <circle cx="-8" cy="-10" r="10" fill="#F5EFFF" fill-opacity="0.7"/>
+      <circle cx="8" cy="10" r="18" fill="#C4B5FD" fill-opacity="0.55"/>
+    </g>
+    <g transform="translate(218 2)">
+      <circle cx="0" cy="0" r="26" fill="#A78BFA"/>
+      <circle cx="-7" cy="-8" r="8" fill="#F5EFFF" fill-opacity="0.65"/>
+      <circle cx="0" cy="0" r="14" fill="#7C3AED" fill-opacity="0.28"/>
+    </g>
+    <g transform="translate(0 176)">
+      <circle cx="0" cy="0" r="22" fill="#DDD6FE"/>
+      <circle cx="0" cy="0" r="10" fill="#7C3AED" fill-opacity="0.55"/>
+    </g>
+    <g transform="translate(-218 8)">
+      <circle cx="0" cy="0" r="28" fill="#E9D5FF"/>
+      <circle cx="-8" cy="-8" r="8" fill="#FFF" fill-opacity="0.55"/>
+      <circle cx="0" cy="0" r="20" fill="#7C3AED" fill-opacity="0.12"/>
+    </g>
+    <g transform="translate(132 180)">
+      <circle cx="0" cy="0" r="20" fill="#F0ABFC"/>
+      <circle cx="-6" cy="-6" r="6" fill="#FFF" fill-opacity="0.6"/>
+      <circle cx="0" cy="0" r="18" fill="#7C3AED" fill-opacity="0.92"/>
+    </g>
+    <g transform="translate(-128 -180)">
+      <circle cx="0" cy="0" r="16" fill="#DDD6FE"/>
+      <circle cx="0" cy="0" r="7" fill="#7C3AED" fill-opacity="0.35"/>
+    </g>
+  </g>
+
+  <text x="90" y="900" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 主星 = 主 task</text>
+  <text x="90" y="942" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 衛星 = subtasks</text>
+  <text x="90" y="984" fill="#475569" font-size="24" font-family="Arial, sans-serif">• 用圓潤大小、亮點、填色感表達各自 progress</text>
+</svg>
