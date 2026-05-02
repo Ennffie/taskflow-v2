@@ -195,6 +195,7 @@ export function CantonModePage() {
 }
 
 function SunCenter() {
+  const rays = Array.from({ length: 13 }, (_, index) => index * (360 / 13));
   return (
     <div style={{
       position: 'absolute',
@@ -204,8 +205,8 @@ function SunCenter() {
       height: 116,
       transform: 'translate(-50%, -50%)',
       borderRadius: '50%',
-      background: 'repeating-conic-gradient(from 5deg, #f59e0b 0deg 9deg, #fbbf24 9deg 19deg, transparent 19deg 24deg)',
-      boxShadow: '0 0 42px rgba(251, 191, 36, 0.28)',
+      background: 'radial-gradient(circle, rgba(254,240,138,0.24) 0%, rgba(254,240,138,0.12) 48%, rgba(254,240,138,0) 72%)',
+      boxShadow: '0 0 36px rgba(251, 191, 36, 0.2)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -213,6 +214,24 @@ function SunCenter() {
       zIndex: 9,
       pointerEvents: 'none',
     }}>
+      {rays.map((degree, index) => (
+        <span
+          key={degree}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: index % 3 === 0 ? 18 : 15,
+            height: index % 3 === 0 ? 35 : 30,
+            borderRadius: '999px 999px 16px 16px',
+            background: 'linear-gradient(180deg, #facc15 0%, #f59e0b 100%)',
+            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.32), 0 3px 8px rgba(245,158,11,0.18)',
+            transform: `translate(-50%, -50%) rotate(${degree}deg) translateY(-44px)`,
+            transformOrigin: '50% 50%',
+            opacity: 0.92,
+          }}
+        />
+      ))}
       <div style={{
         position: 'absolute',
         inset: 18,
