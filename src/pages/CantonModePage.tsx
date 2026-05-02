@@ -200,12 +200,12 @@ function SunCenter() {
       position: 'absolute',
       left: '50%',
       top: '46%',
-      width: 132,
-      height: 132,
+      width: 116,
+      height: 116,
       transform: 'translate(-50%, -50%)',
       borderRadius: '50%',
-      background: 'repeating-conic-gradient(from 8deg, rgba(251,191,36,0.34) 0deg 8deg, rgba(251,191,36,0.03) 8deg 18deg)',
-      boxShadow: '0 0 44px rgba(251, 191, 36, 0.22)',
+      background: 'repeating-conic-gradient(from 5deg, #f59e0b 0deg 9deg, #fbbf24 9deg 19deg, transparent 19deg 24deg)',
+      boxShadow: '0 0 42px rgba(251, 191, 36, 0.28)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -217,19 +217,17 @@ function SunCenter() {
         position: 'absolute',
         inset: 18,
         borderRadius: '50%',
-        background: 'radial-gradient(circle at 38% 28%, #fff7cc 0%, #fde68a 44%, #fbbf24 78%, #f59e0b 100%)',
-        boxShadow: '0 10px 38px rgba(251, 191, 36, 0.42), 0 0 72px rgba(253, 230, 138, 0.55), inset 0 -5px 14px rgba(245, 158, 11, 0.22), inset 0 4px 12px rgba(255,255,255,0.42)',
-        border: '2px solid rgba(255,255,255,0.82)',
+        background: 'radial-gradient(circle at 38% 28%, #fef9c3 0%, #fde047 48%, #facc15 76%, #f59e0b 100%)',
+        boxShadow: '0 10px 30px rgba(251, 191, 36, 0.42), inset 0 -5px 12px rgba(245, 158, 11, 0.22), inset 0 4px 10px rgba(255,255,255,0.42)',
+        border: '2px solid rgba(234,179,8,0.45)',
       }} />
-      <div style={{
-        position: 'absolute',
-        inset: 4,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(254,240,138,0.3) 0%, rgba(254,240,138,0.12) 44%, rgba(254,240,138,0) 70%)',
-        filter: 'blur(6px)',
-      }} />
-      <div style={{ position: 'relative', color: '#92400e', fontWeight: 900, fontSize: 13, lineHeight: 1.2, letterSpacing: '0.04em', textShadow: '0 1px 0 rgba(255,255,255,0.6)' }}>
-        UXUI<br />Team
+      <div style={{ position: 'relative', width: 80, height: 80, borderRadius: '50%' }}>
+        <span style={{ position: 'absolute', left: 22, top: 28, width: 7, height: 9, borderRadius: '50%', background: '#374151', boxShadow: '3px 2px 0 rgba(255,255,255,0.65) inset' }} />
+        <span style={{ position: 'absolute', right: 22, top: 28, width: 7, height: 9, borderRadius: '50%', background: '#374151', boxShadow: '3px 2px 0 rgba(255,255,255,0.65) inset' }} />
+        <span style={{ position: 'absolute', left: 13, top: 41, width: 13, height: 9, borderRadius: '50%', background: 'rgba(244,114,182,0.62)', filter: 'blur(0.2px)' }} />
+        <span style={{ position: 'absolute', right: 13, top: 41, width: 13, height: 9, borderRadius: '50%', background: 'rgba(244,114,182,0.62)', filter: 'blur(0.2px)' }} />
+        <span style={{ position: 'absolute', left: 32, top: 42, width: 17, height: 9, borderBottom: '2px solid #374151', borderRadius: '0 0 999px 999px' }} />
+        <span style={{ position: 'absolute', left: 0, right: 0, bottom: 7, color: '#ea580c', fontWeight: 950, fontSize: 11, letterSpacing: '0.06em', textShadow: '0 1px 0 rgba(255,255,255,0.45)' }}>UIUX</span>
       </div>
     </div>
   );
