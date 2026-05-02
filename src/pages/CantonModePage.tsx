@@ -189,7 +189,7 @@ export function CantonModePage() {
           )}
         </div>
       </div>
-      {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} />}
+      {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} variant="canton" />}
     </AppShell>
   );
 }

@@ -13,9 +13,10 @@ interface TaskFormModalProps {
   parentTaskTitle?: string;
   mode?: 'create' | 'edit';
   initialTask?: TaskItem | null;
+  variant?: 'default' | 'canton';
 }
 
-export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitle, mode = 'create', initialTask }: TaskFormModalProps) {
+export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitle, mode = 'create', initialTask, variant = 'default' }: TaskFormModalProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -60,6 +61,38 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   const setDueDateToToday = () => {
     setDueDate(new Date().toISOString().slice(0, 10));
   };
+
+  const setDueDateOffset = (days: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    setDueDate(date.toISOString().slice(0, 10));
+  };
+
+  const isCanton = variant === 'canton';
+  const copy = isCanton ? {
+    title: mode === 'edit' ? '改一改 task' : parentTaskId ? '加 sub-task' : '加新 task',
+    parent: '屬於：',
+    titleLabel: 'Task 名',
+    titlePlaceholder: '例如：SC Poster & Pull up Banner',
+    descriptionLabel: '有咩要記低？',
+    descriptionPlaceholder: 'Context、scope、handoff、reference…',
+    todayUpdate: '今日做到咩',
+    todayPlaceholder: '今日進度 / 最新情況',
+    nextFocus: '下一步搞咩',
+    nextPlaceholder: '下一個 working day focus',
+    status: '狀態',
+    priority: '重要度',
+    due: 'Deadline',
+    assignees: '邊個跟',
+    tags: 'Tags / 分類',
+    tagsPlaceholder: '例如：UX, urgent, handoff',
+    cancel: '唔改住',
+    submit: mode === 'edit' ? '儲存更改' : '加落去',
+    saving: mode === 'edit' ? '儲存中...' : '加入中...',
+    today: 'Today',
+    tomorrow: 'Tomorrow',
+    noDate: '未定',
+  } : null;
 
   const handleToggleFocus = async () => {
     const nextFocus = !isFocus;
@@ -163,23 +196,23 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   };
 
   return (
-    <ModalFrame title={mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task'} onClose={onClose} isFocus={isFocus} onToggleFocus={handleToggleFocus} focusSaving={focusSaving}>
+    <ModalFrame title={copy?.title ?? (mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task')} onClose={onClose} isFocus={isFocus} onToggleFocus={handleToggleFocus} focusSaving={focusSaving}>
       <div style={{ display: 'grid', gap: '18px' }}>
         {parentTaskId && parentTaskTitle && (
           <div style={{ padding: '12px 14px', borderRadius: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
-            Parent task: <strong style={{ color: '#111827' }}>{parentTaskTitle}</strong>
+            {copy?.parent ?? 'Parent task: '}<strong style={{ color: '#111827' }}>{parentTaskTitle}</strong>
           </div>
         )}
-        <Field label="Title"><input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder="e.g. PMC portal redesign" /></Field>
-        <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="Context, scope, handoff details" /></Field>
+        <Field label={copy?.titleLabel ?? 'Title'}><input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder={copy?.titlePlaceholder ?? 'e.g. PMC portal redesign'} /></Field>
+        <Field label={copy?.descriptionLabel ?? 'Description'}><textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder={copy?.descriptionPlaceholder ?? 'Context, scope, handoff details'} /></Field>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          <Field label="Today Update"><textarea value={todayUpdate} onChange={(e) => setTodayUpdate(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="What was done today" /></Field>
-          <Field label="Next Day Focus"><textarea value={nextDayFocus} onChange={(e) => setNextDayFocus(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder="Next working day focus" /></Field>
+          <Field label={copy?.todayUpdate ?? 'Today Update'}><textarea value={todayUpdate} onChange={(e) => setTodayUpdate(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder={copy?.todayPlaceholder ?? 'What was done today'} /></Field>
+          <Field label={copy?.nextFocus ?? 'Next Day Focus'}><textarea value={nextDayFocus} onChange={(e) => setNextDayFocus(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder={copy?.nextPlaceholder ?? 'Next working day focus'} /></Field>
         </div>
         {/* Status + Priority in one row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}>{TASK_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{STATUS_META[value].label}</option>)}</select></Field>
-          <Field label="Priority"><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
+          <Field label={copy?.status ?? 'Status'}><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}>{TASK_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{STATUS_META[value].label}</option>)}</select></Field>
+          <Field label={copy?.priority ?? 'Priority'}><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         </div>
         {parentTaskId && (
           <Field label="Round">
@@ -190,7 +223,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
             </select>
           </Field>
         )}
-        <Field label="Due date">
+        <Field label={copy?.due ?? 'Due date'}>
           <div style={{ display: 'grid', gap: '10px' }}>
             <div style={{ position: 'relative' }}>
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ ...inputStyle, WebkitAppearance: 'none', appearance: 'none', paddingRight: dueDate ? '54px' : '16px' }} />
@@ -238,22 +271,24 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
                   cursor: 'pointer',
                 }}
               >
-                Today
+                {copy?.today ?? 'Today'}
               </button>
+              {isCanton && <button type="button" onClick={() => setDueDateOffset(1)} style={{ ...ghostPill, marginLeft: 8 }}>{copy?.tomorrow}</button>}
+              {isCanton && <button type="button" onClick={() => setDueDate('')} style={{ ...ghostPill, marginLeft: 8 }}>{copy?.noDate}</button>}
             </div>
           </div>
         </Field>
-        <Field label="Assignees">
+        <Field label={copy?.assignees ?? 'Assignees'}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {profiles.map((profile) => (
               <button key={profile.id} type="button" onClick={() => toggleAssignee(profile.id)} style={{ borderRadius: '999px', border: assigneeIds.includes(profile.id) ? 'none' : '1px solid #e5e7eb', background: assigneeIds.includes(profile.id) ? '#111827' : '#fff', color: assigneeIds.includes(profile.id) ? '#fff' : '#374151', padding: '10px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>{profile.name}</button>
             ))}
           </div>
         </Field>
-        <Field label="Tags"><input value={tagInput} onChange={(e) => setTagInput(e.target.value)} style={inputStyle} placeholder="comma separated, e.g. UX, PMC, urgent" /></Field>
+        <Field label={copy?.tags ?? 'Tags'}><input value={tagInput} onChange={(e) => setTagInput(e.target.value)} style={inputStyle} placeholder={copy?.tagsPlaceholder ?? 'comma separated, e.g. UX, PMC, urgent'} /></Field>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-          <button onClick={onClose} style={ghostButton}>Cancel</button>
-          <button onClick={handleSubmit} disabled={saving} style={primaryButton}>{saving ? (mode === 'edit' ? 'Saving...' : 'Creating...') : (mode === 'edit' ? 'Save Changes' : 'Create task')}</button>
+          <button onClick={onClose} style={ghostButton}>{copy?.cancel ?? 'Cancel'}</button>
+          <button onClick={handleSubmit} disabled={saving} style={primaryButton}>{saving ? (copy?.saving ?? (mode === 'edit' ? 'Saving...' : 'Creating...')) : (copy?.submit ?? (mode === 'edit' ? 'Save Changes' : 'Create task'))}</button>
         </div>
       </div>
     </ModalFrame>
@@ -290,6 +325,17 @@ export const ghostButton: React.CSSProperties = {
   color: '#374151',
   padding: '14px 18px',
   fontSize: '14px',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const ghostPill: React.CSSProperties = {
+  borderRadius: '999px',
+  border: '1px solid #e5e7eb',
+  background: '#fff',
+  color: '#374151',
+  padding: '8px 14px',
+  fontSize: '13px',
   fontWeight: 700,
   cursor: 'pointer',
 };
