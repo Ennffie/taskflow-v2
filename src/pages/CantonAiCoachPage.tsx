@@ -514,27 +514,32 @@ export function CantonAiCoachPage() {
   const openDatePicker = () => {
     const picker = datePickerRef.current;
     if (!picker) return;
+    // Blur any focused element (especially the composer) so iOS Safari allows the picker
+    if (document.activeElement && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     if ('showPicker' in picker) {
       try { (picker as any).showPicker(); return; } catch { /* fall through */ }
     }
+    // iOS Safari fallback: make the input temporarily visible/interactive at bottom
     picker.style.pointerEvents = 'auto';
-    picker.style.width = '100%';
-    picker.style.height = '44px';
+    picker.style.opacity = '0.01';
     picker.style.position = 'fixed';
     picker.style.bottom = '0';
     picker.style.left = '0';
-    picker.style.opacity = '0.01';
-    picker.style.zIndex = '9999';
+    picker.style.width = '100%';
+    picker.style.height = '50px';
+    picker.style.zIndex = '99999';
     picker.click();
     picker.focus();
     setTimeout(() => {
       picker.style.pointerEvents = 'none';
+      picker.style.opacity = '0';
       picker.style.width = '1px';
       picker.style.height = '1px';
       picker.style.position = 'absolute';
-      picker.style.opacity = '0';
       picker.style.zIndex = 'auto';
-    }, 800);
+    }, 1200);
   };
 
   const handleQuickAction = (preset: string) => {
