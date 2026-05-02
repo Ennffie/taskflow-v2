@@ -55,19 +55,25 @@ export function CantonAiCoachPage() {
     try {
       switch (action.action) {
         case 'create_task': {
+          let dueDate = action.due_date;
+          // Validate/fix due_date - reject Chinese placeholder text
+          if (dueDate && typeof dueDate === 'string') {
+            const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(dueDate);
+            if (!isValidDate) dueDate = undefined;
+          }
           const assignee = action.assignee ? profiles.find(p => p.name.toLowerCase() === action.assignee.toLowerCase()) : null;
           await createTask({
             title: action.title || '未命名 task',
             description: action.description || '',
             status: action.status || 'todo',
             priority: 'medium',
-            due_date: action.due_date || undefined,
+            due_date: dueDate || undefined,
             assignee_ids: assignee ? [assignee.id] : [],
             tags: [],
             parent_id: null,
           });
           await loadTasks();
-          return `✅ 已建立 task「${action.title || '未命名 task'}」`;
+          return `✅ 已建立「${action.title || '未命名 task'}」`;
         }
         case 'update_task': {
           const task = tasks.find(t => t.id === action.task_id || t.title.toLowerCase().includes((action.task_ref || '').toLowerCase()));
