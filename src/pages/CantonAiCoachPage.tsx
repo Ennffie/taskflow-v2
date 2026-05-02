@@ -5,6 +5,13 @@ import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees 
 import { supabase } from '../lib/supabase';
 import { STATUS_META, type Profile, type TaskItem, type TaskStatus } from '../types';
 
+type AddTaskFlow = {
+  step: 'title' | 'deadline' | 'assignee' | 'confirm';
+  title?: string;
+  dueDate?: string | null;
+  assigneeId?: string | null;
+};
+
 function isDone(task: TaskItem) { return task.status === 'done' || task.is_finished; }
 function isOverdue(task: TaskItem) {
   if (!task.due_date || isDone(task)) return false;
@@ -58,6 +65,7 @@ export function CantonAiCoachPage() {
   const [saving, setSaving] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [lastTaskId, setLastTaskId] = useState<string | null>(null);
+  const [addTaskFlow, setAddTaskFlow] = useState<AddTaskFlow | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
     { role: 'ai', text: '問我「有咩未交？」、「今日要搞咩？」或者輸入「加 task xxx」。我會幫你睇漏咗咩。' },
   ]);
@@ -83,6 +91,8 @@ export function CantonAiCoachPage() {
   const explainFollowup = '要唔要我再列埋「未完成」或者「冇 due date」嗰啲？';
   const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
   const hasActionIntent = (lower: string) => Boolean(parseDate(lower) || findProfileFromText(lower) || (parseStatus(lower) && isActionLike(lower)) || /deadline|due|交|負責|俾|跟|assign|focus|重點|優先|未定|冇 deadline|clear deadline/.test(lower));
+  const profileName = (id?: string | null) => profiles.find((profile) => profile.id === id)?.name ?? '未分配';
+  const profileTips = () => profiles.slice(0, 5).map((profile, index) => `${index + 1} ${profile.name}`).join('\n');
 
   const findTaskFromText = (lower: string) => {
     const normalized = lower.replace(/[，。？?！!、]/g, ' ');
@@ -187,12 +197,64 @@ export function CantonAiCoachPage() {
     return `${task.title}\n已幫你更新：${notes.join('、')}`;
   };
 
+  const handleAddTaskFlow = async (text: string, flow: AddTaskFlow) => {
+    const trimmed = text.trim();
+    const lower = trimmed.toLowerCase();
+    if (/取消|cancel|唔加|不用/.test(lower)) {
+      setAddTaskFlow(null);
+      return '好，取消咗新增 task。';
+    }
+
+    if (flow.step === 'title') {
+      const title = trimmed.replace(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*/i, '').trim();
+      if (!title) return 'Task name 係咩？直接打名就得。';
+      setAddTaskFlow({ step: 'deadline', title });
+      return `Task name：${title}\n\nDeadline 想點 set？\n1 今日\n2 聽日\n3 未定\n或者直接打「星期五 / 5月8」。`;
+    }
+
+    if (flow.step === 'deadline') {
+      const isNoDeadline = /^3\b/.test(lower) || /未定|no|冇/.test(lower);
+      const parsedDate = /^1\b/.test(lower) ? parseDate('今日') : /^2\b/.test(lower) ? parseDate('聽日') : parseDate(lower);
+      if (!isNoDeadline && !parsedDate) return 'Deadline 我未睇明，可以揀：\n1 今日\n2 聽日\n3 未定';
+      const dueDate = isNoDeadline ? null : parsedDate;
+      setAddTaskFlow({ ...flow, step: 'assignee', dueDate });
+      return `Deadline：${dueLabel(dueDate)}\n\n邊個跟？\n${profileTips()}\n0 未分配\n或者直接打人名。`;
+    }
+
+    if (flow.step === 'assignee') {
+      const numeric = trimmed.match(/^\d+/)?.[0];
+      const pickedByNumber = numeric && numeric !== '0' ? profiles[Number(numeric) - 1] : null;
+      const picked = pickedByNumber ?? findProfileFromText(lower);
+      const assigneeId = numeric === '0' || /未分配|skip|no/.test(lower) ? null : picked?.id;
+      if (assigneeId === undefined) return `負責人我未 match 到，可以揀：\n${profileTips()}\n0 未分配`;
+      setAddTaskFlow({ ...flow, step: 'confirm', assigneeId });
+      return `Confirm 新 task：\n${flow.title}\nDue date: ${dueLabel(flow.dueDate ?? null)}\nAssignee: ${profileName(assigneeId)}\n\n1 確認建立\n2 取消`;
+    }
+
+    if (flow.step === 'confirm') {
+      if (!/^1\b|確認|confirm|ok|好/.test(lower)) return '未建立。你可以揀：\n1 確認建立\n2 取消';
+      setSaving(true);
+      try {
+        await createTask({ title: flow.title ?? 'Untitled task', description: '', status: 'todo', priority: 'medium', due_date: flow.dueDate ?? undefined, assignee_ids: flow.assigneeId ? [flow.assigneeId] : [], tags: [], parent_id: null });
+        await loadTasks();
+        setAddTaskFlow(null);
+        return `加咗：${flow.title}\nDue date: ${dueLabel(flow.dueDate ?? null)}\nAssignee: ${profileName(flow.assigneeId)}`;
+      } finally { setSaving(false); }
+    }
+
+    return '我未睇明，試吓答返上一步，或者打「取消」。';
+  };
+
   const getReply = async (text: string) => {
     const trimmed = text.trim();
     const lower = trimmed.toLowerCase();
     const mentionedProfile = findProfileFromText(lower);
     const statusQuery = parseStatus(lower);
-    if (/我要加\s*task|加task$|add task$/.test(lower)) return '想加咩 task？你可以直接打：\n「加 task CRCE-1234 poster」\n或者「加 task xxx，Alice 跟，星期五交」。';
+    if (addTaskFlow) return handleAddTaskFlow(trimmed, addTaskFlow);
+    if (/我要加\s*task|加task$|add task$/.test(lower)) {
+      setAddTaskFlow({ step: 'title' });
+      return '好呀，逐條問你，快啲。\n\nTask name 係咩？';
+    }
     if (/my task list|my tasks|我的 task|我有咩|我有乜|我啲 task|我啲task/.test(lower)) return `你未完成嘅 task：\n${summarize(myOpenTasks(), '暫時冇 assign 咗俾你嘅未完成 main task。')}`;
     if (/今日重點|today focus|今日 focus|今日focus/.test(lower)) {
       const todayFocus = rootTasks.filter((task) => !isDone(task) && (isToday(task) || task.is_focus));
@@ -296,6 +358,14 @@ export function CantonAiCoachPage() {
     });
   };
 
+  const quickActions = addTaskFlow?.step === 'deadline'
+    ? ['1 今日', '2 聽日', '3 未定']
+    : addTaskFlow?.step === 'assignee'
+      ? [...profiles.slice(0, 4).map((profile, index) => `${index + 1} ${profile.name.split(/\s+/)[0]}`), '0 未分配']
+      : addTaskFlow?.step === 'confirm'
+        ? ['1 確認建立', '2 取消']
+        : ['我要加Task', 'My Task list', '今日重點', '有野update'];
+
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
       <header style={{ padding: '14px 16px 10px', background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(226,232,240,0.9)' }}>
@@ -315,7 +385,7 @@ export function CantonAiCoachPage() {
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {['我要加Task', 'My Task list', '今日重點', '有野update'].map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
+            {quickActions.map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <div style={{ position: 'relative' }}>
