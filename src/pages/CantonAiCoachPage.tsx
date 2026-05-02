@@ -157,11 +157,19 @@ export function CantonAiCoachPage() {
       setMessages(current => [...current, { role: 'ai', text: '諗緊…' }]);
       await new Promise(r => window.setTimeout(r, 500));
       
-      // Execute action if any
+      // Execute action if any - but only if parameters are valid
       let actionResult = '';
-      if (data.action) {
-        setMessages(current => current.map((m, i) => i === current.length - 1 ? { ...m, text: '處理緊…' } : m));
-        actionResult = await executeAction(data.action);
+      if (data.action && data.action.action) {
+        const act = data.action;
+        const isValid = (
+          (act.action === 'create_task' && act.title && act.title.trim()) ||
+          (act.action === 'update_task' && (act.task_id || act.task_ref)) ||
+          (act.action === 'delete_task' && (act.task_id || act.task_ref))
+        );
+        if (isValid) {
+          setMessages(current => current.map((m, i) => i === current.length - 1 ? { ...m, text: '處理緊…' } : m));
+          actionResult = await executeAction(data.action);
+        }
       }
       
       // Final reply
