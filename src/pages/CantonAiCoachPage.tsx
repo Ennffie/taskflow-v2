@@ -248,6 +248,10 @@ export function CantonAiCoachPage() {
     }
 
     if (flow.step === 'title') {
+      if (/^(取消|cancel|唔加|stop)$/i.test(trimmed)) {
+        setAddTaskFlow(null);
+        return '取消咗，冇加新 task。';
+      }
       if (/我要加\s*task|加task$|add task$/.test(lower)) return '好啊，已經準備緊加 task。\n\n直接打個 Task name 就得。';
       const title = trimmed.replace(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*/i, '').trim();
       if (!title) return 'Task name 係咩？直接打名就得。';
@@ -565,15 +569,17 @@ export function CantonAiCoachPage() {
 
   const quickActions = pendingDeleteTaskId
     ? ['1 確認刪除', '2 取消']
-    : addTaskFlow?.step === 'deadline'
-      ? ['1 今日', '2 聽日', '3 揀日期', '0 未定']
-      : addTaskFlow?.step === 'assignee'
-        ? [...orderedProfiles().slice(0, 4).map((profile, index) => `${index + 1} ${index === 0 && profile.id === currentUserId ? '自己' : profile.name.split(/\s+/)[0]}`), '0 未分配']
-        : addTaskFlow?.step === 'description'
-          ? ['skip 唔加']
-          : addTaskFlow?.step === 'confirm'
-            ? ['1 確認建立', '2 取消']
-            : ['我要加Task', 'My Task list', '今日重點', '有野update'];
+    : addTaskFlow?.step === 'title'
+      ? ['取消']
+      : addTaskFlow?.step === 'deadline'
+        ? ['1 今日', '2 聽日', '3 揀日期', '0 未定']
+        : addTaskFlow?.step === 'assignee'
+          ? [...orderedProfiles().slice(0, 4).map((profile, index) => `${index + 1} ${index === 0 && profile.id === currentUserId ? '自己' : profile.name.split(/\s+/)[0]}`), '0 未分配']
+          : addTaskFlow?.step === 'description'
+            ? ['skip 唔加']
+            : addTaskFlow?.step === 'confirm'
+              ? ['1 確認建立', '2 取消']
+              : ['我要加Task', 'My Task list', '今日重點', '有野update'];
 
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
