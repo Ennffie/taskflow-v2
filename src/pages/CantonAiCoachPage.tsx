@@ -71,6 +71,7 @@ export function CantonAiCoachPage() {
   const [isReplying, setIsReplying] = useState(false);
   const [lastTaskId, setLastTaskId] = useState<string | null>(null);
   const [addTaskFlow, setAddTaskFlow] = useState<AddTaskFlow | null>(null);
+  const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
     { role: 'ai', text: '問我「有咩未交？」、「今日要搞咩？」或者輸入「加 task xxx」。我會幫你睇漏咗咩。' },
   ]);
@@ -389,6 +390,32 @@ export function CantonAiCoachPage() {
     const mentionedProfile = findProfileFromText(lower);
     const statusQuery = parseStatus(lower);
     if (addTaskFlow) return handleAddTaskFlow(trimmed, addTaskFlow);
+
+    if (pendingDeleteTaskId) {
+      const isConfirm = /^(1|確認|confirm|yes|係|y)$/i.test(trimmed);
+      const isCancel = /^(2|取消|cancel|no|唔|n)$/i.test(trimmed);
+      if (isConfirm) {
+        const target = rootTasks.find((t) => t.id === pendingDeleteTaskId);
+        setPendingDeleteTaskId(null);
+        if (target) {
+          try {
+            const { deleteTask } = await import('../lib/api');
+            await deleteTask(target.id);
+            await loadTasks();
+            return `已刪除「${target.title}」。`;
+          } catch (e: any) {
+            return `刪除失敗：${e?.message || 'Unknown error'}`;
+          }
+        }
+        return '找不到該 task。';
+      }
+      if (isCancel) {
+        setPendingDeleteTaskId(null);
+        return '取消咗，冇刪除。';
+      }
+      return '係咪確認刪除？\n1 確認刪除\n2 取消';
+    }
+
     if (/我要加\s*task|加task$|add task$/.test(lower)) {
       setAddTaskFlow({ step: 'title' });
       return '好呀，逐條問你，快啲。\n\nTask name 係咩？';
@@ -425,6 +452,10 @@ export function CantonAiCoachPage() {
     const matchedTask = findTaskFromText(lower) ?? (/佢|呢個|this|that/.test(lower) || hasActionIntent(lower) ? previousTask : null);
     if (matchedTask) {
       setLastTaskId(matchedTask.id);
+      if (/delete|del|刪除|remove|取消/i.test(lower) && !/加|add/i.test(lower)) {
+        setPendingDeleteTaskId(matchedTask.id);
+        return `係咪刪除「${matchedTask.title}」？\n1 確認刪除\n2 取消`;
+      }
       const actionReply = await applyTaskActions(matchedTask, lower);
       if (actionReply) return actionReply;
       const subtasks = tasks.filter((task) => task.parent_id === matchedTask.id);
@@ -527,15 +558,17 @@ export function CantonAiCoachPage() {
     });
   };
 
-  const quickActions = addTaskFlow?.step === 'deadline'
-    ? ['1 今日', '2 聽日', '3 揀日期', '0 未定']
-    : addTaskFlow?.step === 'assignee'
-      ? [...orderedProfiles().slice(0, 4).map((profile, index) => `${index + 1} ${index === 0 && profile.id === currentUserId ? '自己' : profile.name.split(/\s+/)[0]}`), '0 未分配']
-      : addTaskFlow?.step === 'description'
-        ? ['skip 唔加']
-        : addTaskFlow?.step === 'confirm'
-          ? ['1 確認建立', '2 取消']
-          : ['我要加Task', 'My Task list', '今日重點', '有野update'];
+  const quickActions = pendingDeleteTaskId
+    ? ['1 確認刪除', '2 取消']
+    : addTaskFlow?.step === 'deadline'
+      ? ['1 今日', '2 聽日', '3 揀日期', '0 未定']
+      : addTaskFlow?.step === 'assignee'
+        ? [...orderedProfiles().slice(0, 4).map((profile, index) => `${index + 1} ${index === 0 && profile.id === currentUserId ? '自己' : profile.name.split(/\s+/)[0]}`), '0 未分配']
+        : addTaskFlow?.step === 'description'
+          ? ['skip 唔加']
+          : addTaskFlow?.step === 'confirm'
+            ? ['1 確認建立', '2 取消']
+            : ['我要加Task', 'My Task list', '今日重點', '有野update'];
 
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
