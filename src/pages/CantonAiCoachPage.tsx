@@ -156,6 +156,20 @@ export function CantonAiCoachPage() {
     }
     const iso = lower.match(/\b(\d{4}-\d{2}-\d{2})\b/);
     if (iso) return iso[1];
+    // English month: "31 may", "may 31", "31st may"
+    const enMonthMap: Record<string, number> = { jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11 };
+    const enMatch = lower.match(/(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,})/) || lower.match(/([a-z]{3,})\s+(\d{1,2})(?:st|nd|rd|th)?/);
+    if (enMatch) {
+      const day = Number(enMatch[1].match(/\d+/)?.[0] || enMatch[2].match(/\d+/)?.[0]);
+      const monthStr = enMatch[1].match(/[a-z]+/)?.[0] || enMatch[2].match(/[a-z]+/)?.[0];
+      if (monthStr) {
+        const month = enMonthMap[monthStr.slice(0, 3)];
+        if (month !== undefined && day >= 1 && day <= 31) {
+          const d = new Date(today.getFullYear(), month, day);
+          return toIso(d);
+        }
+      }
+    }
     return null;
   };
 
@@ -243,7 +257,11 @@ export function CantonAiCoachPage() {
     if (flow.step === 'deadline') {
       const isNoDeadline = /^0\b/.test(lower) || /未定|no|冇/.test(lower);
       const parsedDate = /^1\b/.test(lower) ? parseDate('今日') : /^2\b/.test(lower) ? parseDate('聽日') : parseDate(lower);
-      if (!isNoDeadline && !parsedDate) return 'Deadline 我未睇明，可以揀：\n1 今日\n2 聽日\n3 揀日期\n0 未定';
+      if (!isNoDeadline && !parsedDate) {
+        const isOffTopic = /\?|what|who|why|how|name|you|your|hello|hi/.test(lower) && !/今日|聽日|明日|tomorrow|deadline|due|日期/.test(lower);
+        if (isOffTopic) return '我係 TaskFlow AI Coach，幫你管理同追 task 嘅。你而家喺緊加 task，可以講返個 deadline，例如「聽日」或者「5月8」。';
+        return 'Deadline 我未睇明，可以揀：\n1 今日\n2 聽日\n3 揀日期\n0 未定\n或者直接打「31 may / 5月8」。';
+      }
       const dueDate = isNoDeadline ? null : parsedDate;
       setAddTaskFlow({ ...flow, step: 'assignee', dueDate });
       return `Deadline：${dueLabel(dueDate)}\n\n邊個做？\n${profileTips()}\n0 未分配\n或者直接打人名。`;
@@ -262,17 +280,23 @@ export function CantonAiCoachPage() {
     if (flow.step === 'confirm') {
       const isConfirm = /^1\b|確認|confirm|ok|好/.test(lower);
       const wantsMore = /description|desc|detail|更多|補充|補資料|想加|加多/.test(lower);
+      const newDate = parseDate(lower);
+      const safeTitle = flow.title || '未命名 task';
+      if (newDate && !isConfirm) {
+        setAddTaskFlow({ ...flow, step: 'confirm', dueDate: newDate });
+        return `Due date 改做 ${dueLabel(newDate)}。Confirm：\n${safeTitle}\nDue: ${dueLabel(newDate)}\nAssignee: ${profileName(flow.assigneeId)}\n\n1 確認建立\n2 取消`;
+      }
       if (wantsMore && !isConfirm) {
         setAddTaskFlow({ ...flow, step: 'description' });
         return '想加 description？直接打內容，或者打「skip」唔加。';
       }
-      if (!isConfirm) return '未建立。你可以揀：\n1 確認建立\n2 取消\n或者直接講「加 description」。';
+      if (!isConfirm) return '未建立。你可以揀：\n1 確認建立\n2 取消\n或者直接講「加 description」或者改 due date。';
       setSaving(true);
       try {
-        await createTask({ title: flow.title ?? 'Untitled task', description: flow.description ?? '', status: 'todo', priority: 'medium', due_date: flow.dueDate ?? undefined, assignee_ids: flow.assigneeId ? [flow.assigneeId] : [], tags: [], parent_id: null });
+        await createTask({ title: safeTitle, description: flow.description ?? '', status: 'todo', priority: 'medium', due_date: flow.dueDate ?? undefined, assignee_ids: flow.assigneeId ? [flow.assigneeId] : [], tags: [], parent_id: null });
         await loadTasks();
         setAddTaskFlow(null);
-        return `加咗：${flow.title}\nDue date: ${dueLabel(flow.dueDate ?? null)}\nAssignee: ${profileName(flow.assigneeId)}${flow.description ? `\nDescription: ${flow.description.slice(0, 40)}${flow.description.length > 40 ? '...' : ''}` : ''}`;
+        return `加咗：${safeTitle}\nDue date: ${dueLabel(flow.dueDate ?? null)}\nAssignee: ${profileName(flow.assigneeId)}${flow.description ? `\nDescription: ${flow.description.slice(0, 40)}${flow.description.length > 40 ? '...' : ''}` : ''}`;
       } finally { setSaving(false); }
     }
 
