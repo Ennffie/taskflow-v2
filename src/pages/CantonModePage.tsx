@@ -246,7 +246,7 @@ function SunCenter() {
         <span style={{ position: 'absolute', left: 13, top: 41, width: 13, height: 9, borderRadius: '50%', background: 'rgba(244,114,182,0.62)', filter: 'blur(0.2px)' }} />
         <span style={{ position: 'absolute', right: 13, top: 41, width: 13, height: 9, borderRadius: '50%', background: 'rgba(244,114,182,0.62)', filter: 'blur(0.2px)' }} />
         <span style={{ position: 'absolute', left: 32, top: 42, width: 17, height: 9, borderBottom: '2px solid #374151', borderRadius: '0 0 999px 999px' }} />
-        <span style={{ position: 'absolute', left: 0, right: 0, bottom: 7, color: '#ea580c', fontWeight: 950, fontSize: 11, letterSpacing: '0.06em', textShadow: '0 1px 0 rgba(255,255,255,0.45)' }}>UIUX</span>
+        <span style={{ position: 'absolute', left: 0, right: 0, bottom: 7, color: 'rgba(234, 88, 12, 0.42)', fontWeight: 500, fontSize: 10.5, letterSpacing: '0.07em', textShadow: '0 1px 0 rgba(255,255,255,0.32)' }}>UIUX</span>
       </div>
     </div>
   );
