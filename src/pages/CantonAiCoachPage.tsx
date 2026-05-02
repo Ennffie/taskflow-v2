@@ -216,6 +216,18 @@ export function CantonAiCoachPage() {
       setAddTaskFlow(null);
       return '好，取消咗新增 task。';
     }
+    if (flow.step !== 'title' && /改.*(task name|task名|標題|名)/.test(lower)) {
+      setAddTaskFlow({ ...flow, step: 'title' });
+      return '好啊，改返 Task name。\n\n新 task name 係咩？';
+    }
+    if (flow.step !== 'deadline' && /改.*(due|deadline|日期|時間)|due date|deadline/.test(lower)) {
+      setAddTaskFlow({ ...flow, step: 'deadline' });
+      return '好，改 due date。\n\nDeadline 想點 set？\n1 今日\n2 聽日\n3 揀日期\n0 未定\n或者直接打「星期五 / 5月8」。';
+    }
+    if (flow.step !== 'assignee' && /改.*(人|負責|邊個|assignee)|負責人|邊個做/.test(lower)) {
+      setAddTaskFlow({ ...flow, step: 'assignee' });
+      return `好，改負責人。\n\n邊個做？\n${profileTips()}\n0 未分配\n或者直接打人名。`;
+    }
 
     if (flow.step === 'title') {
       if (/我要加\s*task|加task$|add task$/.test(lower)) return '好啊，已經準備緊加 task。\n\n直接打個 Task name 就得。';
