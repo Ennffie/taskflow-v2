@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { STATUS_META, type Profile, type TaskItem, type TaskStatus } from '../types';
 
 function isDone(task: TaskItem) { return task.status === 'done' || task.is_finished; }
@@ -46,6 +47,7 @@ export function CantonAiCoachPage() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const composerRef = useRef<HTMLDivElement | null>(null);
@@ -61,11 +63,16 @@ export function CantonAiCoachPage() {
     try { setTasks(await fetchTasks()); } finally { setLoading(false); }
   };
 
-  useEffect(() => { void loadTasks(); fetchProfiles().then(setProfiles).catch(console.error); }, []);
+  useEffect(() => {
+    void loadTasks();
+    fetchProfiles().then(setProfiles).catch(console.error);
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null)).catch(console.error);
+  }, []);
 
   const rootTasks = tasks.filter((task) => !task.parent_id);
   const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task) => `• ${task.title}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}｜${STATUS_META[task.status].label}`).join('\n') : empty;
   const isAssignedTo = (task: TaskItem, profile: Profile) => task.assignees.some((assignee) => assignee.id === profile.id || assignee.name.toLowerCase() === profile.name.toLowerCase());
+  const myOpenTasks = () => rootTasks.filter((task) => !isDone(task) && task.assignees.some((assignee) => assignee.id === currentUserId));
   const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
   const hasActionIntent = (lower: string) => Boolean(parseDate(lower) || findProfileFromText(lower) || parseStatus(lower) || /deadline|due|交|負責|俾|跟|assign|status|狀態|focus|重點|優先|未定|冇 deadline|clear deadline/.test(lower));
 
@@ -175,6 +182,13 @@ export function CantonAiCoachPage() {
   const getReply = async (text: string) => {
     const trimmed = text.trim();
     const lower = trimmed.toLowerCase();
+    if (/我要加\s*task|加task$|add task$/.test(lower)) return '想加咩 task？你可以直接打：\n「加 task CRCE-1234 poster」\n或者「加 task xxx，Alice 跟，星期五交」。';
+    if (/my task list|my tasks|我的 task|我有咩|我有乜|我啲 task|我啲task/.test(lower)) return `你未完成嘅 task：\n${summarize(myOpenTasks(), '暫時冇 assign 咗俾你嘅未完成 main task。')}`;
+    if (/今日重點|today focus|今日 focus|今日focus/.test(lower)) {
+      const todayFocus = rootTasks.filter((task) => !isDone(task) && (isToday(task) || task.is_focus));
+      return `今日重點：\n${summarize(todayFocus, '今日暫時冇 deadline / focus task。')}`;
+    }
+    if (/^(有野|有嘢)\s*update$|^update$|^更新$/.test(lower)) return '想 update 邊個 task？可以直接打：\n「CRCE1357 今日已交俾 PC review」\n或者「1357 改做 in progress」。';
     const addMatch = trimmed.match(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*(.+)$/i);
     if (addMatch?.[1]?.trim()) {
       const title = addMatch[1].trim();
@@ -271,7 +285,7 @@ export function CantonAiCoachPage() {
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {['有咩未交？', '今日要搞咩？', '邊啲冇 deadline？'].map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
+            {['我要加Task', 'My Task list', '今日重點', '有野update'].map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <div style={{ position: 'relative' }}>
