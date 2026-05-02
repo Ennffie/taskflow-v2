@@ -54,7 +54,7 @@ function assigneeLabel(task: TaskItem) {
   return `${initials(task.assignees[0].name)} +${task.assignees.length - 1}`;
 }
 
-const AI_BRIDGE_URL = 'https://sure-crossword-sherman-holly.trycloudflare.com';
+const AI_BRIDGE_URL = 'https://reported-downloaded-standings-sport.trycloudflare.com';
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
