@@ -57,6 +57,7 @@ export function CantonAiCoachPage() {
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isReplying, setIsReplying] = useState(false);
   const [lastTaskId, setLastTaskId] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
     { role: 'ai', text: '問我「有咩未交？」、「今日要搞咩？」或者輸入「加 task xxx」。我會幫你睇漏咗咩。' },
@@ -212,16 +213,34 @@ export function CantonAiCoachPage() {
     return risks.length ? `我會先提你呢幾樣：\n${summarize(risks, '')}` : '暫時冇明顯風險。';
   };
 
+  const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const revealAiReply = async (reply: string) => {
+    setMessages((current) => [...current, { role: 'ai', text: '諗緊…' }]);
+    await wait(1250);
+
+    const step = Math.max(1, Math.ceil(reply.length / 90));
+    for (let index = step; index < reply.length; index += step) {
+      const partial = reply.slice(0, index);
+      setMessages((current) => current.map((message, messageIndex) => messageIndex === current.length - 1 ? { ...message, text: partial } : message));
+      await wait(22);
+    }
+    setMessages((current) => current.map((message, messageIndex) => messageIndex === current.length - 1 ? { ...message, text: reply } : message));
+  };
+
   const send = async (preset?: string) => {
     const text = (preset ?? input).trim();
-    if (!text || saving) return;
+    if (!text || saving || isReplying) return;
     setInput('');
     setMessages((current) => [...current, { role: 'user', text }]);
+    setIsReplying(true);
     try {
       const reply = await getReply(text);
-      setMessages((current) => [...current, { role: 'ai', text: reply }]);
+      await revealAiReply(reply);
     } catch (error: any) {
-      setMessages((current) => [...current, { role: 'ai', text: `處理唔到：${error?.message || 'Unknown error'}` }]);
+      await revealAiReply(`處理唔到：${error?.message || 'Unknown error'}`);
+    } finally {
+      setIsReplying(false);
     }
   };
 
@@ -245,7 +264,7 @@ export function CantonAiCoachPage() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
               <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} placeholder="問我 task 問題，或輸入：加 task xxx" style={{ border: '1px solid #dbeafe', borderRadius: 16, padding: '13px 14px', outline: 'none', fontSize: 15 }} />
-              <button onClick={() => void send()} disabled={saving} style={{ border: 'none', borderRadius: 16, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 900, fontSize: 15 }}>{saving ? '加緊…' : 'Send'}</button>
+              <button onClick={() => void send()} disabled={saving || isReplying} style={{ border: 'none', borderRadius: 16, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 900, fontSize: 15, opacity: saving || isReplying ? 0.72 : 1 }}>{saving ? '加緊…' : isReplying ? '諗緊…' : 'Send'}</button>
             </div>
           </section>
         </div>
