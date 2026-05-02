@@ -366,24 +366,20 @@ export function CantonAiCoachPage() {
         }
         if (intent.intent === 'add_task' && intent.title) {
           const title = intent.title;
-          const assigneeName = intent.assignee;
           const dueDate = intent.due_date === 'next_friday' ? parseDate('星期五') : intent.due_date;
+          const assigneeName = intent.assignee;
           const profile = assigneeName ? profiles.find((p) => p.name.toLowerCase() === assigneeName.toLowerCase()) : null;
-          setSaving(true);
-          try {
-            await createTask({
-              title,
-              description: '',
-              status: 'todo',
-              priority: 'medium',
-              due_date: dueDate ?? undefined,
-              assignee_ids: profile ? [profile.id] : [],
-              tags: [],
-              parent_id: null,
-            });
-            await loadTasks();
-            return `加咗：${title}\nDue: ${dueLabel(dueDate ?? null)}\nAssignee: ${profile?.name || '未分配'}`;
-          } finally { setSaving(false); }
+          const assigneeId = profile ? profile.id : null;
+          if (dueDate && assigneeId) {
+            setAddTaskFlow({ step: 'confirm', title, dueDate, assigneeId });
+            return `Confirm 新 task：\n${title}\nDue date: ${dueLabel(dueDate)}\nAssignee: ${profileName(assigneeId)}\n\n1 確認建立\n2 取消`;
+          } else if (dueDate) {
+            setAddTaskFlow({ step: 'assignee', title, dueDate });
+            return `Deadline：${dueLabel(dueDate)}\n\n邊個做？\n${profileTips()}\n0 未分配\n或者直接打人名。`;
+          } else {
+            setAddTaskFlow({ step: 'deadline', title });
+            return '好啊！\n\nDeadline 想點 set？\n1 今日\n2 聽日\n3 揀日期\n0 未定\n或者直接打「星期五 / 5月8」。';
+          }
         }
       }
     } catch {
@@ -414,12 +410,8 @@ export function CantonAiCoachPage() {
     const addMatch = trimmed.match(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*(.+)$/i);
     if (addMatch?.[1]?.trim()) {
       const title = addMatch[1].trim();
-      setSaving(true);
-      try {
-        await createTask({ title, description: '', status: 'todo', priority: 'medium', assignee_ids: [], tags: [], parent_id: null });
-        await loadTasks();
-        return `加咗：「${title}」。不過未有 deadline / assignee，我會當係風險位提醒你。`;
-      } finally { setSaving(false); }
+      setAddTaskFlow({ step: 'deadline', title });
+      return '好啊！\n\nDeadline 想點 set？\n1 今日\n2 聽日\n3 揀日期\n0 未定\n或者直接打「星期五 / 5月8」。';
     }
 
     if (mentionedProfile && /有乜|有咩|要做|跟|負責|assigned|task|tasks|todo|做乜/.test(lower)) {
