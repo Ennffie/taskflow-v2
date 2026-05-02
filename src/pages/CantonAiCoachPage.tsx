@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees } from '../lib/api';
@@ -48,6 +48,7 @@ export function CantonAiCoachPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
+  const composerRef = useRef<HTMLDivElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [lastTaskId, setLastTaskId] = useState<string | null>(null);
@@ -229,6 +230,7 @@ export function CantonAiCoachPage() {
     const text = (preset ?? input).trim();
     if (!text || saving || isReplying) return;
     setInput('');
+    if (composerRef.current) composerRef.current.textContent = '';
     setMessages((current) => [...current, { role: 'user', text }]);
     setIsReplying(true);
     try {
@@ -263,7 +265,18 @@ export function CantonAiCoachPage() {
             {['有咩未交？', '今日要搞咩？', '邊啲冇 deadline？'].map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} placeholder="問 task / 補 deadline / 加 task" style={{ border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, background: '#fff' }} />
+            <div style={{ position: 'relative' }}>
+              {!input ? <span style={{ position: 'absolute', left: 15, top: 14, color: '#94a3b8', fontSize: 16, pointerEvents: 'none' }}>問 task / 補 deadline / 加 task</span> : null}
+              <div
+                ref={composerRef}
+                contentEditable={!saving && !isReplying}
+                role="textbox"
+                aria-label="AI message"
+                onInput={(e) => setInput(e.currentTarget.textContent ?? '')}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
+                style={{ minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', WebkitUserSelect: 'text', userSelect: 'text' }}
+              />
+            </div>
             <button onClick={() => void send()} disabled={saving || isReplying} style={{ border: 'none', borderRadius: 18, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 950, fontSize: 16, opacity: saving || isReplying ? 0.72 : 1 }}>{saving ? '加緊…' : isReplying ? '諗緊…' : 'Send'}</button>
           </div>
         </div>
