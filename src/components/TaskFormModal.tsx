@@ -28,6 +28,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [isFocus, setIsFocus] = useState(false);
+  const [focusSaving, setFocusSaving] = useState(false);
   const [roundNumber, setRoundNumber] = useState(1);
 
   useEffect(() => {
@@ -58,6 +59,27 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
 
   const setDueDateToToday = () => {
     setDueDate(new Date().toISOString().slice(0, 10));
+  };
+
+  const handleToggleFocus = async () => {
+    const nextFocus = !isFocus;
+    setIsFocus(nextFocus);
+
+    if (mode !== 'edit' || !initialTask) return;
+
+    try {
+      setFocusSaving(true);
+      await updateTask(initialTask.id, { is_focus: nextFocus });
+      const logTaskId = initialTask.parent_id ?? initialTask.id;
+      const taskLabel = `${initialTask.parent_id ? 'Subtask' : 'Main Task'} ${title.trim() || initialTask.title}`;
+      await createTaskEventLog(logTaskId, `${taskLabel} focus: ${isFocus ? 'Yes' : 'No'} → ${nextFocus ? 'Yes' : 'No'}`);
+      await onCreated();
+    } catch (error: any) {
+      setIsFocus(isFocus);
+      alert(`Update focus failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setFocusSaving(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -141,7 +163,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   };
 
   return (
-    <ModalFrame title={mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task'} onClose={onClose} isFocus={isFocus} onToggleFocus={() => setIsFocus(!isFocus)}>
+    <ModalFrame title={mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task'} onClose={onClose} isFocus={isFocus} onToggleFocus={handleToggleFocus} focusSaving={focusSaving}>
       <div style={{ display: 'grid', gap: '18px' }}>
         {parentTaskId && parentTaskTitle && (
           <div style={{ padding: '12px 14px', borderRadius: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
@@ -276,7 +298,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>{label}{children}</label>;
 }
 
-function ModalFrame({ title, onClose, isFocus, onToggleFocus, children }: { title: string; onClose: () => void; isFocus?: boolean; onToggleFocus?: () => void; children: React.ReactNode }) {
+function ModalFrame({ title, onClose, isFocus, onToggleFocus, focusSaving = false, children }: { title: string; onClose: () => void; isFocus?: boolean; onToggleFocus?: () => void; focusSaving?: boolean; children: React.ReactNode }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: '24px', zIndex: 300 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '85vh', overflow: 'auto', background: '#fff', borderRadius: '28px', padding: '28px', boxShadow: '0 28px 80px rgba(15,23,42,0.22)', zIndex: 301, marginBottom: '80px' }}>
@@ -288,6 +310,7 @@ function ModalFrame({ title, onClose, isFocus, onToggleFocus, children }: { titl
             {/* Focus Toggle */}
             <button
               onClick={(e) => { e.stopPropagation(); onToggleFocus?.(); }}
+              disabled={focusSaving}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -299,12 +322,13 @@ function ModalFrame({ title, onClose, isFocus, onToggleFocus, children }: { titl
                 color: isFocus ? '#7c3aed' : '#6b7280',
                 fontSize: '13px',
                 fontWeight: 700,
-                cursor: 'pointer',
+                cursor: focusSaving ? 'wait' : 'pointer',
+                opacity: focusSaving ? 0.68 : 1,
                 transition: 'all 0.2s ease',
               }}
             >
               <span style={{ fontSize: '16px' }}>🎯</span>
-              Focus
+              {focusSaving ? 'Saving' : 'Focus'}
             </button>
             <button onClick={onClose} style={{ border: 'none', background: '#f3f4f6', width: '42px', height: '42px', borderRadius: '14px', cursor: 'pointer' }}><X size={18} /></button>
           </div>
