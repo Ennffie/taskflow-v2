@@ -96,6 +96,33 @@ export function CantonAiCoachPage() {
     }
   };
 
+  // Strip any leaked action tags and format text for display
+  const formatAiText = (text: string) => {
+    // Remove any ###ACTION###...###END### from visible text
+    let cleaned = text.replace(/###ACTION###[\s\S]*?###END###/g, '').trim();
+    // Replace markdown-style bold
+    cleaned = cleaned.replace(/\*\*(.+?)\*\*/g, '$1');
+    return cleaned;
+  };
+
+  const renderMessage = (text: string, role: 'ai' | 'user') => {
+    const displayText = role === 'ai' ? formatAiText(text) : text;
+    return displayText.split('\n').map((line, i) => {
+      const isBullet = /^[•\-\*]\s/.test(line);
+      const isNumbered = /^\d+[.\)]\s/.test(line);
+      return (
+        <div key={i} style={{ 
+          marginTop: i > 0 ? 6 : 0,
+          fontWeight: isBullet || isNumbered ? 600 : 400,
+          paddingLeft: isBullet || isNumbered ? 16 : 0,
+          textIndent: isBullet || isNumbered ? -16 : 0,
+        }}>
+          {line || ' '}
+        </div>
+      );
+    });
+  };
+
   const send = async (text?: string) => {
     const userText = (text ?? input).trim();
     if (!userText || isReplying) return;
@@ -168,11 +195,11 @@ export function CantonAiCoachPage() {
               color: message.role === 'user' ? '#fff' : '#0f172a', 
               fontSize: message.role === 'user' ? 16 : 17, 
               lineHeight: 1.48, 
-              fontWeight: message.role === 'user' ? 800 : 500, 
+              fontWeight: message.role === 'user' ? 800 : 400, 
               letterSpacing: '-0.01em', 
               boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' 
             }}>
-              {message.text}
+              {renderMessage(message.text, message.role)}
             </div>
           ))}
           <div ref={chatEndRef} />
