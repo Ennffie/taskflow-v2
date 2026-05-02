@@ -106,18 +106,23 @@ export function CantonAiCoachPage() {
     setIsReplying(true);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 90000); // 90s timeout
+      
       const resp = await fetch(`${AI_BRIDGE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: userText, session_id: sessionId, context: getContext() }),
+        signal: controller.signal,
       });
+      window.clearTimeout(timeoutId);
       
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       
       // Show typing indicator
       setMessages(current => [...current, { role: 'ai', text: '諗緊…' }]);
-      await new Promise(r => window.setTimeout(r, 800));
+      await new Promise(r => window.setTimeout(r, 500));
       
       // Execute action if any
       let actionResult = '';
@@ -131,7 +136,11 @@ export function CantonAiCoachPage() {
       setMessages(current => current.map((m, i) => i === current.length - 1 ? { ...m, text: finalReply || '收到。' } : m));
       
     } catch (error: any) {
-      setMessages(current => [...current, { role: 'ai', text: `AI 暫時無法回應：${error?.message || '請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險` }]);
+      if (error.name === 'AbortError') {
+        setMessages(current => [...current, { role: 'ai', text: 'AI 諗得太耐，可能網絡慢或者伺服器忙。請再試一次，或者打短啲嘅問題。' }]);
+      } else {
+        setMessages(current => [...current, { role: 'ai', text: `AI 暫時無法回應：${error?.message || '請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險` }]);
+      }
     } finally {
       setIsReplying(false);
     }
