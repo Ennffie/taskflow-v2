@@ -54,6 +54,8 @@ function assigneeLabel(task: TaskItem) {
   return `${initials(task.assignees[0].name)} +${task.assignees.length - 1}`;
 }
 
+const AI_BRIDGE_URL = 'https://provided-image-appearing-findarticles.trycloudflare.com';
+
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -273,6 +275,81 @@ export function CantonAiCoachPage() {
   const getReply = async (text: string) => {
     const trimmed = text.trim();
     const lower = trimmed.toLowerCase();
+
+    // Try AI bridge first
+    try {
+      const resp = await fetch(`${AI_BRIDGE_URL}/parse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: trimmed }),
+      });
+      if (resp.ok) {
+        const intent = await resp.json();
+        if (intent.intent === 'list_tasks') {
+          const filter = intent.filter;
+          const scope = intent.scope;
+          const assigneeName = intent.assignee;
+          const pool = scope === 'my' && currentUserId
+            ? rootTasks.filter((task) => task.assignees.some((a) => a.id === currentUserId))
+            : assigneeName
+              ? rootTasks.filter((task) => task.assignees.some((a) => a.name.toLowerCase() === assigneeName.toLowerCase()))
+              : rootTasks;
+          const items = filter === 'done'
+            ? pool.filter(isDone)
+            : filter === 'overdue'
+              ? pool.filter(isOverdue)
+              : filter === 'open'
+                ? pool.filter((task) => !isDone(task))
+                : pool;
+          const scopeLabel = scope === 'my' ? '你' : assigneeName || '全部';
+          const filterLabel = filter === 'done' ? '已完成' : filter === 'overdue' ? '已過 deadline' : filter === 'open' ? '未完成' : '';
+          return `${scopeLabel} ${filterLabel} task：\n${summarize(items, `暫時冇 ${filterLabel} task。`)}`;
+        }
+        if (intent.intent === 'update_task' && intent.task_ref) {
+          const task = findTaskFromText(intent.task_ref);
+          if (task) {
+            const field = intent.field;
+            const value = intent.value;
+            if (field === 'status') await updateTask(task.id, { status: value });
+            if (field === 'due_date') await updateTask(task.id, { due_date: value === 'null' ? null : value });
+            if (field === 'assignee') {
+              const profile = profiles.find((p) => p.name.toLowerCase() === value.toLowerCase());
+              if (profile) await updateTaskAssignees(task.id, [profile.id]);
+            }
+            await loadTasks();
+            return `${task.title}\n已更新 ${field} → ${value}`;
+          }
+        }
+        if (intent.intent === 'query_missing' && intent.task_ref) {
+          const task = findTaskFromText(intent.task_ref);
+          if (task) return missingInfoReply(task);
+        }
+        if (intent.intent === 'add_task' && intent.title) {
+          const title = intent.title;
+          const assigneeName = intent.assignee;
+          const dueDate = intent.due_date === 'next_friday' ? parseDate('星期五') : intent.due_date;
+          const profile = assigneeName ? profiles.find((p) => p.name.toLowerCase() === assigneeName.toLowerCase()) : null;
+          setSaving(true);
+          try {
+            await createTask({
+              title,
+              description: '',
+              status: 'todo',
+              priority: 'medium',
+              due_date: dueDate ?? undefined,
+              assignee_ids: profile ? [profile.id] : [],
+              tags: [],
+              parent_id: null,
+            });
+            await loadTasks();
+            return `加咗：${title}\nDue: ${dueLabel(dueDate ?? null)}\nAssignee: ${profile?.name || '未分配'}`;
+          } finally { setSaving(false); }
+        }
+      }
+    } catch {
+      /* fallback to rule-based */
+    }
+
     const mentionedProfile = findProfileFromText(lower);
     const statusQuery = parseStatus(lower);
     if (addTaskFlow) return handleAddTaskFlow(trimmed, addTaskFlow);
