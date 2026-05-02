@@ -260,10 +260,11 @@ export function MyTasksPage() {
   }), [tasks, query, statusFilter]);
 
   const groupedTasks = useMemo(() => {
-    const focusTasks = filtered.filter(t => t.is_focus).sort(sortByDueDate);
-    const overdueTasks = filtered.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
-    const otherTasks = filtered.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
-    const doneTasks = filtered.filter(t => t.status === 'done').sort(sortByDueDate);
+    const rootOnly = filtered.filter(t => !t.parent_id);
+    const focusTasks = rootOnly.filter(t => t.is_focus).sort(sortByDueDate);
+    const overdueTasks = rootOnly.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
+    const otherTasks = rootOnly.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
+    const doneTasks = rootOnly.filter(t => t.status === 'done').sort(sortByDueDate);
 
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups["Focus"] = focusTasks;
