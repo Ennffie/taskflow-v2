@@ -195,7 +195,6 @@ export function CantonModePage() {
 }
 
 function SunCenter() {
-  const rays = Array.from({ length: 13 }, (_, index) => index * (360 / 13));
   return (
     <div style={{
       position: 'absolute',
@@ -214,24 +213,19 @@ function SunCenter() {
       zIndex: 9,
       pointerEvents: 'none',
     }}>
-      {rays.map((degree, index) => (
-        <span
-          key={degree}
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            width: index % 3 === 0 ? 18 : 15,
-            height: index % 3 === 0 ? 35 : 30,
-            borderRadius: '999px 999px 16px 16px',
-            background: 'linear-gradient(180deg, #facc15 0%, #f59e0b 100%)',
-            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.32), 0 3px 8px rgba(245,158,11,0.18)',
-            transform: `translate(-50%, -50%) rotate(${degree}deg) translateY(-44px)`,
-            transformOrigin: '50% 50%',
-            opacity: 0.92,
-          }}
+      <svg viewBox="0 0 120 120" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', filter: 'drop-shadow(0 5px 8px rgba(245,158,11,0.18))' }}>
+        <path
+          d="M60 5 C64 18 70 18 78 8 C77 23 84 23 96 14 C91 29 98 33 113 31 C101 40 105 48 117 53 C102 56 102 64 117 70 C102 72 99 80 110 91 C96 88 91 95 96 109 C84 100 77 104 75 117 C68 105 61 108 54 117 C52 103 44 102 34 112 C38 97 31 93 17 99 C25 86 21 80 5 76 C19 69 18 62 5 55 C20 51 21 44 10 35 C25 37 30 30 23 16 C36 23 43 19 45 6 C50 18 56 18 60 5 Z"
+          fill="#fbbf24"
+          stroke="#f59e0b"
+          strokeWidth="2.4"
+          strokeLinejoin="round"
         />
-      ))}
+        <path
+          d="M60 9 C64 20 70 20 76 12 C76 25 84 26 92 18 C89 30 96 35 108 34 C98 42 101 49 112 54 C100 57 100 63 112 69 C99 72 97 78 106 88 C94 86 89 94 92 104 C82 97 76 101 73 112 C67 102 61 104 55 112 C53 101 45 100 37 108 C40 96 33 91 21 95 C29 84 25 78 11 75 C23 68 23 62 11 56 C23 52 25 45 15 38 C28 39 33 32 28 21 C38 26 45 22 47 11 C51 20 56 20 60 9 Z"
+          fill="rgba(254, 240, 138, 0.22)"
+        />
+      </svg>
       <div style={{
         position: 'absolute',
         inset: 18,
