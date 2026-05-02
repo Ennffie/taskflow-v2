@@ -92,7 +92,11 @@ export function CantonAiCoachPage() {
   const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
   const hasActionIntent = (lower: string) => Boolean(parseDate(lower) || findProfileFromText(lower) || (parseStatus(lower) && isActionLike(lower)) || /deadline|due|交|負責|俾|跟|assign|focus|重點|優先|未定|冇 deadline|clear deadline/.test(lower));
   const profileName = (id?: string | null) => profiles.find((profile) => profile.id === id)?.name ?? '未分配';
-  const profileTips = () => profiles.slice(0, 5).map((profile, index) => `${index + 1} ${profile.name}`).join('\n');
+  const orderedProfiles = () => {
+    const me = profiles.find((profile) => profile.id === currentUserId);
+    return me ? [me, ...profiles.filter((profile) => profile.id !== currentUserId)] : profiles;
+  };
+  const profileTips = () => orderedProfiles().slice(0, 5).map((profile, index) => `${index + 1} ${index === 0 && profile.id === currentUserId ? `${profile.name}（自己）` : profile.name}`).join('\n');
 
   const findTaskFromText = (lower: string) => {
     const normalized = lower.replace(/[，。？?！!、]/g, ' ');
@@ -218,12 +222,12 @@ export function CantonAiCoachPage() {
       if (!isNoDeadline && !parsedDate) return 'Deadline 我未睇明，可以揀：\n1 今日\n2 聽日\n3 未定';
       const dueDate = isNoDeadline ? null : parsedDate;
       setAddTaskFlow({ ...flow, step: 'assignee', dueDate });
-      return `Deadline：${dueLabel(dueDate)}\n\n邊個跟？\n${profileTips()}\n0 未分配\n或者直接打人名。`;
+      return `Deadline：${dueLabel(dueDate)}\n\n邊個做？\n${profileTips()}\n0 未分配\n或者直接打人名。`;
     }
 
     if (flow.step === 'assignee') {
       const numeric = trimmed.match(/^\d+/)?.[0];
-      const pickedByNumber = numeric && numeric !== '0' ? profiles[Number(numeric) - 1] : null;
+      const pickedByNumber = numeric && numeric !== '0' ? orderedProfiles()[Number(numeric) - 1] : null;
       const picked = pickedByNumber ?? findProfileFromText(lower);
       const assigneeId = numeric === '0' || /未分配|skip|no/.test(lower) ? null : picked?.id;
       if (assigneeId === undefined) return `負責人我未 match 到，可以揀：\n${profileTips()}\n0 未分配`;
@@ -361,7 +365,7 @@ export function CantonAiCoachPage() {
   const quickActions = addTaskFlow?.step === 'deadline'
     ? ['1 今日', '2 聽日', '3 未定']
     : addTaskFlow?.step === 'assignee'
-      ? [...profiles.slice(0, 4).map((profile, index) => `${index + 1} ${profile.name.split(/\s+/)[0]}`), '0 未分配']
+      ? [...orderedProfiles().slice(0, 4).map((profile, index) => `${index + 1} ${index === 0 && profile.id === currentUserId ? '自己' : profile.name.split(/\s+/)[0]}`), '0 未分配']
       : addTaskFlow?.step === 'confirm'
         ? ['1 確認建立', '2 取消']
         : ['我要加Task', 'My Task list', '今日重點', '有野update'];
