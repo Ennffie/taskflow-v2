@@ -65,6 +65,7 @@ export function CantonAiCoachPage() {
 
   const rootTasks = tasks.filter((task) => !task.parent_id);
   const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task) => `• ${task.title}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}｜${STATUS_META[task.status].label}`).join('\n') : empty;
+  const isAssignedTo = (task: TaskItem, profile: Profile) => task.assignees.some((assignee) => assignee.id === profile.id || assignee.name.toLowerCase() === profile.name.toLowerCase());
   const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
   const hasActionIntent = (lower: string) => Boolean(parseDate(lower) || findProfileFromText(lower) || parseStatus(lower) || /deadline|due|交|負責|俾|跟|assign|status|狀態|focus|重點|優先|未定|冇 deadline|clear deadline/.test(lower));
 
@@ -183,6 +184,14 @@ export function CantonAiCoachPage() {
         await loadTasks();
         return `加咗：「${title}」。不過未有 deadline / assignee，我會當係風險位提醒你。`;
       } finally { setSaving(false); }
+    }
+
+    const mentionedProfile = findProfileFromText(lower);
+    if (mentionedProfile && /有乜|有咩|要做|跟|負責|assigned|task|tasks|todo|做乜/.test(lower)) {
+      const assignedTasks = rootTasks.filter((task) => !isDone(task) && isAssignedTo(task, mentionedProfile));
+      return assignedTasks.length
+        ? `${mentionedProfile.name} 要跟呢啲：\n${summarize(assignedTasks, '')}`
+        : `${mentionedProfile.name} 暫時冇未完成 main task。`;
     }
 
     const previousTask = rootTasks.find((task) => task.id === lastTaskId) ?? null;
