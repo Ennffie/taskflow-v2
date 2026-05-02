@@ -63,6 +63,7 @@ export function CantonAiCoachPage() {
   const [input, setInput] = useState('');
   const composerRef = useRef<HTMLDivElement | null>(null);
   const datePickerRef = useRef<HTMLInputElement | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [lastTaskId, setLastTaskId] = useState<string | null>(null);
@@ -81,6 +82,10 @@ export function CantonAiCoachPage() {
     fetchProfiles().then(setProfiles).catch(console.error);
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null)).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
+  }, [messages, isReplying]);
 
   const rootTasks = tasks.filter((task) => !task.parent_id);
   const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}\n   Due date: ${dueLabel(task.due_date)}\n   Last update: ${dateLabel(task.updated_at)}`).join('\n\n') : empty;
@@ -213,6 +218,7 @@ export function CantonAiCoachPage() {
     }
 
     if (flow.step === 'title') {
+      if (/我要加\s*task|加task$|add task$/.test(lower)) return '好啊，已經準備緊加 task。\n\n直接打個 Task name 就得。';
       const title = trimmed.replace(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*/i, '').trim();
       if (!title) return 'Task name 係咩？直接打名就得。';
       setAddTaskFlow({ step: 'deadline', title });
@@ -338,9 +344,10 @@ export function CantonAiCoachPage() {
   const send = async (preset?: string) => {
     const text = (preset ?? input).trim();
     if (!text || saving || isReplying) return;
+    const showUserBubble = !(preset && !addTaskFlow && /我要加\s*task|加task$|add task$/i.test(preset));
     setInput('');
     if (composerRef.current) composerRef.current.textContent = '';
-    setMessages((current) => [...current, { role: 'user', text }]);
+    if (showUserBubble) setMessages((current) => [...current, { role: 'user', text }]);
     setIsReplying(true);
     try {
       const reply = await getReply(text);
@@ -404,6 +411,7 @@ export function CantonAiCoachPage() {
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
           {loading ? <div style={{ padding: 14, color: '#64748b', fontWeight: 800 }}>Loading tasks…</div> : null}
           {messages.map((message, index) => <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '90%', whiteSpace: 'pre-wrap', padding: message.role === 'user' ? '13px 15px' : '16px 17px', borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '20px 20px 20px 4px', background: message.role === 'user' ? '#111827' : '#fff', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: message.role === 'user' ? 16 : 17, lineHeight: 1.48, fontWeight: message.role === 'user' ? 800 : 500, letterSpacing: '-0.01em', boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' }}>{renderMessageText(message.text, message.role)}</div>)}
+          <div ref={chatEndRef} />
         </div>
       </main>
 
