@@ -6,10 +6,11 @@ import { supabase } from '../lib/supabase';
 import { STATUS_META, type Profile, type TaskItem, type TaskStatus } from '../types';
 
 type AddTaskFlow = {
-  step: 'title' | 'deadline' | 'assignee' | 'confirm';
+  step: 'title' | 'deadline' | 'assignee' | 'confirm' | 'description';
   title?: string;
   dueDate?: string | null;
   assigneeId?: string | null;
+  description?: string;
 };
 
 function isDone(task: TaskItem) { return task.status === 'done' || task.is_finished; }
@@ -259,14 +260,29 @@ export function CantonAiCoachPage() {
     }
 
     if (flow.step === 'confirm') {
-      if (!/^1\b|確認|confirm|ok|好/.test(lower)) return '未建立。你可以揀：\n1 確認建立\n2 取消';
+      const isConfirm = /^1\b|確認|confirm|ok|好/.test(lower);
+      const wantsMore = /description|desc|detail|更多|補充|補資料|想加|加多/.test(lower);
+      if (wantsMore && !isConfirm) {
+        setAddTaskFlow({ ...flow, step: 'description' });
+        return '想加 description？直接打內容，或者打「skip」唔加。';
+      }
+      if (!isConfirm) return '未建立。你可以揀：\n1 確認建立\n2 取消\n或者直接講「加 description」。';
       setSaving(true);
       try {
-        await createTask({ title: flow.title ?? 'Untitled task', description: '', status: 'todo', priority: 'medium', due_date: flow.dueDate ?? undefined, assignee_ids: flow.assigneeId ? [flow.assigneeId] : [], tags: [], parent_id: null });
+        await createTask({ title: flow.title ?? 'Untitled task', description: flow.description ?? '', status: 'todo', priority: 'medium', due_date: flow.dueDate ?? undefined, assignee_ids: flow.assigneeId ? [flow.assigneeId] : [], tags: [], parent_id: null });
         await loadTasks();
         setAddTaskFlow(null);
-        return `加咗：${flow.title}\nDue date: ${dueLabel(flow.dueDate ?? null)}\nAssignee: ${profileName(flow.assigneeId)}`;
+        return `加咗：${flow.title}\nDue date: ${dueLabel(flow.dueDate ?? null)}\nAssignee: ${profileName(flow.assigneeId)}${flow.description ? `\nDescription: ${flow.description.slice(0, 40)}${flow.description.length > 40 ? '...' : ''}` : ''}`;
       } finally { setSaving(false); }
+    }
+
+    if (flow.step === 'description') {
+      if (/skip|唔加|取消|no/.test(lower)) {
+        setAddTaskFlow({ ...flow, step: 'confirm' });
+        return `Confirm 新 task：\n${flow.title}\nDue date: ${dueLabel(flow.dueDate ?? null)}\nAssignee: ${profileName(flow.assigneeId)}\n\n1 確認建立\n2 取消`;
+      }
+      setAddTaskFlow({ ...flow, description: trimmed, step: 'confirm' });
+      return `已加 description。Confirm 新 task：\n${flow.title}\nDue: ${dueLabel(flow.dueDate ?? null)}\nAssignee: ${profileName(flow.assigneeId)}\n\n1 確認建立\n2 取消`;
     }
 
     return '我未睇明，試吓答返上一步，或者打「取消」。';
@@ -483,9 +499,11 @@ export function CantonAiCoachPage() {
     ? ['1 今日', '2 聽日', '3 揀日期', '0 未定']
     : addTaskFlow?.step === 'assignee'
       ? [...orderedProfiles().slice(0, 4).map((profile, index) => `${index + 1} ${index === 0 && profile.id === currentUserId ? '自己' : profile.name.split(/\s+/)[0]}`), '0 未分配']
-      : addTaskFlow?.step === 'confirm'
-        ? ['1 確認建立', '2 取消']
-        : ['我要加Task', 'My Task list', '今日重點', '有野update'];
+      : addTaskFlow?.step === 'description'
+        ? ['skip 唔加']
+        : addTaskFlow?.step === 'confirm'
+          ? ['1 確認建立', '2 取消']
+          : ['我要加Task', 'My Task list', '今日重點', '有野update'];
 
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
