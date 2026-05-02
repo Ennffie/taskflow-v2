@@ -2,15 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees } from '../lib/api';
-import { AppShell } from '../components/AppShell';
 import { STATUS_META, type Profile, type TaskItem, type TaskStatus } from '../types';
-
-const cardStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.94)',
-  border: '1px solid rgba(226,232,240,0.92)',
-  borderRadius: 28,
-  boxShadow: '0 16px 45px rgba(148, 163, 184, 0.16)',
-};
 
 function isDone(task: TaskItem) { return task.status === 'done' || task.is_finished; }
 function isOverdue(task: TaskItem) {
@@ -250,30 +242,32 @@ export function CantonAiCoachPage() {
   };
 
   return (
-    <AppShell>
-      <div style={{ minHeight: 'calc(100vh - 48px)', margin: '-24px', padding: '24px 18px 130px', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 16 }}>
-          <button onClick={() => navigate('/canton-mode')} style={{ border: 'none', background: 'transparent', color: '#475569', display: 'flex', gap: 8, alignItems: 'center', fontWeight: 800, padding: 0 }}><ArrowLeft size={18} /> Back to Canton</button>
-          <section style={{ ...cardStyle, padding: 22 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0369a1', fontWeight: 950, marginBottom: 8 }}><Sparkles size={18} /> AI Task Coach</div>
-            <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.05, letterSpacing: '-0.05em' }}>幫你追漏咗嘅 task。</h1>
-            <p style={{ margin: '10px 0 0', color: '#64748b', fontSize: 16, fontWeight: 750 }}>加 task、問進度、睇 deadline，同埋搵出最要追嘅事。</p>
-          </section>
-          <section style={{ ...cardStyle, padding: 16 }}>
-            {loading ? <div style={{ padding: 30, color: '#64748b', fontWeight: 800 }}>Loading tasks…</div> : null}
-            <div style={{ display: 'grid', gap: 10, minHeight: 280, maxHeight: 440, overflow: 'auto', marginBottom: 12 }}>
-              {messages.map((message, index) => <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '88%', whiteSpace: 'pre-wrap', padding: '12px 14px', borderRadius: 18, background: message.role === 'user' ? '#111827' : '#f8fafc', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: 15, lineHeight: 1.5, fontWeight: 700 }}>{message.text}</div>)}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              {['有咩未交？', '今日要搞咩？', '邊啲冇 deadline？'].map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '9px 12px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-              <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} placeholder="問我 task 問題，或輸入：加 task xxx" style={{ border: '1px solid #dbeafe', borderRadius: 16, padding: '13px 14px', outline: 'none', fontSize: 15 }} />
-              <button onClick={() => void send()} disabled={saving || isReplying} style={{ border: 'none', borderRadius: 16, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 900, fontSize: 15, opacity: saving || isReplying ? 0.72 : 1 }}>{saving ? '加緊…' : isReplying ? '諗緊…' : 'Send'}</button>
-            </div>
-          </section>
+    <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
+      <header style={{ padding: '14px 16px 10px', background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(226,232,240,0.9)' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <button onClick={() => navigate('/canton-mode')} style={{ border: 'none', background: 'transparent', color: '#475569', display: 'flex', gap: 8, alignItems: 'center', fontWeight: 900, padding: 0 }}><ArrowLeft size={18} /> Canton</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#0369a1', fontWeight: 950 }}><Sparkles size={17} /> AI Coach</div>
         </div>
-      </div>
-    </AppShell>
+      </header>
+
+      <main style={{ overflowY: 'auto', padding: '14px 16px 12px' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
+          {loading ? <div style={{ padding: 14, color: '#64748b', fontWeight: 800 }}>Loading tasks…</div> : null}
+          {messages.map((message, index) => <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '88%', whiteSpace: 'pre-wrap', padding: '12px 14px', borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', background: message.role === 'user' ? '#111827' : '#fff', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: 15, lineHeight: 1.5, fontWeight: 700, boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' }}>{message.text}</div>)}
+        </div>
+      </main>
+
+      <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
+            {['有咩未交？', '今日要搞咩？', '邊啲冇 deadline？'].map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} placeholder="問 task / 補 deadline / 加 task" style={{ border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, background: '#fff' }} />
+            <button onClick={() => void send()} disabled={saving || isReplying} style={{ border: 'none', borderRadius: 18, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 950, fontSize: 16, opacity: saving || isReplying ? 0.72 : 1 }}>{saving ? '加緊…' : isReplying ? '諗緊…' : 'Send'}</button>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
