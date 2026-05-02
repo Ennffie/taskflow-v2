@@ -15,6 +15,7 @@ const ReviewBeforeExportPage = lazy(() => import('./pages/ReviewBeforeExportPage
 const AdminLogsPage = lazy(() => import('./pages/AdminLogsPage').then((mod) => ({ default: mod.AdminLogsPage })));
 const CantonModeMockupPage = lazy(() => import('./pages/CantonModeMockupPage').then((mod) => ({ default: mod.CantonModeMockupPage })));
 const CantonModePage = lazy(() => import('./pages/CantonModePage').then((mod) => ({ default: mod.CantonModePage })));
+const CantonAiCoachPage = lazy(() => import('./pages/CantonAiCoachPage').then((mod) => ({ default: mod.CantonAiCoachPage })));
 const AiParseDemoPage = lazy(() => import('./pages/AiParseDemoPage').then((mod) => ({ default: mod.AiParseDemoPage })));
 
 function PageFallback() {
@@ -39,6 +40,7 @@ function App() {
       <Routes>
         <Route path="/canton-mode-mockup" element={<CantonModeMockupPage />} />
         <Route path="/canton-mode" element={session ? <CantonModePage /> : <Navigate to="/" replace />} />
+        <Route path="/canton-ai" element={session ? <CantonAiCoachPage /> : <Navigate to="/" replace />} />
         <Route path="/ai-parse-demo" element={<AiParseDemoPage />} />
         <Route path="/" element={session ? <TaskListPage /> : <Navigate to="/ai-parse-demo" replace />} />
         <Route path="/my-tasks" element={session ? <MyTasksPage /> : <Navigate to="/ai-parse-demo" replace />} />

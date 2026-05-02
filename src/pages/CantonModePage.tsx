@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarDays, Clock3, Plus, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createTask, fetchTasks } from '../lib/api';
+import { fetchTasks } from '../lib/api';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { STATUS_META, type TaskItem } from '../types';
@@ -375,94 +375,33 @@ function RiskItem({ item, onClick }: { item: { label: string; detail: string; to
   return <button onClick={onClick} style={{ width: '100%', textAlign: 'left', padding: 13, borderRadius: 18, border: `1px solid ${item.tone === 'danger' ? '#fecaca' : '#fed7aa'}`, background: bg, marginBottom: 10, cursor: 'pointer' }}><div style={{ color, fontSize: 12, fontWeight: 900, marginBottom: 4 }}>{item.label}</div><div style={{ color: '#0f172a', fontSize: 14, fontWeight: 850, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.detail}</div></button>;
 }
 
-function CantonAiCoach({ tasks, onTaskCreated }: { tasks: TaskItem[]; onTaskCreated: () => Promise<void> | void }) {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
-    { role: 'ai', text: '我可以幫你睇：有咩未交、今日要搞咩、邊啲冇 deadline，或者直接輸入「加 task xxx」。' },
-  ]);
-  const [saving, setSaving] = useState(false);
+function CantonAiCoach({ tasks }: { tasks: TaskItem[]; onTaskCreated: () => Promise<void> | void }) {
+  const navigate = useNavigate();
   const rootTasks = tasks.filter((task) => !task.parent_id);
-
-  const summarize = (items: TaskItem[], empty: string) => {
-    if (!items.length) return empty;
-    return items.slice(0, 5).map((task) => `• ${task.title}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}｜${STATUS_META[task.status].label}`).join('\n');
-  };
-
-  const getCoachReply = async (text: string) => {
-    const trimmed = text.trim();
-    const lower = trimmed.toLowerCase();
-    const addMatch = trimmed.match(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*(.+)$/i);
-    if (addMatch?.[1]?.trim()) {
-      const title = addMatch[1].trim();
-      setSaving(true);
-      try {
-        await createTask({ title, description: '', status: 'todo', priority: 'medium', assignee_ids: [], tags: [], parent_id: null });
-        await onTaskCreated();
-        return `加咗：「${title}」。暫時未 set deadline / assignee，你可以之後補返，唔好漏咗。`;
-      } finally {
-        setSaving(false);
-      }
-    }
-
-    if (/未交|overdue|追|due|deadline|漏/.test(lower)) {
-      const overdue = rootTasks.filter(isOverdue);
-      const missingDeadline = rootTasks.filter((task) => !isDone(task) && !task.due_date);
-      const missingAssignee = rootTasks.filter((task) => !isDone(task) && task.assignees.length === 0);
-      return [
-        overdue.length ? `已過 deadline，要追：\n${summarize(overdue, '')}` : '暫時冇已過 deadline 嘅 main task。',
-        missingDeadline.length ? `\n未 set deadline：\n${summarize(missingDeadline, '')}` : '',
-        missingAssignee.length ? `\n未分配人：\n${summarize(missingAssignee, '')}` : '',
-      ].filter(Boolean).join('\n');
-    }
-
-    if (/今日|today|now|而家/.test(lower)) {
-      return summarize(rootTasks.filter(isToday), '今日暫時冇 deadline task。可以睇 Focus 或者先清 overdue。');
-    }
-
-    const matchedTask = rootTasks.find((task) => lower && task.title.toLowerCase().includes(lower));
-    if (matchedTask) {
-      const subtasks = tasks.filter((task) => task.parent_id === matchedTask.id);
-      return `${matchedTask.title}\n狀態：${STATUS_META[matchedTask.status].label}\nDeadline：${dueLabel(matchedTask.due_date)}\n負責：${assigneeLabel(matchedTask)}\nProgress：${matchedTask.is_finished ? 100 : (matchedTask.progress_percent ?? 0)}%\nSubtasks：${subtasks.length}`;
-    }
-
-    const risks = rootTasks.filter((task) => !isDone(task) && (isOverdue(task) || !task.due_date || task.assignees.length === 0 || isStale(task)));
-    return risks.length ? `我會先提你呢幾樣：\n${summarize(risks, '')}` : '暫時睇落冇明顯風險。你可以問「今日要搞咩」、「有咩未交」、或者「加 task xxx」。';
-  };
-
-  const send = async (preset?: string) => {
-    const text = (preset ?? input).trim();
-    if (!text || saving) return;
-    setInput('');
-    setMessages((current) => [...current, { role: 'user', text }]);
-    try {
-      const reply = await getCoachReply(text);
-      setMessages((current) => [...current, { role: 'ai', text: reply }]);
-    } catch (error: any) {
-      setMessages((current) => [...current, { role: 'ai', text: `處理唔到：${error?.message || 'Unknown error'}` }]);
-    }
-  };
+  const overdueCount = rootTasks.filter(isOverdue).length;
+  const missingDeadlineCount = rootTasks.filter((task) => !isDone(task) && !task.due_date).length;
+  const riskCount = rootTasks.filter((task) => !isDone(task) && (isOverdue(task) || !task.due_date || task.assignees.length === 0 || isStale(task))).length;
+  const headline = overdueCount > 0 ? `${overdueCount} 個 task 已過 deadline` : riskCount > 0 ? `${riskCount} 件事可能會漏` : '今日暫時幾穩陣';
+  const subline = overdueCount > 0 ? '我幫你排好邊啲要先追。' : missingDeadlineCount > 0 ? `${missingDeadlineCount} 個 task 未 set deadline。` : '入嚟問我今日要追咩。';
 
   return (
-    <section style={{ ...cardStyle, padding: 16, background: 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(240,249,255,0.92))' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0369a1', fontWeight: 950 }}><Sparkles size={17} /> AI Task Coach</div>
-        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 800, background: '#f0f9ff', padding: '5px 9px', borderRadius: 999 }}>v1 · task-aware</span>
+    <button onClick={() => navigate('/canton-ai')} style={{ ...cardStyle, width: '100%', textAlign: 'left', padding: '24px 22px', border: '1px solid rgba(186,230,253,0.95)', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 48%, #f5f3ff 100%)', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', right: -18, top: -20, width: 118, height: 118, borderRadius: '50%', background: 'rgba(56,189,248,0.12)' }} />
+      <div style={{ position: 'relative', display: 'grid', gap: 12 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#0369a1', fontSize: 14, fontWeight: 950 }}>
+          <Sparkles size={18} /> AI Task Coach
+        </div>
+        <div style={{ color: '#0f172a', fontSize: 28, lineHeight: 1.08, letterSpacing: '-0.04em', fontWeight: 950 }}>
+          {headline}
+        </div>
+        <div style={{ color: '#475569', fontSize: 18, lineHeight: 1.25, fontWeight: 800 }}>
+          {subline}
+        </div>
+        <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 'fit-content', padding: '11px 15px', borderRadius: 999, background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 900 }}>
+          入去問 AI →
+        </div>
       </div>
-      <div style={{ display: 'grid', gap: 8, maxHeight: 220, overflow: 'auto', marginBottom: 12 }}>
-        {messages.slice(-5).map((message, index) => (
-          <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '88%', whiteSpace: 'pre-wrap', padding: '10px 12px', borderRadius: 16, background: message.role === 'user' ? '#111827' : '#f8fafc', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: 13, lineHeight: 1.45, fontWeight: 650 }}>
-            {message.text}
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-        {['有咩未交？', '今日要搞咩？', '邊啲冇 deadline？'].map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 10px', fontSize: 12, fontWeight: 850 }}>{preset}</button>)}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} placeholder="問我 task 問題，或輸入：加 task xxx" style={{ border: '1px solid #dbeafe', borderRadius: 16, padding: '12px 13px', outline: 'none', fontSize: 13 }} />
-        <button onClick={() => void send()} disabled={saving} style={{ border: 'none', borderRadius: 16, background: '#0f172a', color: '#fff', padding: '0 16px', fontWeight: 900 }}>{saving ? '加緊…' : 'Send'}</button>
-      </div>
-    </section>
+    </button>
   );
 }
 

@@ -1,0 +1,146 @@
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { createTask, fetchTasks } from '../lib/api';
+import { AppShell } from '../components/AppShell';
+import { STATUS_META, type TaskItem } from '../types';
+
+const cardStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.94)',
+  border: '1px solid rgba(226,232,240,0.92)',
+  borderRadius: 28,
+  boxShadow: '0 16px 45px rgba(148, 163, 184, 0.16)',
+};
+
+function isDone(task: TaskItem) { return task.status === 'done' || task.is_finished; }
+function isOverdue(task: TaskItem) {
+  if (!task.due_date || isDone(task)) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(task.due_date); due.setHours(0, 0, 0, 0);
+  return due < today;
+}
+function isToday(task: TaskItem) {
+  if (!task.due_date || isDone(task)) return false;
+  return new Date().toDateString() === new Date(task.due_date).toDateString();
+}
+function isStale(task: TaskItem) {
+  if (isDone(task)) return false;
+  const updated = new Date(task.updated_at).getTime();
+  return (Date.now() - updated) / (1000 * 60 * 60 * 24) >= 5;
+}
+function dueLabel(dueDate: string | null) {
+  if (!dueDate) return '未 set deadline';
+  const due = new Date(dueDate); due.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays === -1) return 'Yesterday';
+  return new Intl.DateTimeFormat('zh-HK', { month: 'numeric', day: 'numeric' }).format(due);
+}
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '—';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return parts.map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+}
+function assigneeLabel(task: TaskItem) {
+  if (!task.assignees.length) return '未分配';
+  if (task.assignees.length === 1) return initials(task.assignees[0].name);
+  return `${initials(task.assignees[0].name)} +${task.assignees.length - 1}`;
+}
+
+export function CantonAiCoachPage() {
+  const navigate = useNavigate();
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [input, setInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
+    { role: 'ai', text: '問我「有咩未交？」、「今日要搞咩？」或者輸入「加 task xxx」。我會幫你睇漏咗咩。' },
+  ]);
+
+  const loadTasks = async () => {
+    setLoading(true);
+    try { setTasks(await fetchTasks()); } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void loadTasks(); }, []);
+
+  const rootTasks = tasks.filter((task) => !task.parent_id);
+  const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task) => `• ${task.title}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}｜${STATUS_META[task.status].label}`).join('\n') : empty;
+
+  const getReply = async (text: string) => {
+    const trimmed = text.trim();
+    const lower = trimmed.toLowerCase();
+    const addMatch = trimmed.match(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*(.+)$/i);
+    if (addMatch?.[1]?.trim()) {
+      const title = addMatch[1].trim();
+      setSaving(true);
+      try {
+        await createTask({ title, description: '', status: 'todo', priority: 'medium', assignee_ids: [], tags: [], parent_id: null });
+        await loadTasks();
+        return `加咗：「${title}」。不過未有 deadline / assignee，我會當係風險位提醒你。`;
+      } finally { setSaving(false); }
+    }
+    if (/未交|overdue|追|due|deadline|漏/.test(lower)) {
+      const overdue = rootTasks.filter(isOverdue);
+      const missingDeadline = rootTasks.filter((task) => !isDone(task) && !task.due_date);
+      const missingAssignee = rootTasks.filter((task) => !isDone(task) && task.assignees.length === 0);
+      return [
+        overdue.length ? `已過 deadline，要先追：\n${summarize(overdue, '')}` : '暫時冇已過 deadline 嘅 main task。',
+        missingDeadline.length ? `\n未 set deadline：\n${summarize(missingDeadline, '')}` : '',
+        missingAssignee.length ? `\n未分配人：\n${summarize(missingAssignee, '')}` : '',
+      ].filter(Boolean).join('\n');
+    }
+    if (/今日|today|now|而家/.test(lower)) return summarize(rootTasks.filter(isToday), '今日暫時冇 deadline task。');
+    const matchedTask = rootTasks.find((task) => lower && task.title.toLowerCase().includes(lower));
+    if (matchedTask) {
+      const subtasks = tasks.filter((task) => task.parent_id === matchedTask.id);
+      return `${matchedTask.title}\n狀態：${STATUS_META[matchedTask.status].label}\nDeadline：${dueLabel(matchedTask.due_date)}\n負責：${assigneeLabel(matchedTask)}\nProgress：${matchedTask.is_finished ? 100 : (matchedTask.progress_percent ?? 0)}%\nSubtasks：${subtasks.length}`;
+    }
+    const risks = rootTasks.filter((task) => !isDone(task) && (isOverdue(task) || !task.due_date || task.assignees.length === 0 || isStale(task)));
+    return risks.length ? `我會先提你呢幾樣：\n${summarize(risks, '')}` : '暫時冇明顯風險。';
+  };
+
+  const send = async (preset?: string) => {
+    const text = (preset ?? input).trim();
+    if (!text || saving) return;
+    setInput('');
+    setMessages((current) => [...current, { role: 'user', text }]);
+    try {
+      const reply = await getReply(text);
+      setMessages((current) => [...current, { role: 'ai', text: reply }]);
+    } catch (error: any) {
+      setMessages((current) => [...current, { role: 'ai', text: `處理唔到：${error?.message || 'Unknown error'}` }]);
+    }
+  };
+
+  return (
+    <AppShell>
+      <div style={{ minHeight: 'calc(100vh - 48px)', margin: '-24px', padding: '24px 18px 130px', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 16 }}>
+          <button onClick={() => navigate('/canton-mode')} style={{ border: 'none', background: 'transparent', color: '#475569', display: 'flex', gap: 8, alignItems: 'center', fontWeight: 800, padding: 0 }}><ArrowLeft size={18} /> Back to Canton</button>
+          <section style={{ ...cardStyle, padding: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0369a1', fontWeight: 950, marginBottom: 8 }}><Sparkles size={18} /> AI Task Coach</div>
+            <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.05, letterSpacing: '-0.05em' }}>幫你追漏咗嘅 task。</h1>
+            <p style={{ margin: '10px 0 0', color: '#64748b', fontSize: 16, fontWeight: 750 }}>加 task、問進度、睇 deadline，同埋搵出最要追嘅事。</p>
+          </section>
+          <section style={{ ...cardStyle, padding: 16 }}>
+            {loading ? <div style={{ padding: 30, color: '#64748b', fontWeight: 800 }}>Loading tasks…</div> : null}
+            <div style={{ display: 'grid', gap: 10, minHeight: 280, maxHeight: 440, overflow: 'auto', marginBottom: 12 }}>
+              {messages.map((message, index) => <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '88%', whiteSpace: 'pre-wrap', padding: '12px 14px', borderRadius: 18, background: message.role === 'user' ? '#111827' : '#f8fafc', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: 15, lineHeight: 1.5, fontWeight: 700 }}>{message.text}</div>)}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              {['有咩未交？', '今日要搞咩？', '邊啲冇 deadline？'].map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '9px 12px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} placeholder="問我 task 問題，或輸入：加 task xxx" style={{ border: '1px solid #dbeafe', borderRadius: 16, padding: '13px 14px', outline: 'none', fontSize: 15 }} />
+              <button onClick={() => void send()} disabled={saving} style={{ border: 'none', borderRadius: 16, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 900, fontSize: 15 }}>{saving ? '加緊…' : 'Send'}</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
