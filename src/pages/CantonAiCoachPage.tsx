@@ -56,6 +56,7 @@ export function CantonAiCoachPage() {
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [lastTaskId, setLastTaskId] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
     { role: 'ai', text: '問我「有咩未交？」、「今日要搞咩？」或者輸入「加 task xxx」。我會幫你睇漏咗咩。' },
   ]);
@@ -70,6 +71,31 @@ export function CantonAiCoachPage() {
   const rootTasks = tasks.filter((task) => !task.parent_id);
   const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task) => `• ${task.title}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}｜${STATUS_META[task.status].label}`).join('\n') : empty;
 
+  const findTaskFromText = (lower: string) => {
+    const normalized = lower.replace(/[，。？?！!、]/g, ' ');
+    const numbers = normalized.match(/\d+/g) ?? [];
+    const byNumber = numbers.length ? rootTasks.find((task) => numbers.some((num) => task.title.toLowerCase().includes(num))) : null;
+    if (byNumber) return byNumber;
+
+    const words = normalized.split(/\s+/).filter((word) => word.length >= 2 && !['task', 'deadline', 'status', 'progress'].includes(word));
+    return rootTasks.find((task) => {
+      const title = task.title.toLowerCase();
+      return title.includes(normalized.trim()) || words.some((word) => title.includes(word));
+    }) ?? null;
+  };
+
+  const missingInfoReply = (task: TaskItem) => {
+    const missing: string[] = [];
+    if (!task.due_date) missing.push('deadline');
+    if (!task.assignees.length) missing.push('負責人');
+    if (!task.description?.trim()) missing.push('description / scope');
+    if (!task.today_update?.trim()) missing.push('今日進度');
+    if (!task.next_day_focus?.trim()) missing.push('下一步');
+
+    if (!missing.length) return `${task.title}\n暫時主要資料都齊：deadline、負責人、scope / update 都有。`;
+    return `${task.title}\n仲差：${missing.join('、')}。\n而家狀態：${STATUS_META[task.status].label}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}`;
+  };
+
   const getReply = async (text: string) => {
     const trimmed = text.trim();
     const lower = trimmed.toLowerCase();
@@ -83,6 +109,15 @@ export function CantonAiCoachPage() {
         return `加咗：「${title}」。不過未有 deadline / assignee，我會當係風險位提醒你。`;
       } finally { setSaving(false); }
     }
+
+    const matchedTask = findTaskFromText(lower) ?? (/佢|呢個|this|that/.test(lower) ? rootTasks.find((task) => task.id === lastTaskId) ?? null : null);
+    if (matchedTask) {
+      setLastTaskId(matchedTask.id);
+      const subtasks = tasks.filter((task) => task.parent_id === matchedTask.id);
+      if (/差乜|未有|缺|missing|補|資料|仲差/.test(lower)) return missingInfoReply(matchedTask);
+      return `${matchedTask.title}\n狀態：${STATUS_META[matchedTask.status].label}\nDeadline：${dueLabel(matchedTask.due_date)}\n負責：${assigneeLabel(matchedTask)}\nProgress：${matchedTask.is_finished ? 100 : (matchedTask.progress_percent ?? 0)}%\nSubtasks：${subtasks.length}`;
+    }
+
     if (/未交|overdue|追|due|deadline|漏/.test(lower)) {
       const overdue = rootTasks.filter(isOverdue);
       const missingDeadline = rootTasks.filter((task) => !isDone(task) && !task.due_date);
@@ -94,11 +129,6 @@ export function CantonAiCoachPage() {
       ].filter(Boolean).join('\n');
     }
     if (/今日|today|now|而家/.test(lower)) return summarize(rootTasks.filter(isToday), '今日暫時冇 deadline task。');
-    const matchedTask = rootTasks.find((task) => lower && task.title.toLowerCase().includes(lower));
-    if (matchedTask) {
-      const subtasks = tasks.filter((task) => task.parent_id === matchedTask.id);
-      return `${matchedTask.title}\n狀態：${STATUS_META[matchedTask.status].label}\nDeadline：${dueLabel(matchedTask.due_date)}\n負責：${assigneeLabel(matchedTask)}\nProgress：${matchedTask.is_finished ? 100 : (matchedTask.progress_percent ?? 0)}%\nSubtasks：${subtasks.length}`;
-    }
     const risks = rootTasks.filter((task) => !isDone(task) && (isOverdue(task) || !task.due_date || task.assignees.length === 0 || isStale(task)));
     return risks.length ? `我會先提你呢幾樣：\n${summarize(risks, '')}` : '暫時冇明顯風險。';
   };
