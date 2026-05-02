@@ -65,7 +65,6 @@ export function CantonAiCoachPage() {
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const composerRef = useRef<HTMLDivElement | null>(null);
-  const datePickerRef = useRef<HTMLInputElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
@@ -516,34 +515,33 @@ export function CantonAiCoachPage() {
   };
 
   const openDatePicker = () => {
-    const picker = datePickerRef.current;
-    if (!picker) return;
-    // Blur any focused element (especially the composer) so iOS Safari allows the picker
+    // Remove any existing temp picker
+    const existing = document.getElementById('temp-date-picker');
+    if (existing) existing.remove();
+
+    const input = document.createElement('input');
+    input.type = 'date';
+    input.id = 'temp-date-picker';
+    input.style.cssText = 'position:fixed;top:50%;left:0;width:100%;height:60px;opacity:0.01;z-index:99999;pointer-events:auto;border:none;outline:none;';
+    input.onchange = (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      if (val) void send(val);
+      setTimeout(() => input.remove(), 50);
+    };
+    // Blur composer first so iOS Safari allows the new input to take focus
     if (document.activeElement && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    if ('showPicker' in picker) {
-      try { (picker as any).showPicker(); return; } catch { /* fall through */ }
-    }
-    // iOS Safari fallback: make the input temporarily visible/interactive at bottom
-    picker.style.pointerEvents = 'auto';
-    picker.style.opacity = '0.01';
-    picker.style.position = 'fixed';
-    picker.style.bottom = '0';
-    picker.style.left = '0';
-    picker.style.width = '100%';
-    picker.style.height = '50px';
-    picker.style.zIndex = '99999';
-    picker.click();
-    picker.focus();
-    setTimeout(() => {
-      picker.style.pointerEvents = 'none';
-      picker.style.opacity = '0';
-      picker.style.width = '1px';
-      picker.style.height = '1px';
-      picker.style.position = 'absolute';
-      picker.style.zIndex = 'auto';
-    }, 1200);
+    document.body.appendChild(input);
+    // Small delay after blur before clicking, helps iOS Safari
+    window.setTimeout(() => {
+      input.click();
+      input.focus();
+    }, 50);
+    // Fallback cleanup
+    window.setTimeout(() => {
+      if (document.getElementById('temp-date-picker')) input.remove();
+    }, 30000);
   };
 
   const handleQuickAction = (preset: string) => {
@@ -603,7 +601,6 @@ export function CantonAiCoachPage() {
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
             {quickActions.map((preset) => <button key={preset} onClick={() => handleQuickAction(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
           </div>
-          <input ref={datePickerRef} type="date" onChange={(event) => { if (event.target.value) void send(event.target.value); event.target.value = ''; }} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <div style={{ position: 'relative' }}>
               {!input ? <span style={{ position: 'absolute', left: 15, top: 14, color: '#94a3b8', fontSize: 16, pointerEvents: 'none' }}>問 task / 補 deadline / 加 task</span> : null}
