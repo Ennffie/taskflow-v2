@@ -77,6 +77,7 @@ export function CantonAiCoachPage() {
   const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}\n   Due date: ${dueLabel(task.due_date)}\n   Last update: ${dateLabel(task.updated_at)}`).join('\n\n') : empty;
   const isAssignedTo = (task: TaskItem, profile: Profile) => task.assignees.some((assignee) => assignee.id === profile.id || assignee.name.toLowerCase() === profile.name.toLowerCase());
   const myOpenTasks = () => rootTasks.filter((task) => !isDone(task) && task.assignees.some((assignee) => assignee.id === currentUserId));
+  const scopedTasks = (lower: string) => /我|my/.test(lower) && currentUserId ? rootTasks.filter((task) => task.assignees.some((assignee) => assignee.id === currentUserId)) : rootTasks;
   const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
   const hasActionIntent = (lower: string) => Boolean(parseDate(lower) || findProfileFromText(lower) || parseStatus(lower) || /deadline|due|交|負責|俾|跟|assign|status|狀態|focus|重點|優先|未定|冇 deadline|clear deadline/.test(lower));
 
@@ -193,6 +194,15 @@ export function CantonAiCoachPage() {
       return `今日重點：\n${summarize(todayFocus, '今日暫時冇 deadline / focus task。')}`;
     }
     if (/^(有野|有嘢)\s*update$|^update$|^更新$/.test(lower)) return '想 update 邊個 task？可以直接打：\n「CRCE1357 今日已交俾 PC review」\n或者「1357 改做 in progress」。';
+
+    const statusQuery = parseStatus(lower);
+    if (statusQuery && /有無|有冇|邊啲|邊d|list|show|睇|搵|果啲|嗰啲|啲|d\?|status/.test(lower)) {
+      const pool = scopedTasks(lower);
+      const statusTasks = pool.filter((task) => statusQuery === 'done' ? isDone(task) : task.status === statusQuery && !isDone(task));
+      const scopeText = /我|my/.test(lower) ? '你' : '全部';
+      return `${scopeText} ${STATUS_META[statusQuery].label} task：\n${summarize(statusTasks, `暫時冇 ${STATUS_META[statusQuery].label} task。`)}\n\n要唔要我再列埋「未完成」或者「冇 due date」嗰啲？`;
+    }
+
     const addMatch = trimmed.match(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*(.+)$/i);
     if (addMatch?.[1]?.trim()) {
       const title = addMatch[1].trim();
