@@ -157,13 +157,13 @@ export function CantonModePage() {
             <div style={{ ...cardStyle, padding: 28, color: '#64748b', fontWeight: 700 }}>Loading Canton mode…</div>
           ) : (
             <>
-              <section style={{ ...cardStyle, padding: 16, background: 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(251,247,255,0.94))' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <section style={{ ...cardStyle, padding: '16px 0 0', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(251,247,255,0.94))' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6d28d9', fontWeight: 900, fontSize: 14 }}><Waves size={17} /> 而家浮面嘅 task</div>
                   <button onClick={() => setShowModal(true)} style={{ width: 42, height: 42, borderRadius: 16, border: 'none', background: '#111827', color: '#fff', display: 'grid', placeItems: 'center' }}><Plus size={20} /></button>
                 </div>
 
-                <div style={{ position: 'relative', height: 520, borderRadius: 30, overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '32px 20px' }}>
+                <div style={{ position: 'relative', height: 600, borderRadius: '30px 30px 0 0', overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '34px 12px' }}>
                   <SunCenter />
                   {visibleTasks.length === 0 ? (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
@@ -248,10 +248,10 @@ function SunCenter() {
 
 function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem; index: number; total: number; allTasks: TaskItem[]; onClick: () => void }) {
   const subtasks = allTasks.filter((item) => item.parent_id === task.id);
-  const angles = total <= 1 ? [270] : total === 2 ? [210, 330] : total === 3 ? [210, 270, 330] : total === 4 ? [200, 260, 300, 340] : [180, 220, 270, 320, 0];
+  const angles = total <= 1 ? [300] : total === 2 ? [210, 330] : total === 3 ? [215, 330, 90] : total === 4 ? [210, 305, 30, 135] : [190, 260, 330, 50, 120];
   const angleDeg = angles[index % angles.length];
-  const laneRadius = index === 0 ? 108 : 112 + index * 10;
-  const size = index === 0 ? 84 : isOverdue(task) ? 68 : 60;
+  const laneRadius = index === 0 ? 132 : 136 + index * 16;
+  const size = index === 0 ? 96 : isOverdue(task) ? 84 : 78;
   const isFocusBubble = task.is_focus || index === 0;
   const userColor = getUserColor(task);
   const bg = isOverdue(task)
@@ -303,16 +303,18 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
             border: '1px solid rgba(255,255,255,0.75)',
             background: bg,
             boxShadow: isFocusBubble ? `0 18px 36px ${hexToRgba(userColor, 0.24)}` : `0 14px 28px ${hexToRgba(userColor, 0.18)}`,
-            padding: index === 0 ? 10 : 8,
+            padding: index === 0 ? 10 : 9,
             textAlign: 'center',
             cursor: 'pointer',
             color: textColor,
           }}
         >
-          <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ fontSize: index === 0 ? 11 : 9.2, lineHeight: 1.08, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: index === 0 ? 3 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
-            <div style={{ marginTop: 3, fontSize: index === 0 ? 8.8 : 7.8, fontWeight: 900, opacity: 0.84 }}>{dueLabel(task.due_date)}</div>
-            <div style={{ marginTop: 2, fontSize: index === 0 ? 8.4 : 7.4, opacity: 0.8, fontWeight: 800 }}>{assigneeLabel(task)}</div>
+          <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+            <div style={{ fontSize: index === 0 ? 9.2 : 8.4, lineHeight: 1, fontWeight: 900, opacity: 0.86 }}>{dueLabel(task.due_date)}</div>
+            <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center' }}>
+              <div style={{ fontSize: index === 0 ? 12 : 10.5, lineHeight: 1.04, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
+            </div>
+            <div style={{ fontSize: index === 0 ? 8.8 : 8, opacity: 0.8, fontWeight: 800 }}>{assigneeLabel(task)}</div>
           </div>
           {subtasks.slice(0, 6).map((subtask, subIndex) => {
             const subAngle = (360 / Math.max(Math.min(subtasks.length, 6), 1)) * subIndex - 90;
