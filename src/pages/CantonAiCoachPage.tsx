@@ -72,9 +72,12 @@ export function CantonAiCoachPage() {
 
   const rootTasks = tasks.filter((task) => !task.parent_id);
   const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task) => `• ${task.title}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}｜${STATUS_META[task.status].label}`).join('\n') : empty;
+  const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
+  const hasActionIntent = (lower: string) => Boolean(parseDate(lower) || findProfileFromText(lower) || parseStatus(lower) || /deadline|due|交|負責|俾|跟|assign|status|狀態|focus|重點|優先|未定|冇 deadline|clear deadline/.test(lower));
 
   const findTaskFromText = (lower: string) => {
     const normalized = lower.replace(/[，。？?！!、]/g, ' ');
+    const compactText = compact(normalized);
     const numbers = normalized.match(/\d+/g) ?? [];
     const byNumber = numbers.length ? rootTasks.find((task) => numbers.some((num) => task.title.toLowerCase().includes(num))) : null;
     if (byNumber) return byNumber;
@@ -82,7 +85,8 @@ export function CantonAiCoachPage() {
     const words = normalized.split(/\s+/).filter((word) => word.length >= 2 && !['task', 'deadline', 'status', 'progress'].includes(word));
     return rootTasks.find((task) => {
       const title = task.title.toLowerCase();
-      return title.includes(normalized.trim()) || words.some((word) => title.includes(word));
+      const compactTitle = compact(title);
+      return title.includes(normalized.trim()) || compactTitle.includes(compactText) || words.some((word) => title.includes(word) || compactTitle.includes(compact(word)));
     }) ?? null;
   };
 
@@ -188,7 +192,8 @@ export function CantonAiCoachPage() {
       } finally { setSaving(false); }
     }
 
-    const matchedTask = findTaskFromText(lower) ?? (/佢|呢個|this|that/.test(lower) ? rootTasks.find((task) => task.id === lastTaskId) ?? null : null);
+    const previousTask = rootTasks.find((task) => task.id === lastTaskId) ?? null;
+    const matchedTask = findTaskFromText(lower) ?? (/佢|呢個|this|that/.test(lower) || hasActionIntent(lower) ? previousTask : null);
     if (matchedTask) {
       setLastTaskId(matchedTask.id);
       const actionReply = await applyTaskActions(matchedTask, lower);
