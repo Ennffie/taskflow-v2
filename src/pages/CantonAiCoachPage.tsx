@@ -62,6 +62,7 @@ export function CantonAiCoachPage() {
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const composerRef = useRef<HTMLDivElement | null>(null);
+  const datePickerRef = useRef<HTMLInputElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [lastTaskId, setLastTaskId] = useState<string | null>(null);
@@ -145,6 +146,8 @@ export function CantonAiCoachPage() {
       const d = new Date(today.getFullYear(), Number(md[1]) - 1, Number(md[2]));
       return toIso(d);
     }
+    const iso = lower.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+    if (iso) return iso[1];
     return null;
   };
 
@@ -213,13 +216,13 @@ export function CantonAiCoachPage() {
       const title = trimmed.replace(/^(?:加|add)\s*(?:task)?\s*[:：]?\s*/i, '').trim();
       if (!title) return 'Task name 係咩？直接打名就得。';
       setAddTaskFlow({ step: 'deadline', title });
-      return `Task name：${title}\n\nDeadline 想點 set？\n1 今日\n2 聽日\n3 未定\n或者直接打「星期五 / 5月8」。`;
+      return '好啊！\n\nDeadline 想點 set？\n1 今日\n2 聽日\n3 揀日期\n0 未定\n或者直接打「星期五 / 5月8」。';
     }
 
     if (flow.step === 'deadline') {
-      const isNoDeadline = /^3\b/.test(lower) || /未定|no|冇/.test(lower);
+      const isNoDeadline = /^0\b/.test(lower) || /未定|no|冇/.test(lower);
       const parsedDate = /^1\b/.test(lower) ? parseDate('今日') : /^2\b/.test(lower) ? parseDate('聽日') : parseDate(lower);
-      if (!isNoDeadline && !parsedDate) return 'Deadline 我未睇明，可以揀：\n1 今日\n2 聽日\n3 未定';
+      if (!isNoDeadline && !parsedDate) return 'Deadline 我未睇明，可以揀：\n1 今日\n2 聽日\n3 揀日期\n0 未定';
       const dueDate = isNoDeadline ? null : parsedDate;
       setAddTaskFlow({ ...flow, step: 'assignee', dueDate });
       return `Deadline：${dueLabel(dueDate)}\n\n邊個做？\n${profileTips()}\n0 未分配\n或者直接打人名。`;
@@ -349,6 +352,24 @@ export function CantonAiCoachPage() {
     }
   };
 
+  const openDatePicker = () => {
+    const picker = datePickerRef.current;
+    if (!picker) return;
+    if ('showPicker' in picker) {
+      try { picker.showPicker(); return; } catch { /* fall through */ }
+    }
+    picker.click();
+    picker.focus();
+  };
+
+  const handleQuickAction = (preset: string) => {
+    if (addTaskFlow?.step === 'deadline' && preset.startsWith('3')) {
+      openDatePicker();
+      return;
+    }
+    void send(preset);
+  };
+
   const renderMessageText = (text: string, role: 'ai' | 'user') => {
     if (role === 'user') return text;
     return text.split('\n').map((line, index) => {
@@ -363,7 +384,7 @@ export function CantonAiCoachPage() {
   };
 
   const quickActions = addTaskFlow?.step === 'deadline'
-    ? ['1 今日', '2 聽日', '3 未定']
+    ? ['1 今日', '2 聽日', '3 揀日期', '0 未定']
     : addTaskFlow?.step === 'assignee'
       ? [...orderedProfiles().slice(0, 4).map((profile, index) => `${index + 1} ${index === 0 && profile.id === currentUserId ? '自己' : profile.name.split(/\s+/)[0]}`), '0 未分配']
       : addTaskFlow?.step === 'confirm'
@@ -389,8 +410,9 @@ export function CantonAiCoachPage() {
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {quickActions.map((preset) => <button key={preset} onClick={() => void send(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
+            {quickActions.map((preset) => <button key={preset} onClick={() => handleQuickAction(preset)} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>{preset}</button>)}
           </div>
+          <input ref={datePickerRef} type="date" onChange={(event) => { if (event.target.value) void send(event.target.value); event.target.value = ''; }} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <div style={{ position: 'relative' }}>
               {!input ? <span style={{ position: 'absolute', left: 15, top: 14, color: '#94a3b8', fontSize: 16, pointerEvents: 'none' }}>問 task / 補 deadline / 加 task</span> : null}
