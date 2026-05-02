@@ -31,6 +31,10 @@ function dueLabel(dueDate: string | null) {
   if (diffDays === -1) return 'Yesterday';
   return new Intl.DateTimeFormat('zh-HK', { month: 'numeric', day: 'numeric' }).format(due);
 }
+function dateLabel(dateValue?: string | null) {
+  if (!dateValue) return '—';
+  return new Intl.DateTimeFormat('zh-HK', { month: 'numeric', day: 'numeric' }).format(new Date(dateValue));
+}
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '—';
@@ -70,7 +74,7 @@ export function CantonAiCoachPage() {
   }, []);
 
   const rootTasks = tasks.filter((task) => !task.parent_id);
-  const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task) => `• ${task.title}｜${dueLabel(task.due_date)}｜${assigneeLabel(task)}｜${STATUS_META[task.status].label}`).join('\n') : empty;
+  const summarize = (items: TaskItem[], empty: string) => items.length ? items.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}\n   Due date: ${dueLabel(task.due_date)}\n   Last update: ${dateLabel(task.updated_at)}`).join('\n\n') : empty;
   const isAssignedTo = (task: TaskItem, profile: Profile) => task.assignees.some((assignee) => assignee.id === profile.id || assignee.name.toLowerCase() === profile.name.toLowerCase());
   const myOpenTasks = () => rootTasks.filter((task) => !isDone(task) && task.assignees.some((assignee) => assignee.id === currentUserId));
   const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
@@ -278,7 +282,7 @@ export function CantonAiCoachPage() {
       <main style={{ overflowY: 'auto', padding: '14px 16px 12px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
           {loading ? <div style={{ padding: 14, color: '#64748b', fontWeight: 800 }}>Loading tasks…</div> : null}
-          {messages.map((message, index) => <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '88%', whiteSpace: 'pre-wrap', padding: '12px 14px', borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', background: message.role === 'user' ? '#111827' : '#fff', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: 15, lineHeight: 1.5, fontWeight: 700, boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' }}>{message.text}</div>)}
+          {messages.map((message, index) => <div key={index} style={{ justifySelf: message.role === 'user' ? 'end' : 'start', maxWidth: '90%', whiteSpace: 'pre-wrap', padding: message.role === 'user' ? '13px 15px' : '16px 17px', borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '20px 20px 20px 4px', background: message.role === 'user' ? '#111827' : '#fff', color: message.role === 'user' ? '#fff' : '#0f172a', fontSize: message.role === 'user' ? 16 : 17, lineHeight: 1.48, fontWeight: message.role === 'user' ? 800 : 850, letterSpacing: '-0.01em', boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' }}>{message.text}</div>)}
         </div>
       </main>
 
