@@ -65,7 +65,7 @@ export function CantonAiCoachPage() {
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
   }, [messages, isReplying, typingIndex]);
 
-  const getContext = () => {
+  const getContext = (searchResult?: any) => {
     const today = new Date().toISOString().slice(0, 10);
     // Include ALL tasks (not just first 20) for accurate search
     const taskList = tasks.map(t => ({
@@ -83,7 +83,11 @@ export function CantonAiCoachPage() {
       })) || [],
     }));
     const profileList = profiles.map(p => ({ id: p.id, name: p.name }));
-    return { today, current_user: currentUserId, current_user_name: currentUserName, tasks: taskList, profiles: profileList };
+    const result: any = { today, current_user: currentUserId, current_user_name: currentUserName, tasks: taskList, profiles: profileList };
+    if (searchResult) {
+      result.search_result = searchResult;
+    }
+    return result;
   };
 
   const executeAction = async (action: any): Promise<string> => {
@@ -176,6 +180,32 @@ export function CantonAiCoachPage() {
     }
     
     const userText = (text ?? input).trim();
+    
+    // Frontend search: if user input looks like a task name/ID, search locally first
+    let searchResult = null;
+    const taskNamePattern = /^(CR\d+|CRCE\d+|task\s*\d+|#\d+)/i;
+    if (taskNamePattern.test(userText)) {
+      const keyword = userText.replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
+      const foundTask = tasks.find(t => 
+        t.title.toLowerCase().includes(keyword) || 
+        t.id.toLowerCase() === keyword
+      );
+      if (foundTask) {
+        searchResult = {
+          id: foundTask.id,
+          title: foundTask.title,
+          status: foundTask.status,
+          due_date: foundTask.due_date,
+          assignees: foundTask.assignees.map(a => a.name),
+          description: foundTask.description,
+          subtasks: foundTask.subtasks?.map((s: any) => ({
+            title: s.title,
+            status: s.status,
+            assignees: s.assignees.map((a: any) => a.name),
+          })) || [],
+        };
+      }
+    }
     if (!userText || isReplying) return;
     
     setInput('');
@@ -190,7 +220,7 @@ export function CantonAiCoachPage() {
       const resp = await fetch(`${AI_BRIDGE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: userText, session_id: sessionId, context: getContext() }),
+        body: JSON.stringify({ text: userText, session_id: sessionId, context: getContext(searchResult) }),
         signal: controller.signal,
       });
       window.clearTimeout(timeoutId);
