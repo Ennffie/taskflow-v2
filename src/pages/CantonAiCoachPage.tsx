@@ -67,7 +67,8 @@ export function CantonAiCoachPage() {
 
   const getContext = () => {
     const today = new Date().toISOString().slice(0, 10);
-    const taskList = tasks.slice(0, 20).map(t => ({
+    // Include ALL tasks (not just first 20) for accurate search
+    const taskList = tasks.map(t => ({
       id: t.id,
       title: t.title,
       status: t.status,
