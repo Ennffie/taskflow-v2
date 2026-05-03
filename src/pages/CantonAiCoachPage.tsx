@@ -328,7 +328,7 @@ export function CantonAiCoachPage() {
                 role="textbox"
                 aria-label="AI message"
                 onInput={(e) => setInput(e.currentTarget.textContent ?? '')}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
+                onKeyDown={() => {}}
                 style={{ minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', WebkitUserSelect: 'text', userSelect: 'text' }}
               />
             </div>
