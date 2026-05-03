@@ -12,14 +12,16 @@ export function CantonAiCoachPage() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string>('');
   const [input, setInput] = useState('');
   const composerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [isReplying, setIsReplying] = useState(false);
   const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-  const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
-    { role: 'ai', text: '哈囉！我係你嘅 TaskFlow AI Coach。有咩關於 task 嘅問題都可以問我，例如：\n• 「有咩未交？」\n• 「幫我加個 CRCE poster 嘅 task」\n• 「1357 改做 done」' },
-  ]);
+  const [typingTarget, setTypingTarget] = useState('');
+  const [typingIndex, setTypingIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
+  const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([]);
 
   const loadTasks = async () => {
     try { setTasks(await fetchTasks()); } catch (e) { console.error(e); }
@@ -28,12 +30,40 @@ export function CantonAiCoachPage() {
   useEffect(() => {
     void loadTasks();
     fetchProfiles().then(setProfiles).catch(console.error);
-    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null)).catch(console.error);
+    supabase.auth.getUser().then(({ data }) => {
+      const name = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
+      setCurrentUserId(data.user?.id ?? null);
+      setCurrentUserName(name);
+      // Start welcome typewriter after getting user name
+      setTimeout(() => {
+        const welcome = `Hi ${name.split(' ')[0]}~\nSilly AI 幫緊你睇緊 task 狀況，有咩可以直接問我！例如：\n• 有咩未交？\n• 幫我加個 CRCE poster 嘅 task\n• 1357 改做 done`;
+        setTypingTarget(welcome);
+        setTypingIndex(0);
+        setIsTyping(true);
+      }, 300);
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
+    if (!isTyping || typingIndex >= typingTarget.length) {
+      // Typing finished - add message to messages array
+      if (isTyping && typingIndex >= typingTarget.length && typingTarget) {
+        setMessages(current => [...current, { role: 'ai', text: typingTarget }]);
+        setIsTyping(false);
+        setTypingTarget('');
+        setTypingIndex(0);
+      }
+      return;
+    }
+    const timer = setTimeout(() => {
+      setTypingIndex(prev => prev + 1);
+    }, 35);
+    return () => clearTimeout(timer);
+  }, [isTyping, typingIndex, typingTarget]);
+
+  useEffect(() => {
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
-  }, [messages, isReplying]);
+  }, [messages, isReplying, typingIndex]);
 
   const getContext = () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -47,7 +77,7 @@ export function CantonAiCoachPage() {
       progress: t.progress_percent,
     }));
     const profileList = profiles.map(p => ({ id: p.id, name: p.name }));
-    return { today, current_user: currentUserId, tasks: taskList, profiles: profileList };
+    return { today, current_user: currentUserId, current_user_name: currentUserName, tasks: taskList, profiles: profileList };
   };
 
   const executeAction = async (action: any): Promise<string> => {
@@ -216,6 +246,35 @@ export function CantonAiCoachPage() {
               {renderMessage(message.text, message.role)}
             </div>
           ))}
+          {/* Welcome typing message */}
+          {isTyping && typingTarget && (
+            <div style={{ 
+              alignSelf: 'flex-start', 
+              maxWidth: '90%', 
+              whiteSpace: 'pre-wrap', 
+              padding: '16px 17px', 
+              borderRadius: '20px 20px 20px 4px', 
+              background: '#fff', 
+              color: '#0f172a', 
+              fontSize: 17, 
+              lineHeight: 1.48, 
+              fontWeight: 400, 
+              letterSpacing: '-0.01em', 
+              boxShadow: '0 8px 24px rgba(148,163,184,0.12)' 
+            }}>
+              {typingTarget.slice(0, typingIndex)}
+              <span style={{ 
+                display: 'inline-block', 
+                width: 2, 
+                height: '1em', 
+                background: '#0369a1', 
+                marginLeft: 2,
+                animation: 'blink 1s step-end infinite',
+                verticalAlign: 'text-bottom'
+              }} />
+              <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }`}</style>
+            </div>
+          )}
           <div ref={chatEndRef} />
         </div>
       </main>
