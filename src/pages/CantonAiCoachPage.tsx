@@ -75,6 +75,11 @@ export function CantonAiCoachPage() {
       assignees: t.assignees.map(a => a.name),
       is_finished: t.is_finished,
       progress: t.progress_percent,
+      subtasks: t.subtasks?.map((s: any) => ({
+        title: s.title,
+        status: s.status,
+        assignees: s.assignees.map((a: any) => a.name),
+      })) || [],
     }));
     const profileList = profiles.map(p => ({ id: p.id, name: p.name }));
     return { today, current_user: currentUserId, current_user_name: currentUserName, tasks: taskList, profiles: profileList };
