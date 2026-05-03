@@ -103,7 +103,7 @@ export function CantonAiCoachPage() {
             parent_id: null,
           });
           await loadTasks();
-          return `✅ 已建立「${action.title || '未命名 task'}」`;
+          return `✅ 已建立「${action.title || '未命名 task'}」\n\n📋 Task Details:\n• 名稱：${action.title || '未命名 task'}\n• 到期：${dueDate || '未設定'}\n• 負責：${assignee ? assignee.name : currentUserName}\n• 內容：${action.description || '無'}\n• Status：${action.status || 'todo'}`;
         }
         case 'update_task': {
           const task = tasks.find(t => t.id === action.task_id || t.title.toLowerCase().includes((action.task_ref || '').toLowerCase()));
@@ -115,7 +115,7 @@ export function CantonAiCoachPage() {
             if (profile) await updateTaskAssignees(task.id, [profile.id]);
           }
           await loadTasks();
-          return `✅ 已更新「${task.title}」`;
+          return `✅ 已更新「${task.title}」\n\n📋 更新內容：\n• ${action.due_date !== undefined ? `到期：${action.due_date}` : ''}${action.status ? `Status：${action.status}` : ''}${action.assignee ? `負責：${action.assignee}` : ''}\n\n📋 最新狀態：\n• 名稱：${task.title}\n• 到期：${action.due_date || task.due_date || '未設定'}\n• 負責：${action.assignee || task.assignees.map(a => a.name).join(', ') || '未指派'}\n• Status：${action.status || task.status}`;
         }
         case 'delete_task': {
           const task = tasks.find(t => t.id === action.task_id || t.title.toLowerCase().includes((action.task_ref || '').toLowerCase()));
