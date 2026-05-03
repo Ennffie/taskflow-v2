@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((mod) => ({ default: mod.LoginPage })));
 const TaskListPage = lazy(() => import('./pages/TaskListPage').then((mod) => ({ default: mod.TaskListPage })));
@@ -36,25 +37,27 @@ function App() {
   }
 
   return (
-    <Suspense fallback={<PageFallback />}>
-      <Routes>
-        <Route path="/canton-mode-mockup" element={<CantonModeMockupPage />} />
-        <Route path="/canton-mode" element={session ? <CantonModePage /> : <Navigate to="/" replace />} />
-        <Route path="/canton-ai" element={session ? <CantonAiCoachPage /> : <Navigate to="/" replace />} />
-        <Route path="/ai-parse-demo" element={<AiParseDemoPage />} />
-        <Route path="/" element={session ? <TaskListPage /> : <Navigate to="/ai-parse-demo" replace />} />
-        <Route path="/my-tasks" element={session ? <MyTasksPage /> : <Navigate to="/ai-parse-demo" replace />} />
-        <Route path="/tasks/:taskId" element={session ? <LogBookPage /> : <Navigate to="/ai-parse-demo" replace />} />
-        <Route path="/my-log" element={session ? <MyLogPage /> : <Navigate to="/ai-parse-demo" replace />} />
-        <Route path="/team-logs" element={session && profile?.role === 'admin' ? <AdminLogsPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-        <Route path="/tracker/member" element={session && profile?.role === 'admin' ? <TrackerByMemberPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-        <Route path="/tracker/task" element={session && profile?.role === 'admin' ? <TrackerByTaskPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-        <Route path="/review-export" element={session && profile?.role === 'admin' ? <ReviewBeforeExportPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-        <Route path="/import-review" element={session && profile?.role === 'admin' ? <ImportReviewPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-        <Route path="/settings" element={session && profile?.role === 'admin' ? <SettingsPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route path="/canton-mode-mockup" element={<CantonModeMockupPage />} />
+          <Route path="/canton-mode" element={session ? <CantonModePage /> : <Navigate to="/" replace />} />
+          <Route path="/canton-ai" element={session ? <CantonAiCoachPage /> : <Navigate to="/" replace />} />
+          <Route path="/ai-parse-demo" element={<AiParseDemoPage />} />
+          <Route path="/" element={session ? <TaskListPage /> : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/my-tasks" element={session ? <MyTasksPage /> : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/tasks/:taskId" element={session ? <LogBookPage /> : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/my-log" element={session ? <MyLogPage /> : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/team-logs" element={session && profile?.role === 'admin' ? <AdminLogsPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
+          <Route path="/tracker/member" element={session && profile?.role === 'admin' ? <TrackerByMemberPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
+          <Route path="/tracker/task" element={session && profile?.role === 'admin' ? <TrackerByTaskPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
+          <Route path="/review-export" element={session && profile?.role === 'admin' ? <ReviewBeforeExportPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
+          <Route path="/import-review" element={session && profile?.role === 'admin' ? <ImportReviewPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
+          <Route path="/settings" element={session && profile?.role === 'admin' ? <SettingsPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

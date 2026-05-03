@@ -1,0 +1,8 @@
+# Workers static site configuration
+name = "taskflow-v2"
+account_id = "529aaeb5b0f3cd4219e2f9179227c693"
+compatibility_date = "2026-05-03"
+main = "functions/_worker.js"
+
+[site]
+bucket = "./dist"

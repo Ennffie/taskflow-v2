@@ -228,6 +228,7 @@ export function CantonAiCoachPage() {
                 {preset}
               </button>
             ))}
+            <button onClick={() => navigate('/')} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>📝 English Form</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <div style={{ position: 'relative' }}>
