@@ -112,19 +112,26 @@ export function CantonModePage() {
   }, []);
 
   const rootTasks = useMemo(() => tasks.filter((task) => !task.parent_id), [tasks]);
+  const focusTasks = useMemo(() => rootTasks.filter((task) => task.is_focus && !isDone(task)), [rootTasks]);
   const visibleTasks = useMemo(() => {
-    return [...rootTasks]
-      .filter((task) => !isDone(task))
+    // 優先顯示 focus tasks，如果唔夠 4 個再補其他
+    const focus = focusTasks.slice(0, 4);
+    if (focus.length >= 4) return focus;
+    
+    // 補充其他非 done task
+    const others = rootTasks
+      .filter((task) => !isDone(task) && !task.is_focus)
       .sort((a, b) => {
-        const score = (task: TaskItem) => (task.is_focus ? -30 : 0) + (isOverdue(task) ? -20 : 0) + (task.priority === 'urgent' ? -12 : task.priority === 'high' ? -8 : 0);
+        const score = (task: TaskItem) => (isOverdue(task) ? -20 : 0) + (task.priority === 'urgent' ? -12 : task.priority === 'high' ? -8 : 0);
         if (score(a) !== score(b)) return score(a) - score(b);
         if (!a.due_date && !b.due_date) return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
         return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
       })
-      .slice(0, 4);
-  }, [rootTasks]);
+      .slice(0, 4 - focus.length);
+    return [...focus, ...others];
+  }, [rootTasks, focusTasks]);
 
   const todayTasks = useMemo(() => rootTasks.filter(isToday).slice(0, 4), [rootTasks]);
   const riskItems = useMemo(() => {
