@@ -160,6 +160,15 @@ export function CantonAiCoachPage() {
   };
 
   const send = async (text?: string) => {
+    // Verify current user before sending
+    const { data: { user } } = await supabase.auth.getUser();
+    const actualName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+    if (actualName !== currentUserName) {
+      // User changed, reset session
+      window.location.reload();
+      return;
+    }
+    
     const userText = (text ?? input).trim();
     if (!userText || isReplying) return;
     
