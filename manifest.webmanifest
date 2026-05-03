@@ -1,0 +1,23 @@
+{
+  "name": "TaskFlow v2",
+  "short_name": "TaskFlow",
+  "description": "Cute Canton task flow and AI coach",
+  "start_url": "./canton-ai",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#f0f9ff",
+  "icons": [
+    {
+      "src": "./taskflow-app-icon.png?v=6",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./apple-touch-icon.png?v=6",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
