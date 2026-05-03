@@ -211,6 +211,22 @@ export function CantonAiCoachPage() {
         }
       }
       
+      // Execute multiple actions if present (e.g., multiple subtasks)
+      if (data.actions && Array.isArray(data.actions)) {
+        const results = [];
+        for (const act of data.actions) {
+          const isValid = (
+            (act.action === 'create_task' && act.title && act.title.trim()) ||
+            (act.action === 'update_task' && (act.task_id || act.task_ref)) ||
+            (act.action === 'delete_task' && (act.task_id || act.task_ref))
+          );
+          if (isValid) {
+            results.push(await executeAction(act));
+          }
+        }
+        actionResult = results.join('\n\n');
+      }
+      
       // Final reply
       const finalReply = [data.reply, actionResult].filter(Boolean).join('\n\n');
       setMessages(current => current.map((m, i) => i === current.length - 1 ? { ...m, text: finalReply || '收到。' } : m));
