@@ -36,7 +36,7 @@ export function CantonAiCoachPage() {
       setCurrentUserName(name);
       // Start welcome typewriter after getting user name
       setTimeout(() => {
-        const welcome = `Hi ${name.split(' ')[0]}~\nSilly AI 幫緊你睇緊 task 狀況，有咩可以直接問我！例如：\n• 有咩未交？\n• 幫我加個 CRCE poster 嘅 task\n• 1357 改做 done`;
+        const welcome = `Hi ${name.split(' ')[0]}~\n我係Silly，有咩可以直接問我…`;
         setTypingTarget(welcome);
         setTypingIndex(0);
         setIsTyping(true);
