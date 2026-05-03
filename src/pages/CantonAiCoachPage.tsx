@@ -86,6 +86,9 @@ export function CantonAiCoachPage() {
     const result: any = { today, current_user: currentUserId, current_user_name: currentUserName, tasks: taskList, profiles: profileList };
     if (searchResult) {
       result.search_result = searchResult;
+    } else if (searchResult === null && arguments.length > 0) {
+      // Frontend tried to search but found nothing
+      result.search_result = null;
     }
     return result;
   };
@@ -183,13 +186,19 @@ export function CantonAiCoachPage() {
     
     // Frontend search: if user input looks like a task name/ID, search locally first
     let searchResult = null;
+    console.log(`[Frontend Search] Input: "${userText}", Tasks loaded: ${tasks.length}`);
     const taskNamePattern = /^(CR\d+|CRCE\d+|task\s*\d+|#\d+)/i;
     if (taskNamePattern.test(userText)) {
       const keyword = userText.replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
-      const foundTask = tasks.find(t => 
-        t.title.toLowerCase().includes(keyword) || 
-        t.id.toLowerCase() === keyword
-      );
+      console.log(`[Frontend Search] Pattern matched. Keyword: "${keyword}"`);
+      const foundTask = tasks.find(t => {
+        const titleMatch = t.title.toLowerCase().includes(keyword);
+        const idMatch = t.id.toLowerCase() === keyword;
+        if (titleMatch || idMatch) {
+          console.log(`[Frontend Search] Found: "${t.title}" (titleMatch=${titleMatch}, idMatch=${idMatch})`);
+        }
+        return titleMatch || idMatch;
+      });
       if (foundTask) {
         searchResult = {
           id: foundTask.id,
@@ -204,7 +213,12 @@ export function CantonAiCoachPage() {
             assignees: s.assignees.map((a: any) => a.name),
           })) || [],
         };
+        console.log(`[Frontend Search] Result created:`, searchResult);
+      } else {
+        console.log(`[Frontend Search] No task found matching "${keyword}"`);
       }
+    } else {
+      console.log(`[Frontend Search] Pattern did NOT match for: "${userText}"`);
     }
     if (!userText || isReplying) return;
     
