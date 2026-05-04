@@ -2,6 +2,25 @@ import { supabase } from './supabase';
 import { getReportDate } from './date';
 import type { LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
+// Retry wrapper for Supabase calls to handle lock contention
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: any;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      // Check if it's a lock error
+      if (err?.message?.includes('lock') || err?.message?.includes('another request stole')) {
+        await new Promise(r => setTimeout(r, 200 * (i + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
+}
+
 type TaskRecord = {
   id: string;
   parent_id?: string | null;
@@ -302,44 +321,45 @@ export async function generateTodayLogs(userId?: string): Promise<TodayLogDraft>
 }
 
 export async function fetchTasks(): Promise<TaskItem[]> {
-  const { data: tasks, error: taskError } = await supabase
-    .from('tasks')
-    .select('*')
-    .order('due_date', { ascending: true });
+  return withRetry(async () => {
+    const { data: tasks, error: taskError } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('due_date', { ascending: true });
 
-  if (taskError || !tasks || tasks.length === 0) return [];
+    if (taskError || !tasks || tasks.length === 0) return [];
 
-  // Get all related data in single batch
-  const taskIds = tasks.map(t => t.id);
-  const [{ data: assignees }, { data: tags }, { data: logs }, { data: profiles }] = await Promise.all([
-    supabase.from('task_assignees').select('task_id, user_id').in('task_id', taskIds),
-    supabase.from('tags').select('task_id, name').in('task_id', taskIds),
-    supabase.from('log_entries').select('id, task_id').in('task_id', taskIds),
-    supabase.from('profiles').select('id, name, email, role'),
-  ]);
+    // Get all related data in single batch
+    const taskIds = tasks.map(t => t.id);
+    const [{ data: assignees }, { data: tags }, { data: logs }, { data: profiles }] = await Promise.all([
+      supabase.from('task_assignees').select('task_id, user_id').in('task_id', taskIds),
+      supabase.from('tags').select('task_id, name').in('task_id', taskIds),
+      supabase.from('log_entries').select('id, task_id').in('task_id', taskIds),
+      supabase.from('profiles').select('id, name, email, role'),
+    ]);
 
-  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p as Profile]));
-  const assigneeMap = new Map<string, Profile[]>();
-  const tagMap = new Map<string, string[]>();
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p as Profile]));
+    const assigneeMap = new Map<string, Profile[]>();
+    const tagMap = new Map<string, string[]>();
 
-  (assignees ?? []).forEach((a: any) => {
-    const profile = profileMap.get(a.user_id);
-    if (!profile) return;
-    const list = assigneeMap.get(a.task_id) ?? [];
-    list.push(profile);
-    assigneeMap.set(a.task_id, list);
-  });
+    (assignees ?? []).forEach((a: any) => {
+      const profile = profileMap.get(a.user_id);
+      if (!profile) return;
+      const list = assigneeMap.get(a.task_id) ?? [];
+      list.push(profile);
+      assigneeMap.set(a.task_id, list);
+    });
 
-  (tags ?? []).forEach((t: any) => {
-    const list = tagMap.get(t.task_id) ?? [];
-    list.push(t.name);
-    tagMap.set(t.task_id, list);
-  });
+    (tags ?? []).forEach((t: any) => {
+      const list = tagMap.get(t.task_id) ?? [];
+      list.push(t.name);
+      tagMap.set(t.task_id, list);
+    });
 
-  const logCounts = new Map<string, number>();
-  (logs ?? []).forEach((l: any) => {
-    logCounts.set(l.task_id, (logCounts.get(l.task_id) ?? 0) + 1);
-  });
+    const logCounts = new Map<string, number>();
+    (logs ?? []).forEach((l: any) => {
+      logCounts.set(l.task_id, (logCounts.get(l.task_id) ?? 0) + 1);
+    });
 
   return tasks.map((t) => {
     const aggregate = computeParentProgress(t, tasks);
@@ -367,6 +387,7 @@ export async function fetchTasks(): Promise<TaskItem[]> {
       subtask_count: tasks.filter(st => st.parent_id === t.id).length,
     };
   }) as TaskItem[];
+  }); // close withRetry
 }
 
 export async function fetchTask(taskId: string): Promise<TaskItem | null> {
