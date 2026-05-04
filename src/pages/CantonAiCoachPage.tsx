@@ -211,6 +211,57 @@ export function CantonAiCoachPage() {
     
     const userText = (text ?? input).trim();
     
+    // Check if user wants to create a task (contains CRCE/CR + some text)
+    const isCreateIntent = userText.match(/^(CR\d+|CRCE\d+)/i) && !userText.includes('|');
+    let parsedAction = null;
+    
+    if (isCreateIntent) {
+      // Auto-parse: CRCE1649 testing case... Next Fri Enfield WIP 3 Sub task:Web, app, kiosk
+      const crMatch = userText.match(/^(CR\d+|CRCE\d+)/i);
+      const crCode = crMatch ? crMatch[1] : '';
+      
+      // Extract due date keywords
+      const dateKeywords = ['today', 'tomorrow', '下星期', '下週', 'next week', 'next mon', 'next tue', 'next wed', 'next thu', 'next fri', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+      let dueDate = '';
+      for (const kw of dateKeywords) {
+        if (userText.toLowerCase().includes(kw.toLowerCase())) {
+          dueDate = kw;
+          break;
+        }
+      }
+      
+      // Extract assignee from profiles
+      const assignee = profiles.find(p => 
+        userText.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
+      )?.name || currentUserName;
+      
+      // Extract status keywords
+      let status = 'todo';
+      if (userText.toLowerCase().includes('wip') || userText.toLowerCase().includes('in progress')) status = 'in_progress';
+      if (userText.toLowerCase().includes('done') || userText.toLowerCase().includes('完成')) status = 'done';
+      
+      // Everything after CR code is description
+      const afterCR = userText.substring(crCode.length).trim();
+      const cleanDesc = afterCR
+        .replace(/Next Fri/i, '')
+        .replace(/Enfield/i, '')
+        .replace(/WIP/i, '')
+        .replace(/Sub task:.*/i, '')
+        .replace(/3 Sub.*/i, '')
+        .trim();
+      
+      parsedAction = {
+        action: 'create_task',
+        title: crCode,
+        description: cleanDesc || '未設定',
+        due_date: dueDate,
+        status: status,
+        assignee: assignee
+      };
+      
+      console.log('[Frontend Parser] Auto-parsed create task:', parsedAction);
+    }
+    
     // Frontend search: if user input looks like a task name/ID, search locally first
     let searchResult = null;
     console.log(`[Frontend Search] Input: "${userText}", Tasks loaded: ${tasks.length}`);
@@ -219,7 +270,7 @@ export function CantonAiCoachPage() {
     // Use first token (before first space) as keyword for task search
     // This handles multi-line input where first line is task name
     const firstToken = userText.split(/\s/)[0];
-    if (taskNamePattern.test(firstToken)) {
+    if (taskNamePattern.test(firstToken) && !parsedAction) {
       const keyword = firstToken.replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
       console.log(`[Frontend Search] Pattern matched on first token. Keyword: "${keyword}"`);
       const foundTask = tasks.find(t => {
@@ -252,6 +303,19 @@ export function CantonAiCoachPage() {
       console.log(`[Frontend Search] Pattern did NOT match for: "${userText}"`);
     }
     if (!userText || isReplying) return;
+    
+    // If auto-parsed as create_task, execute directly
+    if (parsedAction) {
+      setInput('');
+      if (composerRef.current) composerRef.current.textContent = '';
+      setMessages(current => [...current, { role: 'user', text: userText }]);
+      setIsReplying(true);
+      
+      const result = await executeAction(parsedAction);
+      setMessages(current => [...current, { role: 'ai', text: result }]);
+      setIsReplying(false);
+      return;
+    }
     
     setInput('');
     if (composerRef.current) composerRef.current.textContent = '';
