@@ -5,7 +5,7 @@ import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees,
 import { supabase } from '../lib/supabase';
 import type { Profile, TaskItem } from '../types';
 
-const AI_BRIDGE_URL = 'https://collins-pond-genre-pressure.trycloudflare.com';
+const AI_BRIDGE_URL = 'https://shows-governments-dive-circuits.trycloudflare.com';
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
