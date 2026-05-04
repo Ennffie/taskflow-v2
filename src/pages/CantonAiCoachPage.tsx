@@ -5,7 +5,7 @@ import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees,
 import { supabase } from '../lib/supabase';
 import type { Profile, TaskItem } from '../types';
 
-const AI_BRIDGE_URL = 'https://abu-ongoing-began-william.trycloudflare.com';
+const AI_BRIDGE_URL = 'https://seal-ocean-static-yes.trycloudflare.com';
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ export function CantonAiCoachPage() {
   const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
 
   // Version for debugging cache issues
-  const APP_VERSION = 'v2.1.9-0504-2100';
+  const APP_VERSION = 'v2.2.0-0504-2130';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
