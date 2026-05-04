@@ -5,7 +5,7 @@ import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees,
 import { supabase } from '../lib/supabase';
 import type { Profile, TaskItem } from '../types';
 
-const AI_BRIDGE_URL = 'https://considerable-comm-involved-fragrances.trycloudflare.com';
+const AI_BRIDGE_URL = 'https://pays-which-expect-politicians.trycloudflare.com';
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
