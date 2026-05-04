@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues
-  const APP_VERSION = 'v2.2.7-0505-0218';
+  const APP_VERSION = 'v2.2.8-0505-0222';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -222,7 +222,7 @@ export function CantonAiCoachPage() {
       
       setMessages(current => [...current, { 
         role: 'ai', 
-        text: `✅ 已建立「${data.title}」\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}` 
+        text: `✅ 已建立「${data.title}」\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDateLabel || data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}` 
       }]);
     } catch (e: any) {
       setMessages(current => [...current, { role: 'ai', text: `❌ 建立失敗：${e?.message || 'Unknown error'}` }]);
@@ -274,28 +274,56 @@ export function CantonAiCoachPage() {
       // Description: second line, or everything after first line
       const description = lines[1] || '';
       
-      // Search for due date in all text
-      const dateKeywords: Record<string, string> = {
-        'today': '今日',
-        'tomorrow': '聽日', 
-        '下星期三': '下星期三',
-        '下星期四': '下星期四',
-        '下星期五': '下星期五',
-        'next mon': '下星期一',
-        'next tue': '下星期二',
-        'next wed': '下星期三',
-        'next thu': '下星期四',
-        'next fri': '下星期五',
-        'monday': '下星期一',
-        'tuesday': '下星期二',
-        'wednesday': '下星期三',
-        'thursday': '下星期四',
-        'friday': '下星期五',
+      // Calculate ISO due date from keywords
+      const today = new Date();
+      const isoToday = today.toISOString().split('T')[0];
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const isoTomorrow = tomorrow.toISOString().split('T')[0];
+      
+      // Get next weekday
+      const getNextWeekday = (targetDay: number) => {
+        const d = new Date(today);
+        const currentDay = d.getDay(); // 0=Sun, 1=Mon, ...
+        let diff = targetDay - currentDay;
+        if (diff <= 0) diff += 7;
+        d.setDate(d.getDate() + diff);
+        return d.toISOString().split('T')[0];
       };
+      
+      const dateMap: Record<string, string> = {
+        'today': isoToday,
+        '今日': isoToday,
+        'tomorrow': isoTomorrow,
+        '聽日': isoTomorrow,
+        '明天': isoTomorrow,
+        'next mon': getNextWeekday(1),
+        'next tue': getNextWeekday(2),
+        'next wed': getNextWeekday(3),
+        'next thu': getNextWeekday(4),
+        'next fri': getNextWeekday(5),
+        'monday': getNextWeekday(1),
+        'tuesday': getNextWeekday(2),
+        'wednesday': getNextWeekday(3),
+        'thursday': getNextWeekday(4),
+        'friday': getNextWeekday(5),
+        '下星期一': getNextWeekday(1),
+        '下星期二': getNextWeekday(2),
+        '下星期三': getNextWeekday(3),
+        '下星期四': getNextWeekday(4),
+        '下星期五': getNextWeekday(5),
+        '5 may': '2026-05-05',
+        'may 5': '2026-05-05',
+        '6 may': '2026-05-06',
+        'may 6': '2026-05-06',
+      };
+      
+      let dueDateISO = '';
       let dueDateLabel = '';
-      for (const [kw, label] of Object.entries(dateKeywords)) {
+      for (const [kw, iso] of Object.entries(dateMap)) {
         if (userText.toLowerCase().includes(kw.toLowerCase())) {
-          dueDateLabel = label;
+          dueDateISO = iso;
+          dueDateLabel = kw;
           break;
         }
       }
@@ -327,7 +355,8 @@ export function CantonAiCoachPage() {
       parsedFields = {
         title,
         description,
-        dueDate: dueDateLabel,
+        dueDate: dueDateISO,        // ISO format for DB
+        dueDateLabel: dueDateLabel || '未設定',  // Human readable
         status,
         statusLabel,
         assignee,
