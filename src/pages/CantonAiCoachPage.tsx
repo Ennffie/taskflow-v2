@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask } from '../lib/api';
+import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import type { Profile, TaskItem } from '../types';
 
-// AI Bridge URL - updated 2026-05-04-2145
-const AI_BRIDGE_URL = 'https://seal-ocean-static-yes.trycloudflare.com';
+// Fallback bridge URL if Supabase config is not available
+const FALLBACK_BRIDGE_URL = 'https://counting-hereby-manufacturers-dominant.trycloudflare.com';
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
@@ -15,17 +15,30 @@ export function CantonAiCoachPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>('');
   const [input, setInput] = useState('');
+  const [bridgeUrl, setBridgeUrl] = useState<string>(FALLBACK_BRIDGE_URL);
   const composerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [isReplying, setIsReplying] = useState(false);
   const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
 
   // Version for debugging cache issues
-  const APP_VERSION = 'v2.2.1-0504-2145';
+  const APP_VERSION = 'v2.2.2-0505-0044';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([]);
+
+  // Load bridge URL from Supabase on mount
+  useEffect(() => {
+    fetchBridgeUrl().then(url => {
+      if (url) {
+        console.log('[CantonAI] Bridge URL from Supabase:', url);
+        setBridgeUrl(url);
+      } else {
+        console.log('[CantonAI] Using fallback bridge URL');
+      }
+    });
+  }, []);
 
   const loadTasks = async () => {
     try { 
@@ -262,7 +275,7 @@ export function CantonAiCoachPage() {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 90000); // 90s timeout
       
-      const resp = await fetch(`${AI_BRIDGE_URL}/chat`, {
+      const resp = await fetch(`${bridgeUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: userText, session_id: sessionId, context: getContext(searchResult) }),

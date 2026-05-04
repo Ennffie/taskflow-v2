@@ -2,6 +2,25 @@ import { supabase } from './supabase';
 import { getReportDate } from './date';
 import type { LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
+// Fetch bridge URL from Supabase app_config
+export async function fetchBridgeUrl(): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'bridge_url')
+      .single();
+    if (error) {
+      console.error('[fetchBridgeUrl] error:', error);
+      return null;
+    }
+    return data?.value || null;
+  } catch (e) {
+    console.error('[fetchBridgeUrl] exception:', e);
+    return null;
+  }
+}
+
 // Retry wrapper for Supabase calls to handle lock contention
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
   let lastError: any;
