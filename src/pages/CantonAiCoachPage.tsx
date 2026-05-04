@@ -24,12 +24,19 @@ export function CantonAiCoachPage() {
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([]);
 
   const loadTasks = async () => {
-    try { setTasks(await fetchTasks()); } catch (e) { console.error(e); }
+    try { 
+      const fetchedTasks = await fetchTasks();
+      console.log('[CantonAI] Tasks loaded:', fetchedTasks.length);
+      setTasks(fetchedTasks); 
+    } catch (e) { console.error(e); }
   };
 
   useEffect(() => {
     void loadTasks();
-    fetchProfiles().then(setProfiles).catch(console.error);
+    fetchProfiles().then((fetchedProfiles) => {
+      console.log('[CantonAI] Profiles loaded:', fetchedProfiles.map(p => p.name));
+      setProfiles(fetchedProfiles);
+    }).catch(console.error);
     supabase.auth.getUser().then(({ data }) => {
       const name = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
       setCurrentUserId(data.user?.id ?? null);
