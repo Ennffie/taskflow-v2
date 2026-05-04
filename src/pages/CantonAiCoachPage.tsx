@@ -34,9 +34,12 @@ export function CantonAiCoachPage() {
   useEffect(() => {
     void loadTasks();
     fetchProfiles().then((fetchedProfiles) => {
-      console.log('[CantonAI] Profiles loaded:', fetchedProfiles.map(p => p.name));
+      console.log('[CantonAI] Profiles loaded:', fetchedProfiles.map(p => ({name: p.name, id: p.id})));
+      console.log('[CantonAI] Total profiles:', fetchedProfiles.length);
       setProfiles(fetchedProfiles);
-    }).catch(console.error);
+    }).catch((err) => {
+      console.error('[CantonAI] fetchProfiles ERROR:', err);
+    });
     supabase.auth.getUser().then(({ data }) => {
       const name = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
       setCurrentUserId(data.user?.id ?? null);
