@@ -227,6 +227,23 @@ export function CantonAiCoachPage() {
     setMessages(current => [...current, { role: 'user', text: userText }]);
     setIsReplying(true);
 
+    // If frontend search found a task, show it directly WITHOUT calling AI
+    if (searchResult) {
+      const subtasksText = searchResult.subtasks?.length 
+        ? `\n\n📁 Subtasks (${searchResult.subtasks.length}):\n` + searchResult.subtasks.map((s: any) => `• ${s.title} (${s.status})`).join('\n')
+        : '';
+      const taskInfo = `📋 Task Found：${searchResult.title}\n• Status：${searchResult.status}\n• Due：${searchResult.due_date || '未設定'}\n• Assignees：${searchResult.assignees.join(', ') || '未指派'}${subtasksText}`;
+      setMessages(current => [...current, { role: 'ai', text: taskInfo }]);
+      setIsReplying(false);
+      return;
+    }
+    // If frontend tried to search but found nothing
+    if (taskNamePattern.test(userText) && !searchResult) {
+      setMessages(current => [...current, { role: 'ai', text: `搵唔到「${userText}」呢個 task，係咪想加新 task？` }]);
+      setIsReplying(false);
+      return;
+    }
+
     try {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 90000); // 90s timeout
