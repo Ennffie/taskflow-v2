@@ -20,13 +20,14 @@ export function CantonAiCoachPage() {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [isReplying, setIsReplying] = useState(false);
   const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues
   const APP_VERSION = 'v2.2.2-0505-0044';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
 
   // Load bridge URL from Supabase on mount
   useEffect(() => {
@@ -199,6 +200,42 @@ export function CantonAiCoachPage() {
     });
   };
 
+  const handleConfirmCreate = async (data: any) => {
+    // no-op
+    setIsReplying(true);
+    
+    const assigneeProfile = profiles.find(p => p.name === data.assignee);
+    
+    try {
+      await createTask({
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        priority: 'medium',
+        due_date: data.dueDate || undefined,
+        assignee_ids: assigneeProfile ? [assigneeProfile.id] : [],
+        tags: [],
+        parent_id: null,
+      });
+      
+      await loadTasks();
+      
+      setMessages(current => [...current, { 
+        role: 'ai', 
+        text: `✅ 已建立「${data.title}」\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}` 
+      }]);
+    } catch (e: any) {
+      setMessages(current => [...current, { role: 'ai', text: `❌ 建立失敗：${e?.message || 'Unknown error'}` }]);
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const handleCancelCreate = () => {
+    // no-op
+    setMessages(current => [...current, { role: 'ai', text: '取消咗～有咩再講 💕' }]);
+  };
+
   const send = async (text?: string) => {
     // Verify current user before sending
     const { data: { user } } = await supabase.auth.getUser();
@@ -211,66 +248,117 @@ export function CantonAiCoachPage() {
     
     const userText = (text ?? input).trim();
     
-    // Check if user wants to create a task (contains CRCE/CR + some text)
-    const isCreateIntent = userText.match(/^(CR\d+|CRCE\d+)/i) && !userText.includes('|');
-    let parsedAction = null;
+    // Frontend search setup
+    let searchResult = null;
+    const taskNamePattern = /^(CR\d+|CRCE\d+|task\s*\d+|#\d+)/i;
+    
+    // Smart parsing: check if input starts with CR/CRCE (potential task creation)
+    const crMatch = userText.match(/^(CR\d+|CRCE\d+)/i);
+    const hasPipe = userText.includes('|');
+    const isCreateIntent = crMatch && !hasPipe;
+    
+    let parsedFields: any = null;
     
     if (isCreateIntent) {
-      // Auto-parse: CRCE1649 testing case... Next Fri Enfield WIP 3 Sub task:Web, app, kiosk
-      const crMatch = userText.match(/^(CR\d+|CRCE\d+)/i);
-      const crCode = crMatch ? crMatch[1] : '';
+      // Parse multi-line or single-line input
+      const lines = userText.split('\n').map(l => l.trim()).filter(Boolean);
+      const crCode = crMatch[1];
       
-      // Extract due date keywords
-      const dateKeywords = ['today', 'tomorrow', '下星期', '下週', 'next week', 'next mon', 'next tue', 'next wed', 'next thu', 'next fri', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-      let dueDate = '';
-      for (const kw of dateKeywords) {
+      // Title: first line (or CR code + first few words)
+      const firstLine = lines[0] || '';
+      const title = firstLine.length > crCode.length + 1 
+        ? firstLine  // full first line as title
+        : crCode;    // just the CR code
+      
+      // Description: second line, or everything after first line
+      const description = lines[1] || '';
+      
+      // Search for due date in all text
+      const dateKeywords: Record<string, string> = {
+        'today': '今日',
+        'tomorrow': '聽日', 
+        '下星期三': '下星期三',
+        '下星期四': '下星期四',
+        '下星期五': '下星期五',
+        'next mon': '下星期一',
+        'next tue': '下星期二',
+        'next wed': '下星期三',
+        'next thu': '下星期四',
+        'next fri': '下星期五',
+        'monday': '下星期一',
+        'tuesday': '下星期二',
+        'wednesday': '下星期三',
+        'thursday': '下星期四',
+        'friday': '下星期五',
+      };
+      let dueDateLabel = '';
+      for (const [kw, label] of Object.entries(dateKeywords)) {
         if (userText.toLowerCase().includes(kw.toLowerCase())) {
-          dueDate = kw;
+          dueDateLabel = label;
           break;
         }
       }
       
-      // Extract assignee from profiles
-      const assignee = profiles.find(p => 
-        userText.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
-      )?.name || currentUserName;
+      // Search for assignee
+      const assignee = profiles.find(p => {
+        const firstName = p.name.toLowerCase().split(' ')[0];
+        return userText.toLowerCase().includes(firstName) && firstName.length > 2;
+      })?.name || currentUserName;
       
-      // Extract status keywords
+      // Status
       let status = 'todo';
-      if (userText.toLowerCase().includes('wip') || userText.toLowerCase().includes('in progress')) status = 'in_progress';
-      if (userText.toLowerCase().includes('done') || userText.toLowerCase().includes('完成')) status = 'done';
+      let statusLabel = '待辦';
+      if (userText.toLowerCase().includes('wip') || userText.toLowerCase().includes('in progress')) {
+        status = 'in_progress'; 
+        statusLabel = '進行中';
+      }
+      if (userText.toLowerCase().includes('done') || userText.toLowerCase().includes('完成')) {
+        status = 'done';
+        statusLabel = '完成';
+      }
       
-      // Everything after CR code is description
-      const afterCR = userText.substring(crCode.length).trim();
-      const cleanDesc = afterCR
-        .replace(/Next Fri/i, '')
-        .replace(/Enfield/i, '')
-        .replace(/WIP/i, '')
-        .replace(/Sub task:.*/i, '')
-        .replace(/3 Sub.*/i, '')
-        .trim();
+      // Subtasks (extract "Sub task: xxx, yyy" pattern)
+      const subtaskMatch = userText.match(/Sub task[s]?[：:]\s*(.+)/i);
+      const subtasks = subtaskMatch 
+        ? subtaskMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean)
+        : [];
       
-      parsedAction = {
-        action: 'create_task',
-        title: crCode,
-        description: cleanDesc || '未設定',
-        due_date: dueDate,
-        status: status,
-        assignee: assignee
+      parsedFields = {
+        title,
+        description,
+        dueDate: dueDateLabel,
+        status,
+        statusLabel,
+        assignee,
+        subtasks
       };
       
-      console.log('[Frontend Parser] Auto-parsed create task:', parsedAction);
+      // Don't execute yet - show confirmation
+      setInput('');
+      if (composerRef.current) composerRef.current.textContent = '';
+      setMessages(current => [...current, 
+        { role: 'user', text: userText },
+        { 
+          role: 'ai', 
+          text: `📋 **確認新增 Task**\n\n` +
+            `**Task 名稱：** ${title}\n` +
+            `${description ? `**Description：** ${description}\n` : ''}` +
+            `${dueDateLabel ? `**到期：** ${dueDateLabel}\n` : ''}` +
+            `**負責人：** ${assignee}\n` +
+            `**Status：** ${statusLabel}\n` +
+            `${subtasks.length ? `**Subtasks：** ${subtasks.join('、')}\n` : ''}` +
+            `\n確定要加呢個 task 嗎？`,
+          _action: 'confirm_create',
+          _data: parsedFields
+        }
+      ]);
+      return;
     }
-    
-    // Frontend search: if user input looks like a task name/ID, search locally first
-    let searchResult = null;
-    console.log(`[Frontend Search] Input: "${userText}", Tasks loaded: ${tasks.length}`);
-    const taskNamePattern = /^(CR\d+|CRCE\d+|task\s*\d+|#\d+)/i;
-    
+
     // Use first token (before first space) as keyword for task search
     // This handles multi-line input where first line is task name
     const firstToken = userText.split(/\s/)[0];
-    if (taskNamePattern.test(firstToken) && !parsedAction) {
+    if (taskNamePattern.test(firstToken) && !parsedFields) {
       const keyword = firstToken.replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
       console.log(`[Frontend Search] Pattern matched on first token. Keyword: "${keyword}"`);
       const foundTask = tasks.find(t => {
@@ -303,41 +391,6 @@ export function CantonAiCoachPage() {
       console.log(`[Frontend Search] Pattern did NOT match for: "${userText}"`);
     }
     if (!userText || isReplying) return;
-    
-    // If auto-parsed as create_task, execute directly
-    if (parsedAction) {
-      setInput('');
-      if (composerRef.current) composerRef.current.textContent = '';
-      setMessages(current => [...current, { role: 'user', text: userText }]);
-      setIsReplying(true);
-      
-      const result = await executeAction(parsedAction);
-      setMessages(current => [...current, { role: 'ai', text: result }]);
-      setIsReplying(false);
-      return;
-    }
-    
-    setInput('');
-    if (composerRef.current) composerRef.current.textContent = '';
-    setMessages(current => [...current, { role: 'user', text: userText }]);
-    setIsReplying(true);
-
-    // If frontend search found a task, show it directly WITHOUT calling AI
-    if (searchResult) {
-      const subtasksText = searchResult.subtasks?.length 
-        ? `\n\n📁 Subtasks (${searchResult.subtasks.length}):\n` + searchResult.subtasks.map((s: any) => `• ${s.title} (${s.status})`).join('\n')
-        : '';
-      const taskInfo = `📋 Task Found：${searchResult.title}\n• Status：${searchResult.status}\n• Due：${searchResult.due_date || '未設定'}\n• Assignees：${searchResult.assignees.join(', ') || '未指派'}${subtasksText}`;
-      setMessages(current => [...current, { role: 'ai', text: taskInfo }]);
-      setIsReplying(false);
-      return;
-    }
-    // If frontend tried to search but found nothing
-    if (taskNamePattern.test(userText) && !searchResult) {
-      setMessages(current => [...current, { role: 'ai', text: `搵唔到「${userText}」呢個 task，係咪想加新 task？` }]);
-      setIsReplying(false);
-      return;
-    }
 
     try {
       const controller = new AbortController();
@@ -431,6 +484,44 @@ export function CantonAiCoachPage() {
               boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' 
             }}>
               {renderMessage(message.text, message.role)}
+              
+              {/* Confirmation buttons for create task */}
+              {message._action === 'confirm_create' && message._data && (
+                <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+                  <button 
+                    onClick={() => handleConfirmCreate(message._data)}
+                    style={{ 
+                      flex: 1, 
+                      background: '#0f172a', 
+                      color: '#fff', 
+                      border: 'none', 
+                      borderRadius: 12, 
+                      padding: '10px 16px', 
+                      fontSize: 15, 
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✅ Confirm 建立
+                  </button>
+                  <button 
+                    onClick={handleCancelCreate}
+                    style={{ 
+                      flex: 1, 
+                      background: '#f1f5f9', 
+                      color: '#64748b', 
+                      border: '1px solid #e2e8f0', 
+                      borderRadius: 12, 
+                      padding: '10px 16px', 
+                      fontSize: 15, 
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ❌ Cancel
+                  </button>
+                </div>
+              )}
             </div>
           ))}
           {/* Welcome typing message */}
