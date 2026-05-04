@@ -215,9 +215,13 @@ export function CantonAiCoachPage() {
     let searchResult = null;
     console.log(`[Frontend Search] Input: "${userText}", Tasks loaded: ${tasks.length}`);
     const taskNamePattern = /^(CR\d+|CRCE\d+|task\s*\d+|#\d+)/i;
-    if (taskNamePattern.test(userText)) {
-      const keyword = userText.replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
-      console.log(`[Frontend Search] Pattern matched. Keyword: "${keyword}"`);
+    
+    // Use first token (before first space) as keyword for task search
+    // This handles multi-line input where first line is task name
+    const firstToken = userText.split(/\s/)[0];
+    if (taskNamePattern.test(firstToken)) {
+      const keyword = firstToken.replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
+      console.log(`[Frontend Search] Pattern matched on first token. Keyword: "${keyword}"`);
       const foundTask = tasks.find(t => {
         const titleMatch = t.title.toLowerCase().includes(keyword);
         const idMatch = t.id.toLowerCase() === keyword;
@@ -417,7 +421,12 @@ export function CantonAiCoachPage() {
                 role="textbox"
                 aria-label="AI message"
                 onInput={(e) => setInput(e.currentTarget.textContent ?? '')}
-                onKeyDown={() => {}}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    // Allow natural newline insertion in contentEditable
+                    // Don't preventDefault - let browser insert <br>
+                  }
+                }}
                 style={{ minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', WebkitUserSelect: 'text', userSelect: 'text' }}
               />
             </div>
