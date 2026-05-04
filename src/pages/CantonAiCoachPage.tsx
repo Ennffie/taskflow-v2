@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues
-  const APP_VERSION = 'v2.2.2-0505-0044';
+  const APP_VERSION = 'v2.2.7-0505-0218';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -253,7 +253,8 @@ export function CantonAiCoachPage() {
     const taskNamePattern = /^(CR\d+|CRCE\d+|task\s*\d+|#\d+)/i;
     
     // Smart parsing: check if input starts with CR/CRCE (potential task creation)
-    const crMatch = userText.match(/^(CR\d+|CRCE\d+)/i);
+    // Also detect patterns like "ok:CR152", "CR152..." anywhere in text
+    const crMatch = userText.match(/^(?:ok[:：]\s*)?(CR\d+|CRCE\d+)/i) || userText.match(/\b(CR\d+|CRCE\d+)\b/i);
     const hasPipe = userText.includes('|');
     const isCreateIntent = crMatch && !hasPipe;
     
@@ -585,7 +586,19 @@ export function CantonAiCoachPage() {
                 contentEditable={!isReplying}
                 role="textbox"
                 aria-label="AI message"
-                onInput={(e) => setInput(e.currentTarget.textContent ?? '')}
+                onInput={(e) => {
+                  // Convert <br>, <div> to newlines for contentEditable
+                  const html = e.currentTarget.innerHTML;
+                  const text = html
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<div[^>]*>/gi, '\n')
+                    .replace(/<\/div>/gi, '')
+                    .replace(/<p[^>]*>/gi, '\n')
+                    .replace(/<\/p>/gi, '')
+                    .replace(/<[^>]+>/g, '')
+                    .replace(/&nbsp;/g, ' ');
+                  setInput(text);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     // Allow natural newline insertion in contentEditable
