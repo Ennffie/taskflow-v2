@@ -22,11 +22,19 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0012';
+  const APP_VERSION = 'v2.2.8-0506-0018';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
+  const [typedMessageMeta, setTypedMessageMeta] = useState<{ _action?: string; _data?: any } | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
+
+  const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
+    setTypedMessageMeta(meta ?? null);
+    setTypingTarget(text);
+    setTypingIndex(0);
+    setIsTyping(true);
+  };
 
   // Load bridge URL from Supabase on mount
   useEffect(() => {
@@ -64,9 +72,7 @@ export function CantonAiCoachPage() {
       // Start welcome typewriter after getting user name
       setTimeout(() => {
         const welcome = `Hi ${name.split(' ')[0]}~\n我係Silly，有咩可以直接問我…`;
-        setTypingTarget(welcome);
-        setTypingIndex(0);
-        setIsTyping(true);
+        startTypingMessage(welcome);
       }, 300);
     }).catch(console.error);
   }, []);
@@ -75,10 +81,11 @@ export function CantonAiCoachPage() {
     if (!isTyping || typingIndex >= typingTarget.length) {
       // Typing finished - add message to messages array
       if (isTyping && typingIndex >= typingTarget.length && typingTarget) {
-        setMessages(current => [...current, { role: 'ai', text: typingTarget }]);
+        setMessages(current => [...current, { role: 'ai', text: typingTarget, ...(typedMessageMeta ?? {}) }]);
         setIsTyping(false);
         setTypingTarget('');
         setTypingIndex(0);
+        setTypedMessageMeta(null);
       }
       return;
     }
@@ -86,7 +93,7 @@ export function CantonAiCoachPage() {
       setTypingIndex(prev => prev + 1);
     }, 18);
     return () => clearTimeout(timer);
-  }, [isTyping, typingIndex, typingTarget]);
+  }, [isTyping, typingIndex, typingTarget, typedMessageMeta]);
 
   useEffect(() => {
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
@@ -219,12 +226,9 @@ export function CantonAiCoachPage() {
       
       await loadTasks();
       
-      setMessages(current => [...current, { 
-        role: 'ai', 
-        text: `✅ 已建立「${data.title}」\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDateLabel || data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}` 
-      }]);
+      startTypingMessage(`✅ 已建立「${data.title}」\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDateLabel || data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}`);
     } catch (e: any) {
-      setMessages(current => [...current, { role: 'ai', text: `❌ 建立失敗：${e?.message || 'Unknown error'}` }]);
+      startTypingMessage(`❌ 建立失敗：${e?.message || 'Unknown error'}`);
     } finally {
       setIsReplying(false);
     }
@@ -232,7 +236,7 @@ export function CantonAiCoachPage() {
 
   const handleCancelCreate = () => {
     // no-op
-    setMessages(current => [...current, { role: 'ai', text: '取消咗～有咩再講 💕' }]);
+    startTypingMessage('取消咗～有咩再講 💕');
   };
 
   const send = async (text?: string) => {
@@ -417,24 +421,22 @@ export function CantonAiCoachPage() {
 
         // Deterministic check-task flow: if user mentions CR code and doesn't explicitly create, show task first.
         if (crMatch && !explicitCreateIntent && (checkIntent || !hasPipe)) {
-          setMessages(current => [...current, { role: 'user', text: userText }, {
-            role: 'ai',
-            text: `搵到「${foundTask.title}」\n\n• Status：${foundTask.status}\n• Progress：${foundTask.progress_percent ?? 0}%\n• 到期：${foundTask.due_date || '未設定'}\n• 負責：${foundTask.assignees.map(a => a.name).join(', ') || '未指派'}\n\n想下一步做咩？`,
-            _action: 'task_actions',
-            _data: { taskId: foundTask.id, title: foundTask.title }
-          }]);
+          setMessages(current => [...current, { role: 'user', text: userText }]);
+          startTypingMessage(
+            `搵到「${foundTask.title}」\n\n• Status：${foundTask.status}\n• Progress：${foundTask.progress_percent ?? 0}%\n• 到期：${foundTask.due_date || '未設定'}\n• 負責：${foundTask.assignees.map(a => a.name).join(', ') || '未指派'}\n\n想下一步做咩？`,
+            { _action: 'task_actions', _data: { taskId: foundTask.id, title: foundTask.title } }
+          );
           setInput('');
           return;
         }
       } else {
         console.log(`[Frontend Search] No task found matching "${keyword}"`);
         if (crMatch && !explicitCreateIntent) {
-          setMessages(current => [...current, { role: 'user', text: userText }, {
-            role: 'ai',
-            text: `搵唔到 ${crMatch[1]}。\n\n你想我點做？`,
-            _action: 'task_not_found',
-            _data: { code: crMatch[1], originalText: userText }
-          }]);
+          setMessages(current => [...current, { role: 'user', text: userText }]);
+          startTypingMessage(
+            `搵唔到 ${crMatch[1]}。\n\n你想我點做？`,
+            { _action: 'task_not_found', _data: { code: crMatch[1], originalText: userText } }
+          );
           setInput('');
           return;
         }
@@ -473,15 +475,10 @@ export function CantonAiCoachPage() {
 
       if (!resp.ok || upstreamAuthBroken) {
         if (searchResult) {
-          setTypingTarget(`我搵到 task，但 AI backend 而家登入有問題，所以先俾你睇基本資料：\n\n• Task：${searchResult.title}\n• Status：${searchResult.status}\n• Progress：${searchResult.progress ?? 0}%\n• 到期：${searchResult.due_date || '未設定'}\n• 負責：${searchResult.assignees?.join(', ') || '未指派'}\n\n你可以先用下面大 button 繼續。`);
-          setTypingIndex(0);
-          setIsTyping(true);
-          setMessages(current => [...current, {
-            role: 'ai',
-            text: `搵到「${searchResult.title}」\n\n• Status：${searchResult.status}\n• Progress：${searchResult.progress ?? 0}%\n• 到期：${searchResult.due_date || '未設定'}\n• 負責：${searchResult.assignees?.join(', ') || '未指派'}\n\n想下一步做咩？`,
-            _action: 'task_actions',
-            _data: { taskId: searchResult.id, title: searchResult.title }
-          }]);
+          startTypingMessage(
+            `搵到「${searchResult.title}」\n\n• Status：${searchResult.status}\n• Progress：${searchResult.progress ?? 0}%\n• 到期：${searchResult.due_date || '未設定'}\n• 負責：${searchResult.assignees?.join(', ') || '未指派'}\n\n想下一步做咩？`,
+            { _action: 'task_actions', _data: { taskId: searchResult.id, title: searchResult.title } }
+          );
           return;
         }
 
@@ -523,22 +520,17 @@ export function CantonAiCoachPage() {
       
       // Final reply - use typewriter effect
       const finalReply = [data.reply, actionResult].filter(Boolean).join('\n\n');
-      // Remove "諗緊…" placeholder
       setMessages(current => current.filter(m => m.text !== '諗緊…'));
-      setTypingTarget(finalReply || '收到。');
-      setTypingIndex(0);
-      setIsTyping(true);
+      startTypingMessage(finalReply || '收到。');
       
     } catch (error: any) {
       if (error.name === 'AbortError') {
         setMessages(current => current.filter(m => m.text !== '諗緊…'));
-        setTypingTarget('AI 諗得太耐，可能網絡慢或者伺服器忙。請再試一次，或者打短啲嘅問題。');
+        startTypingMessage('AI 諗得太耐，可能網絡慢或者伺服器忙。請再試一次，或者打短啲嘅問題。');
       } else {
         setMessages(current => current.filter(m => m.text !== '諗緊…'));
-        setTypingTarget(`${error?.message || 'AI 暫時無法回應，請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險`);
+        startTypingMessage(`${error?.message || 'AI 暫時無法回應，請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險`);
       }
-      setTypingIndex(0);
-      setIsTyping(true);
     } finally {
       setIsReplying(false);
     }
@@ -683,9 +675,7 @@ export function CantonAiCoachPage() {
 
                 if (preset === '我要加Task') {
                   setMessages(current => [...current, { role: 'user', text: preset }]);
-                  setTypingTarget('好～直接講 task 資料，格式：\n「Task名 | Description | Due Date | 負責人 | Status」\n\n例如：「CRCE9876 test case | Make some fun | 下星期三 | Enfield | todo」');
-                  setTypingIndex(0);
-                  setIsTyping(true);
+                  startTypingMessage('好～直接講 task 資料，格式：\n「Task名 | Description | Due Date | 負責人 | Status」\n\n例如：「CRCE9876 test case | Make some fun | 下星期三 | Enfield | todo」');
                 } else {
                   void send(preset);
                 }
