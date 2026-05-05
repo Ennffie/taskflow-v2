@@ -595,17 +595,14 @@ export function CantonAiCoachPage() {
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
             {['退下', '有咩未交？', '我要加Task', '今日重點', 'My Task list'].map(preset => (
               <button key={preset} onClick={() => {
-                // 1) 先加 user message 到右邊
-                setMessages(current => [...current, { role: 'user', text: preset }]);
-
                 if (preset === '退下') {
                   navigate('/canton-mode');
                   return;
                 }
 
                 if (preset === '我要加Task') {
-                  // Show guided creation hint
                   setMessages(current => [...current,
+                    { role: 'user', text: preset },
                     { role: 'ai', text: '好～直接講 task 資料，格式：\n「Task名 | Description | Due Date | 負責人 | Status」\n\n例如：「CRCE9876 test case | Make some fun | 下星期三 | Enfield | todo」' }
                   ]);
                 } else {
