@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0153';
+  const APP_VERSION = 'v2.2.8-0506-0204';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -270,6 +270,7 @@ export function CantonAiCoachPage() {
     }
     
     const userText = (text ?? input).trim();
+    setDueDatePicker(null);
     
     // Frontend search setup
     let searchResult = null;
@@ -727,6 +728,7 @@ export function CantonAiCoachPage() {
                     ['Mark完成', `${message._data.title} mark 完成`],
                   ].map(([label, prompt]) => (
                     <button key={label} onClick={() => {
+                      setDueDatePicker(null);
                       if (label === '今日做咗乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'today' });
                       if (label === '明天做乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'tomorrow' });
                       if (label === 'Blocker') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'blocker' });
@@ -789,24 +791,25 @@ export function CantonAiCoachPage() {
               <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }`}</style>
             </div>
           )}
-          {dueDatePicker && (
-            <div style={{ alignSelf: 'stretch', background: '#fff', borderRadius: 18, padding: 16, boxShadow: '0 8px 24px rgba(148,163,184,0.12)', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontWeight: 900, color: '#0f172a', marginBottom: 10 }}>改 Due date · {dueDatePicker.title}</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, new Date().toISOString().slice(0,10))} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>今日</button>
-                <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); applyDueDate(dueDatePicker.taskId, dueDatePicker.title, d.toISOString().slice(0,10)); }} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>聽日</button>
-                <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, null)} style={{ border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>清除日期</button>
-              </div>
-              <input type="date" value={dueDatePicker.value} onChange={(e) => setDueDatePicker(current => current ? { ...current, value: e.target.value } : current)} style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 12, padding: '12px 14px', fontSize: 16, marginBottom: 12 }} />
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, dueDatePicker.value || null)} style={{ flex: 1, background: '#0f172a', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 14px', fontWeight: 800 }}>Confirm</button>
-                <button onClick={() => setDueDatePicker(null)} style={{ flex: 1, background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 14px', fontWeight: 800 }}>Cancel</button>
-              </div>
-            </div>
-          )}
           <div ref={chatEndRef} />
         </div>
       </main>
+
+      {dueDatePicker && (
+        <div style={{ position: 'fixed', left: 12, right: 12, bottom: 'calc(96px + env(safe-area-inset-bottom))', zIndex: 30, background: '#fff', borderRadius: 18, padding: 16, boxShadow: '0 20px 40px rgba(15,23,42,0.18)', border: '1px solid #e2e8f0' }}>
+          <div style={{ fontWeight: 900, color: '#0f172a', marginBottom: 10 }}>改 Due date · {dueDatePicker.title}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, new Date().toISOString().slice(0,10))} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>今日</button>
+            <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); applyDueDate(dueDatePicker.taskId, dueDatePicker.title, d.toISOString().slice(0,10)); }} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>聽日</button>
+            <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, null)} style={{ border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>清除日期</button>
+          </div>
+          <input type="date" value={dueDatePicker.value} onChange={(e) => setDueDatePicker(current => current ? { ...current, value: e.target.value } : current)} style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 12, padding: '12px 14px', fontSize: 16, marginBottom: 12 }} />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, dueDatePicker.value || null)} style={{ flex: 1, background: '#0f172a', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 14px', fontWeight: 800 }}>Confirm</button>
+            <button onClick={() => setDueDatePicker(null)} style={{ flex: 1, background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 14px', fontWeight: 800 }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
