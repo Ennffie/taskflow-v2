@@ -22,8 +22,8 @@ export function CantonAiCoachPage() {
   const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   // pendingConfirm removed - using message._action instead
 
-  // Version for debugging cache issues
-  const APP_VERSION = 'v2.2.8-0505-0222';
+  // Version for debugging cache issues - updated 0505-0830
+  const APP_VERSION = 'v2.2.8-0505-0802';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -590,18 +590,25 @@ export function CantonAiCoachPage() {
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {['有咩未交？', '我要加Task', '今日重點', 'My Task list'].map(preset => (
+            {['退下', '有咩未交？', '我要加Task', '今日重點', 'My Task list'].map(preset => (
               <button key={preset} onClick={() => {
+                // 1) 先加 user message 到右邊
+                setMessages(current => [...current, { role: 'user', text: preset }]);
+
+                if (preset === '退下') {
+                  navigate('/canton-mode');
+                  return;
+                }
+
                 if (preset === '我要加Task') {
                   // Show guided creation hint
-                  setMessages(current => [...current, 
-                    { role: 'user', text: '我要加Task' },
+                  setMessages(current => [...current,
                     { role: 'ai', text: '好～直接講 task 資料，格式：\n「Task名 | Description | Due Date | 負責人 | Status」\n\n例如：「CRCE9876 test case | Make some fun | 下星期三 | Enfield | todo」' }
                   ]);
                 } else {
                   void send(preset);
                 }
-              }} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: preset === '我要加Task' ? '#0f172a' : '#fff', color: preset === '我要加Task' ? '#fff' : '#0369a1', borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>
+              }} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: preset === '我要加Task' ? '#0f172a' : (preset === '退下' ? '#fff1f2' : '#fff'), color: preset === '我要加Task' ? '#fff' : (preset === '退下' ? '#be123c' : '#0369a1'), borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>
                 {preset}
               </button>
             ))}
