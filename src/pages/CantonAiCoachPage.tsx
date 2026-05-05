@@ -23,13 +23,14 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0118';
+  const APP_VERSION = 'v2.2.8-0506-0135';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [typedMessageMeta, setTypedMessageMeta] = useState<{ _action?: string; _data?: any } | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
   const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' } | null>(null);
+  const [dueDatePicker, setDueDatePicker] = useState<{ taskId: string; title: string; value: string } | null>(null);
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -239,6 +240,23 @@ export function CantonAiCoachPage() {
   const handleCancelCreate = () => {
     // no-op
     startTypingMessage('取消咗～有咩再講 💕');
+  };
+
+  const applyDueDate = async (taskId: string, title: string, dueDate: string | null) => {
+    setDueDatePicker(null);
+    setIsReplying(true);
+    try {
+      await updateTask(taskId, { due_date: dueDate || null });
+      await loadTasks();
+      startTypingMessage(`✅ 已更新「${title}」\n\n• Due date：${dueDate || '已清除'}\n\n仲想改其他嘢嗎？`, {
+        _action: 'task_actions',
+        _data: { taskId, title }
+      });
+    } catch (e: any) {
+      startTypingMessage(`❌ 更新 Due date 失敗：${e?.message || 'Unknown error'}`);
+    } finally {
+      setIsReplying(false);
+    }
   };
 
   const send = async (text?: string) => {
@@ -701,13 +719,23 @@ export function CantonAiCoachPage() {
                     ['明天做乜', `${message._data.title} 明天focus：`],
                     ['Blocker', `${message._data.title} blocker：`],
                     ['改進度', `${message._data.title} 進度改做：`],
+                    ['改Due date', `${message._data.title} 改 due date`],
                     ['Mark完成', `${message._data.title} mark 完成`],
                   ].map(([label, prompt]) => (
                     <button key={label} onClick={() => {
                       if (label === '今日做咗乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'today' });
                       if (label === '明天做乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'tomorrow' });
                       if (label === 'Blocker') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'blocker' });
-                      if (label === '改進度' || label === 'Mark完成') setPendingTaskAction(null);
+                      if (label === '改進度' || label === 'Mark完成') {
+                        setPendingTaskAction(null);
+                        setInput(prompt);
+                        return;
+                      }
+                      if (label === '改Due date') {
+                        setPendingTaskAction(null);
+                        setDueDatePicker({ taskId: message._data.taskId, title: message._data.title, value: '' });
+                        return;
+                      }
                       setInput(prompt);
                     }} style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
                       {label}
@@ -755,6 +783,21 @@ export function CantonAiCoachPage() {
                 verticalAlign: 'text-bottom'
               }} />
               <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }`}</style>
+            </div>
+          )}
+          {dueDatePicker && (
+            <div style={{ alignSelf: 'stretch', background: '#fff', borderRadius: 18, padding: 16, boxShadow: '0 8px 24px rgba(148,163,184,0.12)', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontWeight: 900, color: '#0f172a', marginBottom: 10 }}>改 Due date · {dueDatePicker.title}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, new Date().toISOString().slice(0,10))} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>今日</button>
+                <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); applyDueDate(dueDatePicker.taskId, dueDatePicker.title, d.toISOString().slice(0,10)); }} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>聽日</button>
+                <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, null)} style={{ border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', borderRadius: 999, padding: '8px 12px', fontWeight: 800 }}>清除日期</button>
+              </div>
+              <input type="date" value={dueDatePicker.value} onChange={(e) => setDueDatePicker(current => current ? { ...current, value: e.target.value } : current)} style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 12, padding: '12px 14px', fontSize: 16, marginBottom: 12 }} />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, dueDatePicker.value || null)} style={{ flex: 1, background: '#0f172a', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 14px', fontWeight: 800 }}>Confirm</button>
+                <button onClick={() => setDueDatePicker(null)} style={{ flex: 1, background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 14px', fontWeight: 800 }}>Cancel</button>
+              </div>
             </div>
           )}
           <div ref={chatEndRef} />
