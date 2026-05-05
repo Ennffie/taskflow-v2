@@ -84,7 +84,7 @@ export function CantonAiCoachPage() {
     }
     const timer = setTimeout(() => {
       setTypingIndex(prev => prev + 1);
-    }, 35);
+    }, 18);
     return () => clearTimeout(timer);
   }, [isTyping, typingIndex, typingTarget]);
 
@@ -440,10 +440,6 @@ export function CantonAiCoachPage() {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       
-      // Show typing indicator
-      setMessages(current => [...current, { role: 'ai', text: '諗緊…' }]);
-      await new Promise(r => window.setTimeout(r, 500));
-      
       // Execute action if any - but only if parameters are valid
       let actionResult = '';
       if (data.action && data.action.action) {
@@ -454,7 +450,6 @@ export function CantonAiCoachPage() {
           (act.action === 'delete_task' && (act.task_id || act.task_ref))
         );
         if (isValid) {
-          setMessages(current => current.map((m, i) => i === current.length - 1 ? { ...m, text: '處理緊…' } : m));
           actionResult = await executeAction(data.action);
         }
       }
@@ -475,16 +470,24 @@ export function CantonAiCoachPage() {
         actionResult = results.join('\n\n');
       }
       
-      // Final reply
+      // Final reply - use typewriter effect
       const finalReply = [data.reply, actionResult].filter(Boolean).join('\n\n');
-      setMessages(current => current.map((m, i) => i === current.length - 1 ? { ...m, text: finalReply || '收到。' } : m));
+      // Remove "諗緊…" placeholder
+      setMessages(current => current.filter(m => m.text !== '諗緊…'));
+      setTypingTarget(finalReply || '收到。');
+      setTypingIndex(0);
+      setIsTyping(true);
       
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        setMessages(current => [...current, { role: 'ai', text: 'AI 諗得太耐，可能網絡慢或者伺服器忙。請再試一次，或者打短啲嘅問題。' }]);
+        setMessages(current => current.filter(m => m.text !== '諗緊…'));
+        setTypingTarget('AI 諗得太耐，可能網絡慢或者伺服器忙。請再試一次，或者打短啲嘅問題。');
       } else {
-        setMessages(current => [...current, { role: 'ai', text: `AI 暫時無法回應：${error?.message || '請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險` }]);
+        setMessages(current => current.filter(m => m.text !== '諗緊…'));
+        setTypingTarget(`AI 暫時無法回應：${error?.message || '請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險`);
       }
+      setTypingIndex(0);
+      setIsTyping(true);
     } finally {
       setIsReplying(false);
     }
@@ -601,10 +604,10 @@ export function CantonAiCoachPage() {
                 }
 
                 if (preset === '我要加Task') {
-                  setMessages(current => [...current,
-                    { role: 'user', text: preset },
-                    { role: 'ai', text: '好～直接講 task 資料，格式：\n「Task名 | Description | Due Date | 負責人 | Status」\n\n例如：「CRCE9876 test case | Make some fun | 下星期三 | Enfield | todo」' }
-                  ]);
+                  setMessages(current => [...current, { role: 'user', text: preset }]);
+                  setTypingTarget('好～直接講 task 資料，格式：\n「Task名 | Description | Due Date | 負責人 | Status」\n\n例如：「CRCE9876 test case | Make some fun | 下星期三 | Enfield | todo」');
+                  setTypingIndex(0);
+                  setIsTyping(true);
                 } else {
                   void send(preset);
                 }
