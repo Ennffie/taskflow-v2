@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0230';
+  const APP_VERSION = 'v2.2.8-0506-0237';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -820,14 +820,20 @@ export function CantonAiCoachPage() {
 
       {dueDatePicker && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setDueDatePicker(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', minHeight: '40vh', background: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '14px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -12px 40px rgba(15,23,42,0.2)' }}>
-            <div style={{ width: 42, height: 5, borderRadius: 999, background: '#cbd5e1', margin: '0 auto 14px' }} />
-            <div style={{ fontWeight: 900, color: '#0f172a', marginBottom: 12, fontSize: 20 }}>改 Due date</div>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', minHeight: '46vh', background: 'linear-gradient(180deg, #fffafc 0%, #ffffff 18%)', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: '10px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -12px 40px rgba(15,23,42,0.2)', borderTop: '1px solid rgba(251,207,232,0.8)' }}>
+            <div style={{ width: 42, height: 5, borderRadius: 999, background: '#cbd5e1', margin: '0 auto 10px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <img src="/taskflow-v2/hamster-mascot.jpg" alt="hamster" style={{ width: 48, height: 48, borderRadius: 999, objectFit: 'cover', border: '3px solid #fce7f3', boxShadow: '0 6px 16px rgba(244,114,182,0.18)' }} />
+              <div>
+                <div style={{ fontWeight: 900, color: '#0f172a', fontSize: 20 }}>改 Due date</div>
+                <div style={{ color: '#be185d', fontWeight: 700, fontSize: 13 }}>揀個好日俾佢啦～</div>
+              </div>
+            </div>
             <div style={{ color: '#475569', fontWeight: 700, marginBottom: 14 }}>{dueDatePicker.title}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-              <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, new Date().toISOString().slice(0,10))} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '10px 14px', fontWeight: 800 }}>今日</button>
-              <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); applyDueDate(dueDatePicker.taskId, dueDatePicker.title, d.toISOString().slice(0,10)); }} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '10px 14px', fontWeight: 800 }}>聽日</button>
-              <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, null)} style={{ border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', borderRadius: 999, padding: '10px 14px', fontWeight: 800 }}>清除日期</button>
+              <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, new Date().toISOString().slice(0,10))} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '10px 14px', fontWeight: 800 }}>☀️ 今日</button>
+              <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); applyDueDate(dueDatePicker.taskId, dueDatePicker.title, d.toISOString().slice(0,10)); }} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', borderRadius: 999, padding: '10px 14px', fontWeight: 800 }}>🌤️ 聽日</button>
+              <button onClick={() => applyDueDate(dueDatePicker.taskId, dueDatePicker.title, null)} style={{ border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', borderRadius: 999, padding: '10px 14px', fontWeight: 800 }}>🧹 清除日期</button>
             </div>
             <input type="date" aria-label="其他好日" title="其他好日" value={dueDatePicker.value} onChange={(e) => setDueDatePicker(current => current ? { ...current, value: e.target.value } : current)} style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 14, padding: '14px 16px', fontSize: 18, marginBottom: 14, background: '#fff' }} />
             <div style={{ color: '#94a3b8', fontSize: 14, fontWeight: 700, marginTop: -6, marginBottom: 14 }}>📅 其他好日</div>
