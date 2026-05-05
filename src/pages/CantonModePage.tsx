@@ -157,7 +157,7 @@ export function CantonModePage() {
           <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, paddingTop: 8 }}>
             <div>
               <h1 style={{ margin: 0, color: '#0f172a', fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em' }}>{(() => { const g = getGreeting(); return `${g.icon} ${g.text}`; })()}</h1>
-              <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}>用真實 task data 幫你睇：邊啲浮面、邊啲唔好漏。</p>
+              <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}></p>
             </div>
             <button onClick={() => void loadTasks()} style={{ width: 44, height: 44, border: '1px solid #e2e8f0', background: '#fff', borderRadius: 16, display: 'grid', placeItems: 'center', color: '#475569' }} aria-label="Refresh tasks">
               <RefreshCw size={18} />
