@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0105';
+  const APP_VERSION = 'v2.2.8-0506-0112';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -255,10 +255,11 @@ export function CantonAiCoachPage() {
     
     // Frontend search setup
     let searchResult = null;
-    const taskNamePattern = /^(CR\d+|CRCE\d+|task\s*\d+|#\d+)/i;
+    const taskNamePattern = /^(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+|task\s*\d+|#\d+)/i;
+    const normalizeTaskRef = (value: string) => value.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
     
     // CR/CRCE code must mean search/check first unless user explicitly says create/add.
-    const crMatch = userText.match(/^(?:ok[:：]\s*)?(CR\d+|CRCE\d+)/i) || userText.match(/\b(CR\d+|CRCE\d+)\b/i);
+    const crMatch = userText.match(/^(?:ok[:：]\s*)?(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)/i) || userText.match(/\b(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)\b/i);
     const hasPipe = userText.includes('|');
     const explicitCreateIntent = /我要加\s*task|加\s*task|新增|create\s*task|new\s*task/i.test(userText);
     const checkIntent = /check|查|搵|睇|點樣|status|進度|progress|咩情況/i.test(userText);
@@ -394,11 +395,12 @@ export function CantonAiCoachPage() {
     // This handles multi-line input where first line is task name
     const firstToken = userText.split(/\s/)[0];
     if ((taskNamePattern.test(firstToken) || crMatch) && !parsedFields) {
-      const keyword = (crMatch?.[1] || firstToken).replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
+      const keyword = normalizeTaskRef((crMatch?.[1] || firstToken).replace(/^(task\s*)/i, '').replace(/^#/, ''));
       console.log(`[Frontend Search] Pattern matched on first token. Keyword: "${keyword}"`);
       const foundTask = tasks.find(t => {
-        const titleMatch = t.title.toLowerCase().includes(keyword);
-        const idMatch = t.id.toLowerCase() === keyword;
+        const normalizedTitle = normalizeTaskRef(t.title);
+        const titleMatch = normalizedTitle.includes(keyword);
+        const idMatch = normalizeTaskRef(t.id) === keyword;
         if (titleMatch || idMatch) {
           console.log(`[Frontend Search] Found: "${t.title}" (titleMatch=${titleMatch}, idMatch=${idMatch})`);
         }
