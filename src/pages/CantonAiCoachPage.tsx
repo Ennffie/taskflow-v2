@@ -22,7 +22,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0007';
+  const APP_VERSION = 'v2.2.8-0506-0012';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -460,9 +460,36 @@ export function CantonAiCoachPage() {
         signal: controller.signal,
       });
       window.clearTimeout(timeoutId);
-      
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
+
+      let data: any = null;
+      try {
+        data = await resp.json();
+      } catch {
+        data = null;
+      }
+
+      const replyText = data?.reply || '';
+      const upstreamAuthBroken = /User not found/i.test(replyText) || /HTTP Error 401/i.test(replyText);
+
+      if (!resp.ok || upstreamAuthBroken) {
+        if (searchResult) {
+          setTypingTarget(`我搵到 task，但 AI backend 而家登入有問題，所以先俾你睇基本資料：\n\n• Task：${searchResult.title}\n• Status：${searchResult.status}\n• Progress：${searchResult.progress ?? 0}%\n• 到期：${searchResult.due_date || '未設定'}\n• 負責：${searchResult.assignees?.join(', ') || '未指派'}\n\n你可以先用下面大 button 繼續。`);
+          setTypingIndex(0);
+          setIsTyping(true);
+          setMessages(current => [...current, {
+            role: 'ai',
+            text: `搵到「${searchResult.title}」\n\n• Status：${searchResult.status}\n• Progress：${searchResult.progress ?? 0}%\n• 到期：${searchResult.due_date || '未設定'}\n• 負責：${searchResult.assignees?.join(', ') || '未指派'}\n\n想下一步做咩？`,
+            _action: 'task_actions',
+            _data: { taskId: searchResult.id, title: searchResult.title }
+          }]);
+          return;
+        }
+
+        const friendly = upstreamAuthBroken
+          ? 'AI backend 而家登入有問題，我已經搵到原因，唔係你操作錯。你而家仍然可以先用快捷功能：check task、加 task、睇今日重點。'
+          : `AI 暫時無法回應：HTTP ${resp.status}`;
+        throw new Error(friendly);
+      }
       
       // Execute action if any - but only if parameters are valid
       let actionResult = '';
@@ -508,7 +535,7 @@ export function CantonAiCoachPage() {
         setTypingTarget('AI 諗得太耐，可能網絡慢或者伺服器忙。請再試一次，或者打短啲嘅問題。');
       } else {
         setMessages(current => current.filter(m => m.text !== '諗緊…'));
-        setTypingTarget(`AI 暫時無法回應：${error?.message || '請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險`);
+        setTypingTarget(`${error?.message || 'AI 暫時無法回應，請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險`);
       }
       setTypingIndex(0);
       setIsTyping(true);
