@@ -385,14 +385,47 @@ function RiskItem({ item, onClick }: { item: { label: string; detail: string; to
   return <button onClick={onClick} style={{ width: '100%', textAlign: 'left', padding: 13, borderRadius: 18, border: `1px solid ${item.tone === 'danger' ? '#fecaca' : '#fed7aa'}`, background: bg, marginBottom: 10, cursor: 'pointer' }}><div style={{ color, fontSize: 12, fontWeight: 900, marginBottom: 4 }}>{item.label}</div><div style={{ color: '#0f172a', fontSize: 14, fontWeight: 850, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.detail}</div></button>;
 }
 
-function CantonAiCoach({ tasks }: { tasks: TaskItem[]; onTaskCreated: () => Promise<void> | void }) {
+function getDailyQuote() {
+  const quotes = [
+    { head: '慢啲都冇所謂', sub: '最重要係方向啱，步步都算數。' },
+    { head: '今日做咗少少', sub: '已經贏過昨日嘅自己。' },
+    { head: '專注一件事先', sub: '散彈槍打唔到遠目標。' },
+    { head: '壓力係訊號', sub: '提醒你要唞一唞，唔係要放棄。' },
+    { head: '做得再好', sub: '都唔好忘咗留啲時間畀自己。' },
+    { head: '啲事擺到明早', sub: '如果今晚需要瞓覺。' },
+    { head: '你唔使證明咩', sub: '你只需要做好今日嘅自己。' },
+    { head: '開會前先飲杯水', sub: '身體舒服先傾得順。' },
+    { head: '有啲嘢控制唔到', sub: '專心搞掂控制到嘅先。' },
+    { head: '容許自己唔完美', sub: '完美係敵人，完成係朋友。' },
+    { head: '記得讚自己', sub: '你又撐過咗一日。' },
+    { head: '落雨就帶遮', sub: '唔好怪自己冇帶，學識睇天氣。' },
+    { head: '做唔晒唔緊要', sub: 'list 係工具，唔係鞭。' },
+    { head: '同自己講聲多謝', sub: '你其實好努力。' },
+    { head: '有時停低先係進步', sub: '衝太快會撞牆。' },
+    { head: '人情世故好攰', sub: '但真係幫過你嘅人，記得回報。' },
+    { head: '唔好 compare', sub: '你條路同佢條路根本唔同軌。' },
+    { head: '擔心嘅事九成', sub: '最後都唔會發生，放鬆啲。' },
+    { head: '今日件事搞唔掂', sub: '明日太陽照樣升起，有機會再嚟。' },
+    { head: '最叻嗰個係', sub: '跌倒咗又爬得返起嗰個。' },
+    { head: '未 ready 唔係錯', sub: '係你有要求，唔係你差。' },
+    { head: '聽日嘅你', sub: '會多謝今日冇放棄嘅自己。' },
+    { head: '把聲好攰就唔好講', sub: '沉默都係一種力量。' },
+    { head: '人哋點睇', sub: '控制唔到；你點睇自己，先係你嘅。' },
+    { head: '唔好等心情好先做', sub: '做咗先，心情自然跟埋好。' },
+    { head: '所有大事', sub: '最初都係由細步開始。' },
+    { head: '唔好為快而快', sub: '質量永遠贏速度。' },
+    { head: '有需要就開口', sub: '真係叻嘅人識得搵幫手。' },
+    { head: '件事搞掂咗', sub: '記得話自己知：「我做到嘅。」' },
+    { head: '唔好怕改計劃', sub: '靈活先係高手嘅本事。' },
+    { head: '最後', sub: '你值得被溫柔對待，尤其係被你自己。' },
+  ];
+  const day = new Date().getDate();
+  return quotes[(day - 1) % quotes.length];
+}
+
+function CantonAiCoach({ tasks: _tasks, onTaskCreated: _onTaskCreated }: { tasks: TaskItem[]; onTaskCreated: () => Promise<void> | void }) {
   const navigate = useNavigate();
-  const rootTasks = tasks.filter((task) => !task.parent_id);
-  const overdueCount = rootTasks.filter(isOverdue).length;
-  const missingDeadlineCount = rootTasks.filter((task) => !isDone(task) && !task.due_date).length;
-  const riskCount = rootTasks.filter((task) => !isDone(task) && (isOverdue(task) || !task.due_date || task.assignees.length === 0 || isStale(task))).length;
-  const headline = overdueCount > 0 ? `辛苦晒，仲有 ${overdueCount} 個要追` : riskCount > 0 ? `你已經做得好穩，仲有 ${riskCount} 件我幫你望住` : '今日幾穩陣，做得好好';
-  const subline = overdueCount > 0 ? '唔使一個人記晒，我陪你排先後，逐個追返。' : missingDeadlineCount > 0 ? '有啲未 set deadline，我幫你輕輕執順。' : '有咩想加 / 想問，入嚟即刻幫你拆。';
+  const quote = getDailyQuote();
 
   return (
     <button onClick={() => navigate('/canton-ai')} style={{ ...cardStyle, width: '100%', textAlign: 'left', padding: '24px 22px', border: '1px solid rgba(186,230,253,0.95)', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 48%, #f5f3ff 100%)', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
@@ -402,13 +435,13 @@ function CantonAiCoach({ tasks }: { tasks: TaskItem[]; onTaskCreated: () => Prom
           <Sparkles size={18} /> AI Task Coach
         </div>
         <div style={{ color: '#0f172a', fontSize: 28, lineHeight: 1.08, letterSpacing: '-0.04em', fontWeight: 950 }}>
-          {headline}
+          {quote.head}
         </div>
         <div style={{ color: '#475569', fontSize: 18, lineHeight: 1.25, fontWeight: 800 }}>
-          {subline}
+          {quote.sub}
         </div>
         <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 'fit-content', padding: '11px 15px', borderRadius: 999, background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 900 }}>
-          入去問 AI →
+          隨便問我啦～ 💬
         </div>
       </div>
     </button>
