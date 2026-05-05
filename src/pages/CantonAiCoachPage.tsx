@@ -16,7 +16,6 @@ export function CantonAiCoachPage() {
   const [currentUserName, setCurrentUserName] = useState<string>('');
   const [input, setInput] = useState('');
   const [bridgeUrl, setBridgeUrl] = useState<string>(FALLBACK_BRIDGE_URL);
-  const composerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [isReplying, setIsReplying] = useState(false);
   const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
@@ -364,8 +363,7 @@ export function CantonAiCoachPage() {
       };
       
       // Don't execute yet - show confirmation
-      setInput('');
-      if (composerRef.current) composerRef.current.textContent = '';
+    setInput('');
       setMessages(current => [...current, 
         { role: 'user', text: userText },
         { 
@@ -421,6 +419,11 @@ export function CantonAiCoachPage() {
       console.log(`[Frontend Search] Pattern did NOT match for: "${userText}"`);
     }
     if (!userText || isReplying) return;
+
+    // Show user message immediately
+    setMessages(current => [...current, { role: 'user', text: userText }]);
+    setInput('');
+    setIsReplying(true);
 
     try {
       const controller = new AbortController();
@@ -617,34 +620,25 @@ export function CantonAiCoachPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <div style={{ position: 'relative' }}>
               {!input ? <span style={{ position: 'absolute', left: 15, top: 14, color: '#94a3b8', fontSize: 16, pointerEvents: 'none' }}>隨意問 task 相關問題…</span> : null}
-              <div
-                ref={composerRef}
-                contentEditable={!isReplying}
-                role="textbox"
-                aria-label="AI message"
-                onInput={(e) => {
-                  // Convert <br>, <div> to newlines for contentEditable
-                  const html = e.currentTarget.innerHTML;
-                  const text = html
-                    .replace(/<br\s*\/?>/gi, '\n')
-                    .replace(/<div[^>]*>/gi, '\n')
-                    .replace(/<\/div>/gi, '')
-                    .replace(/<p[^>]*>/gi, '\n')
-                    .replace(/<\/p>/gi, '')
-                    .replace(/<[^>]+>/g, '')
-                    .replace(/&nbsp;/g, ' ');
-                  setInput(text);
-                }}
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
-                    // Allow natural newline insertion in contentEditable
-                    // Don't preventDefault - let browser insert <br>
+                    e.preventDefault();
+                    if (input.trim()) void send();
                   }
                 }}
-                style={{ minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', WebkitUserSelect: 'text', userSelect: 'text' }}
+                rows={1}
+                disabled={isReplying}
+                style={{ width: '100%', resize: 'none', minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
               />
             </div>
-            <button onClick={() => void send()} disabled={isReplying} style={{ border: 'none', borderRadius: 18, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 950, fontSize: 16, opacity: isReplying ? 0.72 : 1 }}>
+            <button 
+              onClick={() => { if (input.trim()) void send(); }} 
+              disabled={isReplying || !input.trim()} 
+              style={{ border: 'none', borderRadius: 18, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 950, fontSize: 16, opacity: isReplying || !input.trim() ? 0.5 : 1, cursor: isReplying || !input.trim() ? 'default' : 'pointer' }}
+            >
               {isReplying ? '諗緊…' : 'Send'}
             </button>
           </div>
