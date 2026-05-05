@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0216';
+  const APP_VERSION = 'v2.2.8-0506-0230';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -557,6 +557,16 @@ export function CantonAiCoachPage() {
         return;
       }
 
+      if (/my\s*task|task\s*list|我.?task/.test(lower)) {
+        const myTasks = tasks.filter(t => !t.parent_id && (t.assignees.some(a => a.name === currentUserName) || t.created_by === currentUserId));
+        const list = myTasks.slice(0, 12).map(t => ({ id: t.id, title: t.title, due_date: t.due_date, status: t.status }));
+        startTypingMessage(`你而家有 ${myTasks.length} 個 main task。撳 task 名可以即刻開新對話睇 detail。`, {
+          _action: 'task_list',
+          _data: { tasks: list }
+        });
+        return;
+      }
+
       startTypingMessage('而家呢版係 local mode，未經 bridge。你可以直接：\n• check CRxxxx\n• CRxxxx 進度改做 80\n• CRxxxx mark完成\n• 我要加Task');
       return;
     }
@@ -758,6 +768,19 @@ export function CantonAiCoachPage() {
                   <button onClick={() => { setInput(message._data.originalText); }} style={{ flex: 1, background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
                     再搵一次
                   </button>
+                </div>
+              )}
+
+              {message._action === 'task_list' && message._data?.tasks && (
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {message._data.tasks.map((task: any) => (
+                    <button key={task.id} onClick={() => { void send(`check ${task.title}`); }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', textDecoration: 'underline', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
+                      {task.title}
+                      <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 700, marginTop: 2 }}>
+                        {task.status} · {task.due_date || '未設定 due date'}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
