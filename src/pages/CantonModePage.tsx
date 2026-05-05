@@ -430,19 +430,22 @@ function CantonAiCoach({ tasks: _tasks, onTaskCreated: _onTaskCreated }: { tasks
   return (
     <button onClick={() => navigate('/canton-ai')} style={{ ...cardStyle, width: '100%', textAlign: 'left', padding: '24px 22px', border: '1px solid rgba(186,230,253,0.95)', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 48%, #f5f3ff 100%)', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', right: -18, top: -20, width: 118, height: 118, borderRadius: '50%', background: 'rgba(56,189,248,0.12)' }} />
-      <div style={{ position: 'relative', display: 'grid', gap: 12 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#0369a1', fontSize: 14, fontWeight: 950 }}>
-          <Sparkles size={18} /> AI Task Coach
+      <div style={{ position: 'relative', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, display: 'grid', gap: 12 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#0369a1', fontSize: 14, fontWeight: 950 }}>
+            <Sparkles size={18} /> Silly AI
+          </div>
+          <div style={{ color: '#0f172a', fontSize: 28, lineHeight: 1.08, letterSpacing: '-0.04em', fontWeight: 950 }}>
+            {quote.head}
+          </div>
+          <div style={{ color: '#475569', fontSize: 18, lineHeight: 1.25, fontWeight: 800 }}>
+            {quote.sub}
+          </div>
+          <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 'fit-content', padding: '11px 15px', borderRadius: 999, background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 900 }}>
+            隨便問我啦～ 💬
+          </div>
         </div>
-        <div style={{ color: '#0f172a', fontSize: 28, lineHeight: 1.08, letterSpacing: '-0.04em', fontWeight: 950 }}>
-          {quote.head}
-        </div>
-        <div style={{ color: '#475569', fontSize: 18, lineHeight: 1.25, fontWeight: 800 }}>
-          {quote.sub}
-        </div>
-        <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 'fit-content', padding: '11px 15px', borderRadius: 999, background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 900 }}>
-          隨便問我啦～ 💬
-        </div>
+        <img src="/taskflow-v2/hamster-mascot.jpg" alt="Silly" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '3px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 4 }} />
       </div>
     </button>
   );
