@@ -7,6 +7,7 @@ import type { Profile, TaskItem } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
 const FALLBACK_BRIDGE_URL = 'https://counting-hereby-manufacturers-dominant.trycloudflare.com';
+const LOCAL_ONLY_MODE = true;
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0024';
+  const APP_VERSION = 'v2.2.8-0506-0032';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -480,6 +481,31 @@ export function CantonAiCoachPage() {
       console.log(`[Frontend Search] Pattern did NOT match for: "${userText}"`);
     }
     if (!userText || isReplying) return;
+
+    if (LOCAL_ONLY_MODE) {
+      setMessages(current => [...current, { role: 'user', text: userText }]);
+      setInput('');
+
+      const lower = userText.toLowerCase();
+      const overdueTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.due_date && t.due_date < new Date().toISOString().slice(0, 10));
+
+      if (/hi|hello|你好|哈囉/.test(lower)) {
+        startTypingMessage('Hi Bro～你可以直接叫我 check task、改進度、mark 完成、或者加 task。');
+        return;
+      }
+
+      if (/有咩未交|今日重點|risk|overdue/.test(lower)) {
+        if (!overdueTasks.length) {
+          startTypingMessage('暫時未見有過期 main task。想唔想我幫你 check 某個 CR？');
+        } else {
+          startTypingMessage(`而家最急大概有 ${overdueTasks.length} 個：\n\n${overdueTasks.slice(0, 5).map(t => `• ${t.title}（到期 ${t.due_date}）`).join('\n')}`);
+        }
+        return;
+      }
+
+      startTypingMessage('而家呢版係 local mode，未經 bridge。你可以直接：\n• check CRxxxx\n• CRxxxx 進度改做 80\n• CRxxxx mark完成\n• 我要加Task');
+      return;
+    }
 
     // Show user message immediately
     setMessages(current => [...current, { role: 'user', text: userText }]);
