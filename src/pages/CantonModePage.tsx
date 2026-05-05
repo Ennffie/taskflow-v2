@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarDays, Clock3, Plus, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Clock3, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { AppShell } from '../components/AppShell';
@@ -13,6 +13,13 @@ const cardStyle: React.CSSProperties = {
   borderRadius: 28,
   boxShadow: '0 16px 45px rgba(148, 163, 184, 0.16)',
 };
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return { text: '早晨，Enfield~', icon: '🌅' };
+  if (hour >= 12 && hour < 18) return { text: '午安，Enfield~', icon: '☀️' };
+  return { text: '晚安，Enfield~', icon: '🌙' };
+}
 
 function isDone(task: TaskItem) {
   return task.status === 'done' || task.is_finished;
@@ -149,10 +156,7 @@ export function CantonModePage() {
         <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gap: 18 }}>
           <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, paddingTop: 8 }}>
             <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, background: 'rgba(255,255,255,0.86)', color: '#6d28d9', fontSize: 12, fontWeight: 900, border: '1px solid #ede9fe', marginBottom: 10 }}>
-                <Sparkles size={14} /> Canton mode · real app
-              </div>
-              <h1 style={{ margin: 0, color: '#0f172a', fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em' }}>今日想先搞邊樣？</h1>
+              <h1 style={{ margin: 0, color: '#0f172a', fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em' }}>{(() => { const g = getGreeting(); return `${g.icon} ${g.text}`; })()}</h1>
               <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}>用真實 task data 幫你睇：邊啲浮面、邊啲唔好漏。</p>
             </div>
             <button onClick={() => void loadTasks()} style={{ width: 44, height: 44, border: '1px solid #e2e8f0', background: '#fff', borderRadius: 16, display: 'grid', placeItems: 'center', color: '#475569' }} aria-label="Refresh tasks">
@@ -167,7 +171,6 @@ export function CantonModePage() {
               <section style={{ ...cardStyle, padding: '16px 0 0', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(251,247,255,0.94))' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6d28d9', fontWeight: 900, fontSize: 14 }}><Waves size={17} /> 而家浮面嘅 task</div>
-                  <button onClick={() => setShowModal(true)} style={{ width: 42, height: 42, borderRadius: 16, border: 'none', background: '#111827', color: '#fff', display: 'grid', placeItems: 'center' }}><Plus size={20} /></button>
                 </div>
 
                 <div style={{ position: 'relative', height: 600, borderRadius: '30px 30px 0 0', overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '34px 12px' }}>
