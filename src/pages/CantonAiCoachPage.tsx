@@ -22,7 +22,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0505-0831';
+  const APP_VERSION = 'v2.2.8-0505-1306';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
