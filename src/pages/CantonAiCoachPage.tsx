@@ -251,11 +251,12 @@ export function CantonAiCoachPage() {
     let searchResult = null;
     const taskNamePattern = /^(CR\d+|CRCE\d+|task\s*\d+|#\d+)/i;
     
-    // Smart parsing: check if input starts with CR/CRCE (potential task creation)
-    // Also detect patterns like "ok:CR152", "CR152..." anywhere in text
+    // CR/CRCE code must mean search/check first unless user explicitly says create/add.
     const crMatch = userText.match(/^(?:ok[:：]\s*)?(CR\d+|CRCE\d+)/i) || userText.match(/\b(CR\d+|CRCE\d+)\b/i);
     const hasPipe = userText.includes('|');
-    const isCreateIntent = crMatch && !hasPipe;
+    const explicitCreateIntent = /我要加\s*task|加\s*task|新增|create\s*task|new\s*task/i.test(userText);
+    const checkIntent = /check|查|搵|睇|點樣|status|進度|progress|咩情況/i.test(userText);
+    const isCreateIntent = !!(crMatch && (explicitCreateIntent || hasPipe));
     
     let parsedFields: any = null;
     
@@ -386,8 +387,8 @@ export function CantonAiCoachPage() {
     // Use first token (before first space) as keyword for task search
     // This handles multi-line input where first line is task name
     const firstToken = userText.split(/\s/)[0];
-    if (taskNamePattern.test(firstToken) && !parsedFields) {
-      const keyword = firstToken.replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
+    if ((taskNamePattern.test(firstToken) || crMatch) && !parsedFields) {
+      const keyword = (crMatch?.[1] || firstToken).replace(/^(task\s*)/i, '').replace(/^#/, '').toLowerCase();
       console.log(`[Frontend Search] Pattern matched on first token. Keyword: "${keyword}"`);
       const foundTask = tasks.find(t => {
         const titleMatch = t.title.toLowerCase().includes(keyword);
@@ -405,6 +406,7 @@ export function CantonAiCoachPage() {
           due_date: foundTask.due_date,
           assignees: foundTask.assignees.map(a => a.name),
           description: foundTask.description,
+          progress: foundTask.progress_percent,
           subtasks: foundTask.subtasks?.map((s: any) => ({
             title: s.title,
             status: s.status,
@@ -412,8 +414,30 @@ export function CantonAiCoachPage() {
           })) || [],
         };
         console.log(`[Frontend Search] Result created:`, searchResult);
+
+        // Deterministic check-task flow: if user mentions CR code and doesn't explicitly create, show task first.
+        if (crMatch && !explicitCreateIntent && (checkIntent || !hasPipe)) {
+          setMessages(current => [...current, { role: 'user', text: userText }, {
+            role: 'ai',
+            text: `搵到「${foundTask.title}」\n\n• Status：${foundTask.status}\n• Progress：${foundTask.progress_percent ?? 0}%\n• 到期：${foundTask.due_date || '未設定'}\n• 負責：${foundTask.assignees.map(a => a.name).join(', ') || '未指派'}\n\n想下一步做咩？`,
+            _action: 'task_actions',
+            _data: { taskId: foundTask.id, title: foundTask.title }
+          }]);
+          setInput('');
+          return;
+        }
       } else {
         console.log(`[Frontend Search] No task found matching "${keyword}"`);
+        if (crMatch && !explicitCreateIntent) {
+          setMessages(current => [...current, { role: 'user', text: userText }, {
+            role: 'ai',
+            text: `搵唔到 ${crMatch[1]}。\n\n你想我點做？`,
+            _action: 'task_not_found',
+            _data: { code: crMatch[1], originalText: userText }
+          }]);
+          setInput('');
+          return;
+        }
       }
     } else {
       console.log(`[Frontend Search] Pattern did NOT match for: "${userText}"`);
@@ -555,6 +579,33 @@ export function CantonAiCoachPage() {
                     }}
                   >
                     ❌ Cancel
+                  </button>
+                </div>
+              )}
+
+              {message._action === 'task_actions' && message._data && (
+                <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    ['今日做咗乜', `${message._data.title} 今日做咗：`],
+                    ['明天做乜', `${message._data.title} 明天focus：`],
+                    ['Blocker', `${message._data.title} blocker：`],
+                    ['改進度', `${message._data.title} 進度改做：`],
+                    ['Mark完成', `${message._data.title} mark 完成`],
+                  ].map(([label, prompt]) => (
+                    <button key={label} onClick={() => { setInput(prompt); }} style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {message._action === 'task_not_found' && message._data && (
+                <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+                  <button onClick={() => { setInput(`${message._data.code} | `); }} style={{ flex: 1, background: '#0f172a', color: '#fff', border: 'none', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
+                    加新Task
+                  </button>
+                  <button onClick={() => { setInput(message._data.originalText); }} style={{ flex: 1, background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
+                    再搵一次
                   </button>
                 </div>
               )}
