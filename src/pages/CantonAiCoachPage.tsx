@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0112';
+  const APP_VERSION = 'v2.2.8-0506-0118';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -395,11 +395,12 @@ export function CantonAiCoachPage() {
     // This handles multi-line input where first line is task name
     const firstToken = userText.split(/\s/)[0];
     if ((taskNamePattern.test(firstToken) || crMatch) && !parsedFields) {
-      const keyword = normalizeTaskRef((crMatch?.[1] || firstToken).replace(/^(task\s*)/i, '').replace(/^#/, ''));
-      console.log(`[Frontend Search] Pattern matched on first token. Keyword: "${keyword}"`);
+      const extractedRef = crMatch?.[1] || userText.match(/(CRCE?\s*-?\s*\d+)/i)?.[1] || firstToken;
+      const keyword = normalizeTaskRef(extractedRef.replace(/^(check|搵|查|睇)\s*/i, '').replace(/^(task\s*)/i, '').replace(/^#/, ''));
+      console.log(`[Frontend Search] Pattern matched. Keyword: "${keyword}"`);
       const foundTask = tasks.find(t => {
         const normalizedTitle = normalizeTaskRef(t.title);
-        const titleMatch = normalizedTitle.includes(keyword);
+        const titleMatch = normalizedTitle.includes(keyword) || keyword.includes(normalizedTitle);
         const idMatch = normalizeTaskRef(t.id) === keyword;
         if (titleMatch || idMatch) {
           console.log(`[Frontend Search] Found: "${t.title}" (titleMatch=${titleMatch}, idMatch=${idMatch})`);
