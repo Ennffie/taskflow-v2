@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl } from '../lib/api';
+import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import type { Profile, TaskItem } from '../types';
 
@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0135';
+  const APP_VERSION = 'v2.2.8-0506-0153';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -452,15 +452,19 @@ export function CantonAiCoachPage() {
           try {
             if (pendingTaskAction.kind === 'today') {
               await updateTask(foundTask.id, { today_update: userText });
+              await createTaskEventLog(foundTask.id, `Daily Log updated: ${userText}`);
             } else if (pendingTaskAction.kind === 'tomorrow') {
               await updateTask(foundTask.id, { next_day_focus: userText });
+              await createTaskEventLog(foundTask.id, `Next Day Focus updated: ${userText}`);
             } else if (pendingTaskAction.kind === 'blocker') {
               const merged = [foundTask.description, `Blocker: ${userText}`].filter(Boolean).join('\n\n');
               await updateTask(foundTask.id, { description: merged });
+              await createTaskEventLog(foundTask.id, `Blocker updated: ${userText}`);
             }
             await loadTasks();
+            const actionKind = pendingTaskAction.kind;
             setPendingTaskAction(null);
-            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• ${pendingTaskAction.kind === 'today' ? 'Today Update' : pendingTaskAction.kind === 'tomorrow' ? 'Next Day Focus' : 'Blocker'}：${userText}\n\n仲想改其他嘢嗎？`, {
+            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• ${actionKind === 'today' ? 'Daily Log' : actionKind === 'tomorrow' ? 'Next Day Focus Log' : 'Blocker'}：${userText}\n\n仲想改其他嘢嗎？`, {
               _action: 'task_actions',
               _data: { taskId: foundTask.id, title: foundTask.title }
             });
