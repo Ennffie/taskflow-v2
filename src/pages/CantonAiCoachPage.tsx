@@ -22,7 +22,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0018';
+  const APP_VERSION = 'v2.2.8-0506-0024';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -418,6 +418,41 @@ export function CantonAiCoachPage() {
           })) || [],
         };
         console.log(`[Frontend Search] Result created:`, searchResult);
+
+        const progressMatch = userText.match(/(?:進度(?:改做)?|progress(?:\s*to)?|改做)\s*[:：]?\s*(\d{1,3})/i);
+        const wantsDone = /mark\s*完成|mark\s*done|完成咗|已完成|done\b/i.test(userText);
+
+        if (progressMatch || wantsDone) {
+          setMessages(current => [...current, { role: 'user', text: userText }]);
+          setInput('');
+          setIsReplying(true);
+          try {
+            if (progressMatch) {
+              const nextProgress = Math.max(0, Math.min(100, Number(progressMatch[1])));
+              await updateTask(foundTask.id, {
+                progress_percent: nextProgress,
+                status: nextProgress >= 100 ? 'done' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status),
+                is_finished: nextProgress >= 100,
+              });
+            } else if (wantsDone) {
+              await updateTask(foundTask.id, {
+                progress_percent: 100,
+                status: 'done',
+                is_finished: true,
+              });
+            }
+            await loadTasks();
+            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• Status：${wantsDone || Number(progressMatch?.[1]) >= 100 ? 'done' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status)}\n• Progress：${wantsDone ? 100 : Number(progressMatch?.[1] || foundTask.progress_percent || 0)}%\n\n仲想改其他嘢嗎？`, {
+              _action: 'task_actions',
+              _data: { taskId: foundTask.id, title: foundTask.title }
+            });
+          } catch (e: any) {
+            startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+          } finally {
+            setIsReplying(false);
+          }
+          return;
+        }
 
         // Deterministic check-task flow: if user mentions CR code and doesn't explicitly create, show task first.
         if (crMatch && !explicitCreateIntent && (checkIntent || !hasPipe)) {
