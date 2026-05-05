@@ -445,7 +445,7 @@ function CantonAiCoach({ tasks: _tasks, onTaskCreated: _onTaskCreated }: { tasks
             隨便問我啦～ 💬
           </div>
         </div>
-        <img src="/taskflow-v2/hamster-mascot.jpg" alt="Silly" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '3px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 4 }} />
+        <img src="/taskflow-v2/hamster-mascot.jpg" alt="Silly" style={{ width: 110, height: 110, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '3px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: -8, marginRight: -4 }} />
       </div>
     </button>
   );
