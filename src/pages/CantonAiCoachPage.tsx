@@ -23,12 +23,13 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0032';
+  const APP_VERSION = 'v2.2.8-0506-0105';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [typedMessageMeta, setTypedMessageMeta] = useState<{ _action?: string; _data?: any } | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
+  const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' } | null>(null);
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -423,6 +424,33 @@ export function CantonAiCoachPage() {
         const progressMatch = userText.match(/(?:進度(?:改做)?|progress(?:\s*to)?|改做)\s*[:：]?\s*(\d{1,3})/i);
         const wantsDone = /mark\s*完成|mark\s*done|完成咗|已完成|done\b/i.test(userText);
 
+        if (pendingTaskAction && pendingTaskAction.taskId === foundTask.id) {
+          setMessages(current => [...current, { role: 'user', text: userText }]);
+          setInput('');
+          setIsReplying(true);
+          try {
+            if (pendingTaskAction.kind === 'today') {
+              await updateTask(foundTask.id, { today_update: userText });
+            } else if (pendingTaskAction.kind === 'tomorrow') {
+              await updateTask(foundTask.id, { next_day_focus: userText });
+            } else if (pendingTaskAction.kind === 'blocker') {
+              const merged = [foundTask.description, `Blocker: ${userText}`].filter(Boolean).join('\n\n');
+              await updateTask(foundTask.id, { description: merged });
+            }
+            await loadTasks();
+            setPendingTaskAction(null);
+            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• ${pendingTaskAction.kind === 'today' ? 'Today Update' : pendingTaskAction.kind === 'tomorrow' ? 'Next Day Focus' : 'Blocker'}：${userText}\n\n仲想改其他嘢嗎？`, {
+              _action: 'task_actions',
+              _data: { taskId: foundTask.id, title: foundTask.title }
+            });
+          } catch (e: any) {
+            startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+          } finally {
+            setIsReplying(false);
+          }
+          return;
+        }
+
         if (progressMatch || wantsDone) {
           setMessages(current => [...current, { role: 'user', text: userText }]);
           setInput('');
@@ -672,7 +700,13 @@ export function CantonAiCoachPage() {
                     ['改進度', `${message._data.title} 進度改做：`],
                     ['Mark完成', `${message._data.title} mark 完成`],
                   ].map(([label, prompt]) => (
-                    <button key={label} onClick={() => { setInput(prompt); }} style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
+                    <button key={label} onClick={() => {
+                      if (label === '今日做咗乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'today' });
+                      if (label === '明天做乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'tomorrow' });
+                      if (label === 'Blocker') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'blocker' });
+                      if (label === '改進度' || label === 'Mark完成') setPendingTaskAction(null);
+                      setInput(prompt);
+                    }} style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
                       {label}
                     </button>
                   ))}
