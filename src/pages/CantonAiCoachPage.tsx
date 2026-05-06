@@ -23,13 +23,13 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.8-0506-0237';
+  const APP_VERSION = 'v2.2.9-0506-2158';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [typedMessageMeta, setTypedMessageMeta] = useState<{ _action?: string; _data?: any } | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
-  const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' } | null>(null);
+  const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' | 'progress_update' } | null>(null);
   const [dueDatePicker, setDueDatePicker] = useState<{ taskId: string; title: string; value: string } | null>(null);
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
@@ -194,8 +194,8 @@ export function CantonAiCoachPage() {
   const renderMessage = (text: string, role: 'ai' | 'user') => {
     const displayText = role === 'ai' ? formatAiText(text) : text;
     return displayText.split('\n').map((line, i) => {
-      const isBullet = /^[•\-\*]\s/.test(line);
-      const isNumbered = /^\d+[.\)]\s/.test(line);
+      const isBullet = /^[•*-]\s/.test(line);
+      const isNumbered = /^\d+[.)]\s/.test(line);
       return (
         <div key={i} style={{ 
           marginTop: i > 0 ? 6 : 0,
@@ -271,6 +271,60 @@ export function CantonAiCoachPage() {
     
     const userText = (text ?? input).trim();
     setDueDatePicker(null);
+    if (!userText || isReplying) return;
+
+    const cleanPendingActionText = (value: string, title: string, kind: NonNullable<typeof pendingTaskAction>['kind']) => {
+      const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const patterns: RegExp[] = [
+        new RegExp(`^${escapedTitle}\\s*(今日做咗|今日做咗乜|今日做咗：|今日做咗:|today\\s*update:?|daily\\s*log:?)\\s*`, 'i'),
+        new RegExp(`^${escapedTitle}\\s*(明天focus|明天做乜|聽日focus|next\\s*day\\s*focus:?|tomorrow:?|明天focus：)\\s*`, 'i'),
+        new RegExp(`^${escapedTitle}\\s*(blocker|阻礙|卡住|blocker：|blocker:)\\s*`, 'i'),
+        new RegExp(`^${escapedTitle}\\s*(progress\\s*update|進度更新|update progress|progress update：|progress update:)\\s*`, 'i'),
+      ];
+      let cleaned = value.trim();
+      patterns.forEach(pattern => { cleaned = cleaned.replace(pattern, '').trim(); });
+      if (!cleaned && kind === 'progress_update') return value.trim();
+      return cleaned || value.trim();
+    };
+
+    if (pendingTaskAction) {
+      const pendingTask = tasks.find(t => t.id === pendingTaskAction.taskId);
+      if (pendingTask) {
+        setMessages(current => [...current, { role: 'user', text: userText }]);
+        setInput('');
+        setIsReplying(true);
+        try {
+          const actionText = cleanPendingActionText(userText, pendingTaskAction.title, pendingTaskAction.kind);
+          if (pendingTaskAction.kind === 'today') {
+            await updateTask(pendingTask.id, { today_update: actionText });
+            await createTaskEventLog(pendingTask.id, `[What I have done]\n${actionText}`);
+          } else if (pendingTaskAction.kind === 'tomorrow') {
+            await updateTask(pendingTask.id, { next_day_focus: actionText, is_focus: true });
+            await createTaskEventLog(pendingTask.id, `[Next Day Focus]\n${actionText}`);
+          } else if (pendingTaskAction.kind === 'blocker') {
+            const merged = [pendingTask.description, `Blocker: ${actionText}`].filter(Boolean).join('\n\n');
+            await updateTask(pendingTask.id, { description: merged });
+            await createTaskEventLog(pendingTask.id, `[Blocker]\n${actionText}`);
+          } else if (pendingTaskAction.kind === 'progress_update') {
+            await createTaskEventLog(pendingTask.id, `[Progress Update]\n${actionText}`);
+          }
+          await loadTasks();
+          const actionKind = pendingTaskAction.kind;
+          setPendingTaskAction(null);
+          const actionLabel = actionKind === 'today' ? 'What I have done' : actionKind === 'tomorrow' ? 'Next Day Focus' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update';
+          startTypingMessage(`✅ 已更新「${pendingTask.title}」\n\n• ${actionLabel}：${actionText}\n\n仲想改其他嘢嗎？`, {
+            _action: 'task_actions',
+            _data: { taskId: pendingTask.id, title: pendingTask.title }
+          });
+        } catch (e: any) {
+          startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+        } finally {
+          setIsReplying(false);
+        }
+        return;
+      }
+      setPendingTaskAction(null);
+    }
     
     // Frontend search setup
     let searchResult = null;
@@ -460,12 +514,14 @@ export function CantonAiCoachPage() {
             } else if (pendingTaskAction.kind === 'blocker') {
               const merged = [foundTask.description, `Blocker: ${userText}`].filter(Boolean).join('\n\n');
               await updateTask(foundTask.id, { description: merged });
-              await createTaskEventLog(foundTask.id, `Blocker updated: ${userText}`);
+              await createTaskEventLog(foundTask.id, `[Blocker]\n${userText}`);
+            } else if (pendingTaskAction.kind === 'progress_update') {
+              await createTaskEventLog(foundTask.id, `[Progress Update]\n${userText}`);
             }
             await loadTasks();
             const actionKind = pendingTaskAction.kind;
             setPendingTaskAction(null);
-            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• ${actionKind === 'today' ? 'Daily Log' : actionKind === 'tomorrow' ? 'Next Day Focus Log' : 'Blocker'}：${userText}\n\n仲想改其他嘢嗎？`, {
+            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• ${actionKind === 'today' ? 'Daily Log' : actionKind === 'tomorrow' ? 'Next Day Focus Log' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update'}：${userText}\n\n仲想改其他嘢嗎？`, {
               _action: 'task_actions',
               _data: { taskId: foundTask.id, title: foundTask.title }
             });
@@ -534,8 +590,6 @@ export function CantonAiCoachPage() {
     } else {
       console.log(`[Frontend Search] Pattern did NOT match for: "${userText}"`);
     }
-    if (!userText || isReplying) return;
-
     if (LOCAL_ONLY_MODE) {
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
@@ -733,6 +787,7 @@ export function CantonAiCoachPage() {
                     ['今日做咗乜', `${message._data.title} 今日做咗：`],
                     ['明天做乜', `${message._data.title} 明天focus：`],
                     ['Blocker', `${message._data.title} blocker：`],
+                    ['Progress Update', `${message._data.title} progress update：`],
                     ['改進度', `${message._data.title} 進度改做：`],
                     ['改Due date', `${message._data.title} 改 due date`],
                     ['Mark完成', `${message._data.title} mark 完成`],
@@ -742,6 +797,7 @@ export function CantonAiCoachPage() {
                       if (label === '今日做咗乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'today' });
                       if (label === '明天做乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'tomorrow' });
                       if (label === 'Blocker') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'blocker' });
+                      if (label === 'Progress Update') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'progress_update' });
                       if (label === '改進度' || label === 'Mark完成') {
                         setPendingTaskAction(null);
                         setInput(prompt);
