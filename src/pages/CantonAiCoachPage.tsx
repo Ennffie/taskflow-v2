@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.3.7-0506-2250';
+  const APP_VERSION = 'v2.3.8-0506-2254';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -633,7 +633,7 @@ export function CantonAiCoachPage() {
 
       if (/my\s*task|task\s*list|我.?task/.test(lower)) {
         const myTasks = tasks.filter(t => !t.parent_id && (t.assignees.some(a => a.name === currentUserName) || t.created_by === currentUserId));
-        const list = myTasks.slice(0, 12).map(t => ({ id: t.id, title: t.title, due_date: t.due_date, status: t.status }));
+        const list = myTasks.map(t => ({ id: t.id, title: t.title, due_date: t.due_date, status: t.status }));
         startTypingMessage(`你而家有 ${myTasks.length} 個 main task。撳 task 名可以即刻開新對話睇 detail。`, {
           _action: 'task_list',
           _data: { tasks: list }
