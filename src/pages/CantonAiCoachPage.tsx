@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.3.4-0506-2236';
+  const APP_VERSION = 'v2.3.5-0506-2238';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -923,7 +923,7 @@ export function CantonAiCoachPage() {
 
                 if (preset === '我要加Task') {
                   setMessages(current => [...current, { role: 'user', text: preset }]);
-                  startTypingMessage('好～直接講 task 資料就得，可以用一行 `|` 分隔，或者逐行輸入：\n「Task名\nDescription\nDue Date\n負責人\nStatus」\n\n例如：\nTouch Point - Registration\nadd link to module flow\n8 May\nAlice\nReview');
+                  startTypingMessage('照跟打就得：\n\n例如：\nCRCE-1234\nChange design\n8 May\nme\nWIP');
                 } else {
                   void send(preset);
                 }
