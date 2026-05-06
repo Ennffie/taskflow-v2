@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.4.1-0506-2323';
+  const APP_VERSION = 'v2.4.2-0507-0142';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -63,7 +63,8 @@ export function CantonAiCoachPage() {
       const fetchedTasks = await fetchTasks();
       console.log('[CantonAI] Tasks loaded:', fetchedTasks.length);
       setTasks(fetchedTasks); 
-    } catch (e) { console.error(e); }
+      return fetchedTasks;
+    } catch (e) { console.error(e); return null; }
   };
 
   useEffect(() => {
@@ -279,6 +280,25 @@ export function CantonAiCoachPage() {
     );
   };
 
+  const updateTaskActionBubble = (task: TaskItem) => {
+    const newText = `${task.title}
+
+• Status：${task.status}
+• Progress：${task.progress_percent ?? 0}%
+• 到期：${task.due_date || '未設定'}
+• 負責：${task.assignees.map(a => a.name).join(', ') || '未指派'}
+
+想下一步做咩？`;
+    setMessages(current => {
+      const idx = current.findLastIndex(m => m._action === 'task_actions' && m._data?.taskId === task.id);
+      if (idx === -1) return current;
+      const next = [...current];
+      next[idx] = { role: 'ai', text: newText, _action: 'task_actions', _data: { taskId: task.id, title: task.title } } as typeof next[0];
+      return next;
+    });
+    resetInlineTaskPanels();
+  };
+
   const getLatestTask = (taskId: string) => tasks.find(t => t.id === taskId);
 
   const resetInlineTaskPanels = () => {
@@ -311,16 +331,10 @@ export function CantonAiCoachPage() {
     }
   };
 
-  const confirmTaskMutation = async (taskId: string, title: string, message: string) => {
-    await loadTasks();
-    startTypingMessage(`✅ 已更新「${title}」
-
-• ${message}
-
-仲想改其他嘢嗎？`, {
-      _action: 'task_actions',
-      _data: { taskId, title }
-    });
+  const confirmTaskMutation = async (taskId: string, _title: string, _message: string) => {
+    const fresh = await loadTasks();
+    const updated = fresh?.find(t => t.id === taskId);
+    if (updated) updateTaskActionBubble(updated);
   };
 
   const quickUpdateTask = async (taskId: string, title: string, payload: Parameters<typeof updateTask>[1], message: string) => {
@@ -386,16 +400,14 @@ export function CantonAiCoachPage() {
     opacity: isReplying ? 0.58 : 1,
   });
 
-  const applyDueDate = async (taskId: string, title: string, dueDate: string | null) => {
+  const applyDueDate = async (taskId: string, _title: string, dueDate: string | null) => {
     setDueDatePicker(null);
     setIsReplying(true);
     try {
       await updateTask(taskId, { due_date: dueDate || null });
-      await loadTasks();
-      startTypingMessage(`✅ 已更新「${title}」\n\n• Due date：${dueDate || '已清除'}\n\n仲想改其他嘢嗎？`, {
-        _action: 'task_actions',
-        _data: { taskId, title }
-      });
+      const fresh = await loadTasks();
+      const updated = fresh?.find(t => t.id === taskId);
+      if (updated) updateTaskActionBubble(updated);
     } catch (e: any) {
       startTypingMessage(`❌ 更新 Due date 失敗：${e?.message || 'Unknown error'}`);
     } finally {
