@@ -37,6 +37,7 @@ export function CantonAiCoachPage() {
   const [assigneePickerTaskId, setAssigneePickerTaskId] = useState<string | null>(null);
   const [subtaskComposerTaskId, setSubtaskComposerTaskId] = useState<string | null>(null);
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
+  const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -284,6 +285,30 @@ export function CantonAiCoachPage() {
     setStatusPickerTaskId(null);
     setAssigneePickerTaskId(null);
     setSubtaskComposerTaskId(null);
+    setPendingDeleteTaskId(null);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    setIsReplying(true);
+    try {
+      await deleteTask(taskId);
+      setPendingDeleteTaskId(null);
+      setMessages(current => {
+        const idx = current.findLastIndex(m => m._action === 'task_actions' && m._data?.taskId === taskId);
+        if (idx === -1) return current;
+        const next = [...current];
+        next[idx] = {
+          role: 'ai',
+          text: `🗑️ 已刪除「${next[idx]._data?.title || '該 task'}」`,
+        };
+        return next;
+      });
+      await loadTasks();
+    } catch (e: any) {
+      startTypingMessage(`❌ 刪除失敗：${e?.message || 'Unknown error'}`);
+    } finally {
+      setIsReplying(false);
+    }
   };
 
   const confirmTaskMutation = async (taskId: string, title: string, message: string) => {
@@ -714,7 +739,7 @@ export function CantonAiCoachPage() {
         if (!overdueTasks.length) {
           startTypingMessage('暫時未見有過期 main task。想唔想我幫你 check 某個 CR？');
         } else {
-          startTypingMessage(`而家最急大概有 ${overdueTasks.length} 個：\n\n${overdueTasks.slice(0, 5).map(t => `• ${t.title}（到期 ${t.due_date}）`).join('\n')}`);
+          startTypingMessage(`而家最急大概有 ${overdueTasks.length} 個：\n\n${overdueTasks.map(t => `• ${t.title}（到期 ${t.due_date}）`).join('\n')}`);
         }
         return;
       }
@@ -844,6 +869,7 @@ export function CantonAiCoachPage() {
             <div key={index} style={{ 
               alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', 
               maxWidth: '90%', 
+              minWidth: message.role === 'user' ? undefined : 'min(90%, 300px)',
               whiteSpace: 'pre-wrap', 
               padding: message.role === 'user' ? '13px 15px' : '16px 17px', 
               borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '20px 20px 20px 4px', 
@@ -977,12 +1003,23 @@ export function CantonAiCoachPage() {
                             setAssigneePickerTaskId(current => current === taskId ? null : taskId);
                             setSubtaskComposerTaskId(null);
                           }} style={actionButtonStyle()}>邊個做</button>
-                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'cancelled', is_finished: true }, 'Status：取消')} style={actionButtonStyle('danger')}>取消</button>
+                          <button disabled={isReplying} onClick={() => { setPendingDeleteTaskId(taskId); setAssigneePickerTaskId(null); setSubtaskComposerTaskId(null); }} style={actionButtonStyle('danger')}>刪除</button>
                           <button disabled={isReplying} onClick={() => {
                             setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
                             setAssigneePickerTaskId(null);
                           }} style={actionButtonStyle()}>加SubTask</button>
                         </div>
+
+                        {pendingDeleteTaskId === taskId && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 10, background: '#fff1f2', borderRadius: 16, border: '1px solid #fecdd3' }}>
+                            <div style={{ fontWeight: 800, color: '#be123c' }}>確定要刪除「{title}」？</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              <button disabled={isReplying} onClick={() => void handleDeleteTask(taskId)} style={actionButtonStyle('danger')}>Confirm 刪除</button>
+                              <button disabled={isReplying} onClick={() => setPendingDeleteTaskId(null)} style={actionButtonStyle()}>取消</button>
+                            </div>
+                          </div>
+                        )}
+
                         {assigneePickerTaskId === taskId && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             {profiles.map(profile => (
@@ -1028,7 +1065,7 @@ export function CantonAiCoachPage() {
                       }
                     }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
                       <span style={{ textDecoration: 'underline' }}>{task.title}</span>
-                      <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 700, marginTop: 2 }}>
+                      <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
                         {task.status} | {task.assignees?.join(', ') || '未指派'} | {task.due_date || '未設定 due date'}
                       </div>
                     </button>
