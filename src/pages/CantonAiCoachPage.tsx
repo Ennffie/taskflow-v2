@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.3.5-0506-2238';
+  const APP_VERSION = 'v2.3.6-0506-2244';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -252,6 +252,20 @@ export function CantonAiCoachPage() {
     if (lockedCreateActions[actionKey]) return;
     setLockedCreateActions(current => ({ ...current, [actionKey]: 'cancelled' }));
     startTypingMessage('取消咗～有咩再講 💕');
+  };
+
+  const showTaskActions = (task: Pick<TaskItem, 'id' | 'title' | 'status' | 'due_date' | 'progress_percent' | 'assignees'>) => {
+    startTypingMessage(
+      `搵到「${task.title}」
+
+• Status：${task.status}
+• Progress：${task.progress_percent ?? 0}%
+• 到期：${task.due_date || '未設定'}
+• 負責：${task.assignees.map(a => a.name).join(', ') || '未指派'}
+
+想下一步做咩？`,
+      { _action: 'task_actions', _data: { taskId: task.id, title: task.title } }
+    );
   };
 
   const applyDueDate = async (taskId: string, title: string, dueDate: string | null) => {
@@ -840,7 +854,15 @@ export function CantonAiCoachPage() {
               {message._action === 'task_list' && message._data?.tasks && (
                 <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {message._data.tasks.map((task: any) => (
-                    <button key={task.id} onClick={() => { void send(`check ${task.title}`); }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', textDecoration: 'underline', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
+                    <button key={task.id} onClick={() => {
+                      const selectedTask = tasks.find(t => t.id === task.id);
+                      setMessages(current => [...current, { role: 'user', text: `check ${task.title}` }]);
+                      if (selectedTask) {
+                        showTaskActions(selectedTask);
+                      } else {
+                        startTypingMessage('呢個 task 資料剛剛 refresh 咗，請再撳一次 My Task list。');
+                      }
+                    }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', textDecoration: 'underline', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
                       {task.title}
                       <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 700, marginTop: 2 }}>
                         {task.status} · {task.due_date || '未設定 due date'}
