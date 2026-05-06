@@ -3,7 +3,7 @@ import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import type { Profile, TaskItem } from '../types';
+import type { Profile, TaskItem, TaskStatus } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
 const FALLBACK_BRIDGE_URL = 'https://counting-hereby-manufacturers-dominant.trycloudflare.com';
@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.3.8-0506-2254';
+  const APP_VERSION = 'v2.4.0-0506-2318';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -32,6 +32,11 @@ export function CantonAiCoachPage() {
   const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' | 'progress_update' } | null>(null);
   const [dueDatePicker, setDueDatePicker] = useState<{ taskId: string; title: string; value: string } | null>(null);
   const [lockedCreateActions, setLockedCreateActions] = useState<Record<string, 'confirming' | 'cancelled'>>({});
+  const [expandedMoreTaskId, setExpandedMoreTaskId] = useState<string | null>(null);
+  const [statusPickerTaskId, setStatusPickerTaskId] = useState<string | null>(null);
+  const [assigneePickerTaskId, setAssigneePickerTaskId] = useState<string | null>(null);
+  const [subtaskComposerTaskId, setSubtaskComposerTaskId] = useState<string | null>(null);
+  const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -272,6 +277,89 @@ export function CantonAiCoachPage() {
       { _action: 'task_actions', _data: { taskId: task.id, title: task.title } }
     );
   };
+
+  const getLatestTask = (taskId: string) => tasks.find(t => t.id === taskId);
+
+  const resetInlineTaskPanels = () => {
+    setStatusPickerTaskId(null);
+    setAssigneePickerTaskId(null);
+    setSubtaskComposerTaskId(null);
+  };
+
+  const confirmTaskMutation = async (taskId: string, title: string, message: string) => {
+    await loadTasks();
+    startTypingMessage(`✅ 已更新「${title}」
+
+• ${message}
+
+仲想改其他嘢嗎？`, {
+      _action: 'task_actions',
+      _data: { taskId, title }
+    });
+  };
+
+  const quickUpdateTask = async (taskId: string, title: string, payload: Parameters<typeof updateTask>[1], message: string) => {
+    setIsReplying(true);
+    try {
+      await updateTask(taskId, payload);
+      await confirmTaskMutation(taskId, title, message);
+    } catch (e: any) {
+      startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const assignTaskTo = async (taskId: string, title: string, profile: Profile) => {
+    setIsReplying(true);
+    try {
+      await updateTaskAssignees(taskId, [profile.id]);
+      await confirmTaskMutation(taskId, title, `負責：${profile.name}`);
+      setAssigneePickerTaskId(null);
+    } catch (e: any) {
+      startTypingMessage(`❌ 指派失敗：${e?.message || 'Unknown error'}`);
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const addSubtask = async (taskId: string, title: string) => {
+    const subtaskTitle = (subtaskDrafts[taskId] || '').trim();
+    if (!subtaskTitle) return;
+    const parentTask = getLatestTask(taskId);
+    setIsReplying(true);
+    try {
+      await createTask({
+        title: subtaskTitle,
+        description: '',
+        status: 'todo',
+        priority: 'medium',
+        due_date: parentTask?.due_date || undefined,
+        assignee_ids: parentTask?.assignees.map(a => a.id) || [],
+        tags: [],
+        parent_id: taskId,
+      });
+      setSubtaskDrafts(current => ({ ...current, [taskId]: '' }));
+      setSubtaskComposerTaskId(null);
+      await confirmTaskMutation(taskId, title, `已加 SubTask：${subtaskTitle}`);
+    } catch (e: any) {
+      startTypingMessage(`❌ 加 SubTask 失敗：${e?.message || 'Unknown error'}`);
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const actionButtonStyle = (variant: 'primary' | 'soft' | 'danger' = 'soft') => ({
+    background: variant === 'primary' ? '#0f172a' : variant === 'danger' ? '#fff1f2' : '#f0f9ff',
+    color: variant === 'primary' ? '#fff' : variant === 'danger' ? '#be123c' : '#0369a1',
+    border: variant === 'danger' ? '1px solid #fecdd3' : '1px solid #bae6fd',
+    borderRadius: 14,
+    padding: '11px 10px',
+    fontSize: 14,
+    fontWeight: 900,
+    cursor: isReplying ? 'default' : 'pointer',
+    opacity: isReplying ? 0.58 : 1,
+  });
 
   const applyDueDate = async (taskId: string, title: string, dueDate: string | null) => {
     setDueDatePicker(null);
@@ -810,40 +898,105 @@ export function CantonAiCoachPage() {
                 );
               })()}
 
-              {message._action === 'task_actions' && message._data && (
-                <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {[
-                    ['今日做咗乜', `${message._data.title} 今日做咗：`],
-                    ['明天做乜', `${message._data.title} 明天focus：`],
-                    ['Blocker', `${message._data.title} blocker：`],
-                    ['Progress Update', `${message._data.title} progress update：`],
-                    ['改進度', `${message._data.title} 進度改做：`],
-                    ['改Due date', `${message._data.title} 改 due date`],
-                    ['Mark完成', `${message._data.title} mark 完成`],
-                  ].map(([label, prompt]) => (
-                    <button key={label} onClick={() => {
-                      setDueDatePicker(null);
-                      if (label === '今日做咗乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'today' });
-                      if (label === '明天做乜') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'tomorrow' });
-                      if (label === 'Blocker') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'blocker' });
-                      if (label === 'Progress Update') setPendingTaskAction({ taskId: message._data.taskId, title: message._data.title, kind: 'progress_update' });
-                      if (label === '改進度' || label === 'Mark完成') {
+              {message._action === 'task_actions' && message._data && (() => {
+                const taskId = message._data.taskId;
+                const title = message._data.title;
+                const selectedTask = getLatestTask(taskId);
+                const focusLabel = selectedTask?.is_focus ? 'Unfocus' : 'Focus';
+                return (
+                  <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <button disabled={isReplying} onClick={() => {
+                        resetInlineTaskPanels();
+                        setDueDatePicker(null);
+                        setPendingTaskAction({ taskId, title, kind: 'today' });
+                        setInput(`${title} 今日做咗：`);
+                      }} style={actionButtonStyle()}>今日做咗</button>
+                      <button disabled={isReplying} onClick={() => {
+                        resetInlineTaskPanels();
+                        setDueDatePicker(null);
+                        setPendingTaskAction({ taskId, title, kind: 'tomorrow' });
+                        setInput(`${title} 明天focus：`);
+                      }} style={actionButtonStyle()}>明天做乜</button>
+                      <button disabled={isReplying} onClick={() => {
+                        resetInlineTaskPanels();
+                        setDueDatePicker(null);
+                        setPendingTaskAction({ taskId, title, kind: 'blocker' });
+                        setInput(`${title} blocker：`);
+                      }} style={actionButtonStyle()}>Blocker</button>
+                      <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { is_focus: !(selectedTask?.is_focus ?? false) }, `${focusLabel}：${selectedTask?.is_focus ? 'No' : 'Yes'}`)} style={actionButtonStyle(selectedTask?.is_focus ? 'primary' : 'soft')}>{focusLabel}</button>
+                      <button disabled={isReplying} onClick={() => {
+                        setDueDatePicker(null);
+                        setStatusPickerTaskId(current => current === taskId ? null : taskId);
+                        setAssigneePickerTaskId(null);
+                        setSubtaskComposerTaskId(null);
+                      }} style={actionButtonStyle()}>Status</button>
+                      <button disabled={isReplying} onClick={() => {
+                        setDueDatePicker(null);
+                        setExpandedMoreTaskId(current => current === taskId ? null : taskId);
+                        resetInlineTaskPanels();
+                      }} style={actionButtonStyle()}>其他</button>
+                      <button disabled={isReplying} onClick={() => {
+                        resetInlineTaskPanels();
                         setPendingTaskAction(null);
-                        setInput(prompt);
-                        return;
-                      }
-                      if (label === '改Due date') {
+                        setInput(`${title} 進度改做：`);
+                      }} style={actionButtonStyle()}>改進度</button>
+                      <button disabled={isReplying} onClick={() => {
+                        resetInlineTaskPanels();
                         setPendingTaskAction(null);
-                        setDueDatePicker({ taskId: message._data.taskId, title: message._data.title, value: '' });
-                        return;
-                      }
-                      setInput(prompt);
-                    }} style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
+                        setDueDatePicker({ taskId, title, value: '' });
+                      }} style={actionButtonStyle()}>改Due date</button>
+                    </div>
+
+                    {statusPickerTaskId === taskId && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                        {[
+                          ['Todo', 'todo'],
+                          ['WIP', 'in_progress'],
+                          ['Review', 'review'],
+                          ['Done', 'done'],
+                        ].map(([label, value]) => (
+                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'done', progress_percent: value === 'done' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {expandedMoreTaskId === taskId && (
+                      <div style={{ display: 'grid', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'done', progress_percent: 100, is_finished: true }, '堅係完成：100% Done')} style={actionButtonStyle('primary')}>堅係完成</button>
+                          <button disabled={isReplying} onClick={() => {
+                            setAssigneePickerTaskId(current => current === taskId ? null : taskId);
+                            setSubtaskComposerTaskId(null);
+                          }} style={actionButtonStyle()}>邊個做</button>
+                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'cancelled', is_finished: true }, 'Status：取消')} style={actionButtonStyle('danger')}>取消</button>
+                          <button disabled={isReplying} onClick={() => {
+                            setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
+                            setAssigneePickerTaskId(null);
+                          }} style={actionButtonStyle()}>加SubTask</button>
+                        </div>
+                        {assigneePickerTaskId === taskId && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {profiles.map(profile => (
+                              <button key={profile.id} disabled={isReplying} onClick={() => void assignTaskTo(taskId, title, profile)} style={actionButtonStyle(selectedTask?.assignees.some(a => a.id === profile.id) ? 'primary' : 'soft')}>
+                                {profile.name.split(' ')[0]}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {subtaskComposerTaskId === taskId && (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                            <input value={subtaskDrafts[taskId] || ''} onChange={(e) => setSubtaskDrafts(current => ({ ...current, [taskId]: e.target.value }))} placeholder="SubTask 名稱" disabled={isReplying} style={{ minWidth: 0, border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 12px', fontSize: 15, fontWeight: 700 }} />
+                            <button disabled={isReplying || !(subtaskDrafts[taskId] || '').trim()} onClick={() => void addSubtask(taskId, title)} style={actionButtonStyle('primary')}>Add</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {message._action === 'task_not_found' && message._data && (
                 <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
