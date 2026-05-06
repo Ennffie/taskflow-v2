@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.2.9-0506-2158';
+  const APP_VERSION = 'v2.3.0-0506-2210';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -334,99 +334,84 @@ export function CantonAiCoachPage() {
     // CR/CRCE code must mean search/check first unless user explicitly says create/add.
     const crMatch = userText.match(/^(?:ok[:：]\s*)?(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)/i) || userText.match(/\b(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)\b/i);
     const hasPipe = userText.includes('|');
+    const lines = userText.split('\n').map(l => l.trim()).filter(Boolean);
     const explicitCreateIntent = /我要加\s*task|加\s*task|新增|create\s*task|new\s*task/i.test(userText);
     const checkIntent = /check|查|搵|睇|點樣|status|進度|progress|咩情況/i.test(userText);
-    const isCreateIntent = !!(crMatch && (explicitCreateIntent || hasPipe));
+    const looksLikeMultilineTask = lines.length >= 3 && !checkIntent && !/^(check|查|搵|睇)\b/i.test(lines[0]);
+    const isCreateIntent = explicitCreateIntent || hasPipe || looksLikeMultilineTask;
     
     let parsedFields: any = null;
     
     if (isCreateIntent) {
-      // Parse multi-line or single-line input
-      const lines = userText.split('\n').map(l => l.trim()).filter(Boolean);
-      const crCode = crMatch[1];
-      
-      // Title: first line (or CR code + first few words)
-      const firstLine = lines[0] || '';
-      const title = firstLine.length > crCode.length + 1 
-        ? firstLine  // full first line as title
-        : crCode;    // just the CR code
-      
-      // Description: second line, or everything after first line
-      const description = lines[1] || '';
-      
-      // Calculate ISO due date from keywords
       const today = new Date();
       const isoToday = today.toISOString().split('T')[0];
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       const isoTomorrow = tomorrow.toISOString().split('T')[0];
-      
-      // Get next weekday
+      const currentYear = today.getFullYear();
+      const monthMap: Record<string, number> = {
+        jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+        may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9,
+        september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
+      };
+      const toISO = (year: number, month: number, day: number) => `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const getNextWeekday = (targetDay: number) => {
         const d = new Date(today);
-        const currentDay = d.getDay(); // 0=Sun, 1=Mon, ...
+        const currentDay = d.getDay();
         let diff = targetDay - currentDay;
         if (diff <= 0) diff += 7;
         d.setDate(d.getDate() + diff);
         return d.toISOString().split('T')[0];
       };
-      
-      const dateMap: Record<string, string> = {
-        'today': isoToday,
-        '今日': isoToday,
-        'tomorrow': isoTomorrow,
-        '聽日': isoTomorrow,
-        '明天': isoTomorrow,
-        'next mon': getNextWeekday(1),
-        'next tue': getNextWeekday(2),
-        'next wed': getNextWeekday(3),
-        'next thu': getNextWeekday(4),
-        'next fri': getNextWeekday(5),
-        'monday': getNextWeekday(1),
-        'tuesday': getNextWeekday(2),
-        'wednesday': getNextWeekday(3),
-        'thursday': getNextWeekday(4),
-        'friday': getNextWeekday(5),
-        '下星期一': getNextWeekday(1),
-        '下星期二': getNextWeekday(2),
-        '下星期三': getNextWeekday(3),
-        '下星期四': getNextWeekday(4),
-        '下星期五': getNextWeekday(5),
-        '5 may': '2026-05-05',
-        'may 5': '2026-05-05',
-        '6 may': '2026-05-06',
-        'may 6': '2026-05-06',
-      };
-      
-      let dueDateISO = '';
-      let dueDateLabel = '';
-      for (const [kw, iso] of Object.entries(dateMap)) {
-        if (userText.toLowerCase().includes(kw.toLowerCase())) {
-          dueDateISO = iso;
-          dueDateLabel = kw;
-          break;
+      const parseDueDate = (raw: string) => {
+        const value = raw.trim();
+        const lowerValue = value.toLowerCase();
+        const dateMap: Record<string, string> = {
+          today: isoToday, '今日': isoToday,
+          tomorrow: isoTomorrow, '聽日': isoTomorrow, '明天': isoTomorrow,
+          'next mon': getNextWeekday(1), 'next tue': getNextWeekday(2), 'next wed': getNextWeekday(3), 'next thu': getNextWeekday(4), 'next fri': getNextWeekday(5),
+          monday: getNextWeekday(1), tuesday: getNextWeekday(2), wednesday: getNextWeekday(3), thursday: getNextWeekday(4), friday: getNextWeekday(5),
+          '下星期一': getNextWeekday(1), '下星期二': getNextWeekday(2), '下星期三': getNextWeekday(3), '下星期四': getNextWeekday(4), '下星期五': getNextWeekday(5),
+        };
+        for (const [kw, iso] of Object.entries(dateMap)) {
+          if (lowerValue.includes(kw.toLowerCase())) return { iso, label: value };
         }
-      }
-      
-      // Search for assignee
+        const isoMatch = lowerValue.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+        if (isoMatch) return { iso: toISO(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3])), label: value };
+        const slashMatch = lowerValue.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](20\d{2}))?\b/);
+        if (slashMatch) return { iso: toISO(Number(slashMatch[3] || currentYear), Number(slashMatch[2]), Number(slashMatch[1])), label: value };
+        const dayMonthMatch = lowerValue.match(/\b(\d{1,2})\s+([a-z]{3,9})\b/);
+        if (dayMonthMatch && monthMap[dayMonthMatch[2]]) return { iso: toISO(currentYear, monthMap[dayMonthMatch[2]], Number(dayMonthMatch[1])), label: value };
+        const monthDayMatch = lowerValue.match(/\b([a-z]{3,9})\s+(\d{1,2})\b/);
+        if (monthDayMatch && monthMap[monthDayMatch[1]]) return { iso: toISO(currentYear, monthMap[monthDayMatch[1]], Number(monthDayMatch[2])), label: value };
+        return { iso: '', label: value || '未設定' };
+      };
+
+      const parts = hasPipe
+        ? userText.split('|').map(part => part.trim()).filter(Boolean)
+        : lines;
+      const crCode = crMatch?.[1] ?? '';
+      const title = parts[0] || crCode || '未命名 task';
+      const description = parts[1] || '';
+      const dueRaw = parts[2] || '';
+      const assigneeRaw = parts[3] || '';
+      const statusRaw = parts[4] || '';
+      const parsedDue = parseDueDate(dueRaw || userText);
       const assignee = profiles.find(p => {
-        const firstName = p.name.toLowerCase().split(' ')[0];
-        return userText.toLowerCase().includes(firstName) && firstName.length > 2;
-      })?.name || currentUserName;
-      
-      // Status
+        const fullName = p.name.toLowerCase();
+        const firstName = fullName.split(' ')[0];
+        const target = assigneeRaw.toLowerCase() || userText.toLowerCase();
+        return fullName === target || target.includes(firstName);
+      })?.name || (assigneeRaw || currentUserName);
+
       let status = 'todo';
       let statusLabel = '待辦';
-      if (userText.toLowerCase().includes('wip') || userText.toLowerCase().includes('in progress')) {
-        status = 'in_progress'; 
-        statusLabel = '進行中';
-      }
-      if (userText.toLowerCase().includes('done') || userText.toLowerCase().includes('完成')) {
-        status = 'done';
-        statusLabel = '完成';
-      }
+      const statusSource = `${statusRaw} ${userText}`.toLowerCase();
+      if (/review|檢查|審批/.test(statusSource)) { status = 'review'; statusLabel = 'Review'; }
+      if (/wip|in progress|進行/.test(statusSource)) { status = 'in_progress'; statusLabel = '進行中'; }
+      if (/done|完成/.test(statusSource)) { status = 'done'; statusLabel = '完成'; }
+      if (/todo|待辦/.test(statusSource)) { status = 'todo'; statusLabel = '待辦'; }
       
-      // Subtasks (extract "Sub task: xxx, yyy" pattern)
       const subtaskMatch = userText.match(/Sub task[s]?[：:]\s*(.+)/i);
       const subtasks = subtaskMatch 
         ? subtaskMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean)
@@ -435,8 +420,8 @@ export function CantonAiCoachPage() {
       parsedFields = {
         title,
         description,
-        dueDate: dueDateISO,        // ISO format for DB
-        dueDateLabel: dueDateLabel || '未設定',  // Human readable
+        dueDate: parsedDue.iso,
+        dueDateLabel: parsedDue.iso ? parsedDue.label : '未設定',
         status,
         statusLabel,
         assignee,
@@ -444,7 +429,7 @@ export function CantonAiCoachPage() {
       };
       
       // Don't execute yet - show confirmation
-    setInput('');
+      setInput('');
       setMessages(current => [...current, 
         { role: 'user', text: userText },
         { 
@@ -452,7 +437,7 @@ export function CantonAiCoachPage() {
           text: `📋 **確認新增 Task**\n\n` +
             `**Task 名稱：** ${title}\n` +
             `${description ? `**Description：** ${description}\n` : ''}` +
-            `${dueDateLabel ? `**到期：** ${dueDateLabel}\n` : ''}` +
+            `${parsedFields.dueDateLabel ? `**到期：** ${parsedFields.dueDateLabel}\n` : ''}` +
             `**負責人：** ${assignee}\n` +
             `**Status：** ${statusLabel}\n` +
             `${subtasks.length ? `**Subtasks：** ${subtasks.join('、')}\n` : ''}` +
@@ -621,7 +606,7 @@ export function CantonAiCoachPage() {
         return;
       }
 
-      startTypingMessage('而家呢版係 local mode，未經 bridge。你可以直接：\n• check CRxxxx\n• CRxxxx 進度改做 80\n• CRxxxx mark完成\n• 我要加Task');
+      startTypingMessage('而家呢版係 local mode，未經 bridge。你可以直接：\n• check CRxxxx\n• CRxxxx 進度改做 80\n• CRxxxx mark完成\n• 逐行輸入 task 資料加 task');
       return;
     }
 
@@ -913,7 +898,7 @@ export function CantonAiCoachPage() {
 
                 if (preset === '我要加Task') {
                   setMessages(current => [...current, { role: 'user', text: preset }]);
-                  startTypingMessage('好～直接講 task 資料，格式：\n「Task名 | Description | Due Date | 負責人 | Status」\n\n例如：「CRCE9876 test case | Make some fun | 下星期三 | Enfield | todo」');
+                  startTypingMessage('好～直接講 task 資料就得，可以用一行 `|` 分隔，或者逐行輸入：\n「Task名\nDescription\nDue Date\n負責人\nStatus」\n\n例如：\nTouch Point - Registration\nadd link to module flow\n8 May\nAlice\nReview');
                 } else {
                   void send(preset);
                 }
