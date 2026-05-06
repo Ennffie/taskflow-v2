@@ -1064,7 +1064,7 @@ export function CantonAiCoachPage() {
                         startTypingMessage('呢個 task 資料剛剛 refresh 咗，請再撳一次 My Task list。');
                       }
                     }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
-                      <span style={{ textDecoration: 'underline' }}>{task.title}</span>
+                      <span style={{ textDecoration: 'underline', fontSize: 19 }}>{task.title}</span>
                       <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
                         {task.status} | {task.assignees?.join(', ') || '未指派'} | {task.due_date || '未設定 due date'}
                       </div>
