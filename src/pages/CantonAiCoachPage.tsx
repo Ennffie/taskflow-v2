@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.3.1-0506-2218';
+  const APP_VERSION = 'v2.3.2-0506-2223';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -409,12 +409,16 @@ export function CantonAiCoachPage() {
       const assigneeRaw = parts[3] || '';
       const statusRaw = parts[4] || '';
       const parsedDue = parseDueDate(dueRaw || userText);
+      const normalizedAssignee = assigneeRaw.trim().toLowerCase();
+      const assigneeTarget = ['me', 'myself', '我', '自己'].includes(normalizedAssignee)
+        ? currentUserName
+        : assigneeRaw;
       const assignee = profiles.find(p => {
         const fullName = p.name.toLowerCase();
         const firstName = fullName.split(' ')[0];
-        const target = assigneeRaw.toLowerCase() || userText.toLowerCase();
+        const target = assigneeTarget.toLowerCase() || userText.toLowerCase();
         return fullName === target || target.includes(firstName);
-      })?.name || (assigneeRaw || currentUserName);
+      })?.name || (assigneeTarget || currentUserName);
 
       let status = 'todo';
       let statusLabel = '待辦';
