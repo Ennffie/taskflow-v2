@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.3.3-0506-2228';
+  const APP_VERSION = 'v2.3.4-0506-2236';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -936,12 +936,7 @@ export function CantonAiCoachPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <div style={{ position: 'relative' }}>
               <textarea
-                placeholder={`例如：
-CRCE-1234
-Change design
-8 May
-me
-WIP`}
+                placeholder="隨意問 task 相關問題…"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -950,9 +945,9 @@ WIP`}
                     if (input.trim()) void send();
                   }
                 }}
-                rows={5}
+                rows={1}
                 disabled={isReplying}
-                style={{ width: '100%', resize: 'none', minHeight: 112, maxHeight: 140, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
+                style={{ width: '100%', resize: 'none', minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
               />
             </div>
             <button 
