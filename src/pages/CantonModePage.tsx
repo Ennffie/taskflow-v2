@@ -116,6 +116,11 @@ export function CantonModePage() {
 
   useEffect(() => {
     void loadTasks();
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void loadTasks();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
   const rootTasks = useMemo(() => tasks.filter((task) => !task.parent_id), [tasks]);
