@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.3.6-0506-2244';
+  const APP_VERSION = 'v2.3.7-0506-2250';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -194,13 +194,18 @@ export function CantonAiCoachPage() {
 
   const renderMessage = (text: string, role: 'ai' | 'user') => {
     const displayText = role === 'ai' ? formatAiText(text) : text;
+    const isTaskDetailMessage = role === 'ai' && displayText.includes('• Status：') && displayText.includes('• Progress：');
     return displayText.split('\n').map((line, i) => {
       const isBullet = /^[•*-]\s/.test(line);
       const isNumbered = /^\d+[.)]\s/.test(line);
+      const isTaskTitle = isTaskDetailMessage && i === 0;
       return (
         <div key={i} style={{ 
           marginTop: i > 0 ? 6 : 0,
-          fontWeight: isBullet || isNumbered ? 600 : 400,
+          fontWeight: isTaskTitle ? 900 : (isBullet || isNumbered ? 600 : 400),
+          fontSize: isTaskTitle ? 21 : undefined,
+          lineHeight: isTaskTitle ? 1.25 : undefined,
+          letterSpacing: isTaskTitle ? '-0.02em' : undefined,
           paddingLeft: isBullet || isNumbered ? 16 : 0,
           textIndent: isBullet || isNumbered ? -16 : 0,
         }}>
@@ -256,7 +261,7 @@ export function CantonAiCoachPage() {
 
   const showTaskActions = (task: Pick<TaskItem, 'id' | 'title' | 'status' | 'due_date' | 'progress_percent' | 'assignees'>) => {
     startTypingMessage(
-      `搵到「${task.title}」
+      `${task.title}
 
 • Status：${task.status}
 • Progress：${task.progress_percent ?? 0}%
@@ -584,7 +589,7 @@ export function CantonAiCoachPage() {
         if (crMatch && !explicitCreateIntent && (checkIntent || !hasPipe)) {
           setMessages(current => [...current, { role: 'user', text: userText }]);
           startTypingMessage(
-            `搵到「${foundTask.title}」\n\n• Status：${foundTask.status}\n• Progress：${foundTask.progress_percent ?? 0}%\n• 到期：${foundTask.due_date || '未設定'}\n• 負責：${foundTask.assignees.map(a => a.name).join(', ') || '未指派'}\n\n想下一步做咩？`,
+            `${foundTask.title}\n\n• Status：${foundTask.status}\n• Progress：${foundTask.progress_percent ?? 0}%\n• 到期：${foundTask.due_date || '未設定'}\n• 負責：${foundTask.assignees.map(a => a.name).join(', ') || '未指派'}\n\n想下一步做咩？`,
             { _action: 'task_actions', _data: { taskId: foundTask.id, title: foundTask.title } }
           );
           setInput('');
@@ -670,7 +675,7 @@ export function CantonAiCoachPage() {
       if (!resp.ok || upstreamAuthBroken) {
         if (searchResult) {
           startTypingMessage(
-            `搵到「${searchResult.title}」\n\n• Status：${searchResult.status}\n• Progress：${searchResult.progress ?? 0}%\n• 到期：${searchResult.due_date || '未設定'}\n• 負責：${searchResult.assignees?.join(', ') || '未指派'}\n\n想下一步做咩？`,
+            `${searchResult.title}\n\n• Status：${searchResult.status}\n• Progress：${searchResult.progress ?? 0}%\n• 到期：${searchResult.due_date || '未設定'}\n• 負責：${searchResult.assignees?.join(', ') || '未指派'}\n\n想下一步做咩？`,
             { _action: 'task_actions', _data: { taskId: searchResult.id, title: searchResult.title } }
           );
           return;
