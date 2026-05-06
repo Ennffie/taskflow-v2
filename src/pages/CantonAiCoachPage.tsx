@@ -23,7 +23,7 @@ export function CantonAiCoachPage() {
   // pendingConfirm removed - using message._action instead
 
   // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.3.0-0506-2210';
+  const APP_VERSION = 'v2.3.1-0506-2218';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -31,6 +31,7 @@ export function CantonAiCoachPage() {
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
   const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' | 'progress_update' } | null>(null);
   const [dueDatePicker, setDueDatePicker] = useState<{ taskId: string; title: string; value: string } | null>(null);
+  const [lockedCreateActions, setLockedCreateActions] = useState<Record<string, 'confirming' | 'cancelled'>>({});
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -209,8 +210,12 @@ export function CantonAiCoachPage() {
     });
   };
 
+  const getCreateActionKey = (data: any) => `${data.title || ''}|${data.description || ''}|${data.dueDate || ''}|${data.assignee || ''}|${data.status || ''}`;
+
   const handleConfirmCreate = async (data: any) => {
-    // no-op
+    const actionKey = getCreateActionKey(data);
+    if (lockedCreateActions[actionKey] || isReplying) return;
+    setLockedCreateActions(current => ({ ...current, [actionKey]: 'confirming' }));
     setIsReplying(true);
     
     const assigneeProfile = profiles.find(p => p.name === data.assignee);
@@ -231,14 +236,21 @@ export function CantonAiCoachPage() {
       
       startTypingMessage(`✅ 已建立「${data.title}」\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDateLabel || data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}`);
     } catch (e: any) {
+      setLockedCreateActions(current => {
+        const next = { ...current };
+        delete next[actionKey];
+        return next;
+      });
       startTypingMessage(`❌ 建立失敗：${e?.message || 'Unknown error'}`);
     } finally {
       setIsReplying(false);
     }
   };
 
-  const handleCancelCreate = () => {
-    // no-op
+  const handleCancelCreate = (data: any) => {
+    const actionKey = getCreateActionKey(data);
+    if (lockedCreateActions[actionKey]) return;
+    setLockedCreateActions(current => ({ ...current, [actionKey]: 'cancelled' }));
     startTypingMessage('取消咗～有咩再講 💕');
   };
 
@@ -729,42 +741,51 @@ export function CantonAiCoachPage() {
               {renderMessage(message.text, message.role)}
               
               {/* Confirmation buttons for create task */}
-              {message._action === 'confirm_create' && message._data && (
-                <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
-                  <button 
-                    onClick={() => handleConfirmCreate(message._data)}
-                    style={{ 
-                      flex: 1, 
-                      background: '#0f172a', 
-                      color: '#fff', 
-                      border: 'none', 
-                      borderRadius: 12, 
-                      padding: '10px 16px', 
-                      fontSize: 15, 
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ✅ Confirm 建立
-                  </button>
-                  <button 
-                    onClick={handleCancelCreate}
-                    style={{ 
-                      flex: 1, 
-                      background: '#f1f5f9', 
-                      color: '#64748b', 
-                      border: '1px solid #e2e8f0', 
-                      borderRadius: 12, 
-                      padding: '10px 16px', 
-                      fontSize: 15, 
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ❌ Cancel
-                  </button>
-                </div>
-              )}
+              {message._action === 'confirm_create' && message._data && (() => {
+                const actionKey = getCreateActionKey(message._data);
+                const lockState = lockedCreateActions[actionKey];
+                const isLocked = Boolean(lockState) || isReplying;
+                return (
+                  <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+                    <button 
+                      disabled={isLocked}
+                      onClick={() => handleConfirmCreate(message._data)}
+                      style={{ 
+                        flex: 1, 
+                        background: isLocked ? '#cbd5e1' : '#0f172a', 
+                        color: isLocked ? '#64748b' : '#fff', 
+                        border: 'none', 
+                        borderRadius: 12, 
+                        padding: '10px 16px', 
+                        fontSize: 15, 
+                        fontWeight: 700,
+                        cursor: isLocked ? 'default' : 'pointer',
+                        opacity: isLocked ? 0.68 : 1
+                      }}
+                    >
+                      {lockState === 'confirming' ? '⏳ 建立中…' : lockState === 'cancelled' ? '✅ 已取消' : '✅ Confirm 建立'}
+                    </button>
+                    <button 
+                      disabled={isLocked}
+                      onClick={() => handleCancelCreate(message._data)}
+                      style={{ 
+                        flex: 1, 
+                        background: isLocked ? '#e2e8f0' : '#f1f5f9', 
+                        color: isLocked ? '#94a3b8' : '#64748b', 
+                        border: '1px solid #e2e8f0', 
+                        borderRadius: 12, 
+                        padding: '10px 16px', 
+                        fontSize: 15, 
+                        fontWeight: 600,
+                        cursor: isLocked ? 'default' : 'pointer',
+                        opacity: isLocked ? 0.68 : 1
+                      }}
+                    >
+                      ❌ Cancel
+                    </button>
+                  </div>
+                );
+              })()}
 
               {message._action === 'task_actions' && message._data && (
                 <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
