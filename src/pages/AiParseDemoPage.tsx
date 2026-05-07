@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Wand2 } from 'lucide-react';
 import { parseTaskWithGemma, type ParsedTaskDraft } from '../lib/localTaskParser';
+import { VersionBadge } from '../components/VersionBadge';
 
 const shell: React.CSSProperties = {
   minHeight: '100vh',
@@ -39,6 +40,7 @@ export function AiParseDemoPage() {
 
   return (
     <div style={shell}>
+      <VersionBadge />
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 999, background: '#f3e8ff', color: '#6d28d9', fontWeight: 700, marginBottom: 16 }}>
           <Sparkles size={16} /> Local Gemma 4 parser demo

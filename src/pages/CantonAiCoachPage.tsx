@@ -3,6 +3,8 @@ import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { APP_VERSION } from '../lib/version';
+import { VersionBadge } from '../components/VersionBadge';
 import type { Profile, TaskItem, TaskStatus } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
@@ -22,8 +24,6 @@ export function CantonAiCoachPage() {
   const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   // pendingConfirm removed - using message._action instead
 
-  // Version for debugging cache issues - updated 0505-0830
-  const APP_VERSION = 'v2.4.3-0507-0207';
   const [typingTarget, setTypingTarget] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -868,6 +868,7 @@ export function CantonAiCoachPage() {
 
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
+      <VersionBadge />
       <header style={{ padding: '14px 16px 10px', background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <button onClick={() => navigate('/canton-mode')} style={{ border: 'none', background: 'transparent', color: '#475569', display: 'flex', gap: 8, alignItems: 'center', fontWeight: 900, padding: 0 }}><ArrowLeft size={18} /> Canton</button>

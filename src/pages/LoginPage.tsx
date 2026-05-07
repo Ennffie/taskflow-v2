@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { VersionBadge } from '../components/VersionBadge';
 
 export function LoginPage() {
   const { signIn } = useAuth();
@@ -45,6 +46,7 @@ export function LoginPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'grid', placeItems: 'center', padding: '24px' }}>
+      <VersionBadge />
       <div style={{ width: 'min(420px, 100%)', background: '#fff', borderRadius: '24px', padding: '40px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
         {/* Purple Heading */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>

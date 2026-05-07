@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
+import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
 import { STATUS_META, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
@@ -126,11 +127,11 @@ export function CantonModePage() {
   const rootTasks = useMemo(() => tasks.filter((task) => !task.parent_id), [tasks]);
   const focusTasks = useMemo(() => rootTasks.filter((task) => task.is_focus && !isDone(task)), [rootTasks]);
   const visibleTasks = useMemo(() => {
-    // 優先顯示 focus tasks，如果唔夠 4 個再補其他
-    const focus = focusTasks.slice(0, 4);
-    if (focus.length >= 4) return focus;
-    
-    // 補充其他非 done task
+    const focus = focusTasks
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, MAX_VISIBLE_PLANETS);
+    if (focus.length >= MAX_VISIBLE_PLANETS) return focus;
+
     const others = rootTasks
       .filter((task) => !isDone(task) && !task.is_focus)
       .sort((a, b) => {
@@ -141,7 +142,7 @@ export function CantonModePage() {
         if (!b.due_date) return -1;
         return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
       })
-      .slice(0, 4 - focus.length);
+      .slice(0, MAX_VISIBLE_PLANETS - focus.length);
     return [...focus, ...others];
   }, [rootTasks, focusTasks]);
 
@@ -265,10 +266,9 @@ function SunCenter() {
 
 function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem; index: number; total: number; allTasks: TaskItem[]; onClick: () => void }) {
   const subtasks = allTasks.filter((item) => item.parent_id === task.id);
-  const angles = total <= 1 ? [300] : total === 2 ? [210, 330] : total === 3 ? [215, 330, 90] : total === 4 ? [210, 305, 30, 135] : [190, 260, 330, 50, 120];
-  const angleDeg = angles[index % angles.length];
-  const laneRadius = index === 0 ? 132 : 136 + index * 16;
-  const size = index === 0 ? 96 : isOverdue(task) ? 84 : 78;
+  const angleDeg = getPlanetAngle(index, total);
+  const laneRadius = getPlanetLaneRadius(index, total);
+  const size = getPlanetSize(index, total, isOverdue(task));
   const isFocusBubble = task.is_focus || index === 0;
   const userColor = getUserColor(task);
   const bg = isOverdue(task)

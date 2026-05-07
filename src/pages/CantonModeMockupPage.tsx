@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { CalendarDays, Clock3, Plus, Sparkles, Waves } from 'lucide-react';
+import { VersionBadge } from '../components/VersionBadge';
 
 type Screen = 'home' | 'add' | 'detail';
 
@@ -41,6 +42,7 @@ export function CantonModeMockupPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: pageBg, padding: '28px 20px 60px' }}>
+      <VersionBadge />
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <div style={{ marginBottom: 24 }}>
           <div

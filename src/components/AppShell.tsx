@@ -2,6 +2,7 @@ import { CheckSquare, ScrollText, Settings, Home, Plus, Sparkles } from 'lucide-
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
+import { VersionBadge } from './VersionBadge';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -77,6 +78,7 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: isKeyboardOpen ? '24px' : '100px' }}>
+      <VersionBadge />
       {/* Main Content */}
       <main style={{ padding: '24px' }}>{children}</main>
 
