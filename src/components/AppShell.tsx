@@ -78,9 +78,13 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: isKeyboardOpen ? '24px' : '100px' }}>
-      <VersionBadge />
       {/* Main Content */}
-      <main style={{ padding: '24px' }}>{children}</main>
+      <main style={{ padding: '24px' }}>
+        <div style={{ maxWidth: 1120, margin: '0 auto 6px' }}>
+          <VersionBadge />
+        </div>
+        {children}
+      </main>
 
       {/* Bottom Menu Bar Container - hidden when keyboard is open, blurred when modal is open */}
       {!isKeyboardOpen && (

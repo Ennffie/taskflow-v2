@@ -1,27 +1,22 @@
 import { APP_VERSION } from '../lib/version';
 
-export function VersionBadge() {
+export function VersionBadge({ align = 'right', subtle = true }: { align?: 'left' | 'right' | 'inline'; subtle?: boolean }) {
   return (
     <div
       style={{
-        position: 'fixed',
-        top: 12,
-        right: 12,
-        zIndex: 140,
-        padding: '6px 10px',
-        borderRadius: 999,
-        background: 'rgba(15, 23, 42, 0.78)',
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: 800,
-        letterSpacing: '0.02em',
-        boxShadow: '0 8px 24px rgba(15, 23, 42, 0.18)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        pointerEvents: 'none',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: align === 'left' ? 'flex-start' : align === 'inline' ? 'center' : 'flex-end',
+        width: align === 'inline' ? 'auto' : '100%',
+        color: subtle ? 'rgba(100, 116, 139, 0.82)' : '#475569',
+        fontSize: 10.5,
+        fontWeight: 500,
+        letterSpacing: '0.01em',
+        lineHeight: 1,
+        whiteSpace: 'nowrap',
       }}
     >
-      {APP_VERSION}
+      ({APP_VERSION})
     </div>
   );
 }
