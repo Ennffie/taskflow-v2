@@ -4,11 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { VersionBadge } from '../components/VersionBadge';
+import { buildLocalCoachPrompt, generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
 import type { Profile, TaskItem, TaskStatus } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
 const FALLBACK_BRIDGE_URL = 'https://counting-hereby-manufacturers-dominant.trycloudflare.com';
 const LOCAL_ONLY_MODE = true;
+const LOCAL_MODEL_OPTIONS: Array<{ id: LocalModelId; label: string }> = [
+  { id: 'gemma4:e4b', label: 'Gemma 4' },
+  { id: 'qwen3:8b', label: 'Qwen 3' },
+];
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
@@ -37,6 +42,8 @@ export function CantonAiCoachPage() {
   const [subtaskComposerTaskId, setSubtaskComposerTaskId] = useState<string | null>(null);
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
+  const [activeLocalModel, setActiveLocalModel] = useState<LocalModelId>('gemma4:e4b');
+  const [isSwitchingModel, setIsSwitchingModel] = useState(false);
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -737,23 +744,10 @@ export function CantonAiCoachPage() {
     if (LOCAL_ONLY_MODE) {
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
+      setIsReplying(true);
 
       const lower = userText.toLowerCase();
       const overdueTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.due_date && t.due_date < new Date().toISOString().slice(0, 10));
-
-      if (/hi|hello|你好|哈囉/.test(lower)) {
-        startTypingMessage('Hi Bro～你可以直接叫我 check task、改進度、mark 完成、或者加 task。');
-        return;
-      }
-
-      if (/有咩未交|今日重點|risk|overdue/.test(lower)) {
-        if (!overdueTasks.length) {
-          startTypingMessage('暫時未見有過期 main task。想唔想我幫你 check 某個 CR？');
-        } else {
-          startTypingMessage(`而家最急大概有 ${overdueTasks.length} 個：\n\n${overdueTasks.map(t => `• ${t.title}（到期 ${t.due_date}）`).join('\n')}`);
-        }
-        return;
-      }
 
       if (/my\s*task|task\s*list|我.?task/.test(lower)) {
         const myTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && (t.assignees.some(a => a.name === currentUserName) || t.created_by === currentUserId));
@@ -768,10 +762,34 @@ export function CantonAiCoachPage() {
           _action: 'task_list',
           _data: { tasks: list }
         });
+        setIsReplying(false);
         return;
       }
 
-      startTypingMessage('而家呢版係 local mode，未經 bridge。你可以直接：\n• check CRxxxx\n• CRxxxx 進度改做 80\n• CRxxxx mark完成\n• 逐行輸入 task 資料加 task');
+      if (/有咩未交|今日重點|risk|overdue/.test(lower) && overdueTasks.length) {
+        startTypingMessage(`而家最急大概有 ${overdueTasks.length} 個：\n\n${overdueTasks.map(t => `• ${t.title}（到期 ${t.due_date}）`).join('\n')}`);
+        setIsReplying(false);
+        return;
+      }
+
+      try {
+        const prompt = buildLocalCoachPrompt(userText, {
+          currentUserName,
+          tasks: tasks.map((task) => ({
+            title: task.title,
+            status: task.status,
+            due_date: task.due_date,
+            assignees: task.assignees.map((a) => a.name),
+            progress: task.progress_percent ?? 0,
+          })),
+        });
+        const reply = await generateLocalChatReply(activeLocalModel, prompt);
+        startTypingMessage(reply || '收到。');
+      } catch (error: any) {
+        startTypingMessage(`${error?.message || '本地 AI 暫時無法回應。'}\n\n你可以試下切去另一個 model 再試。`);
+      } finally {
+        setIsReplying(false);
+      }
       return;
     }
 
@@ -868,9 +886,46 @@ export function CantonAiCoachPage() {
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
       <header style={{ padding: '14px 16px 10px', background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(226,232,240,0.9)' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <button onClick={() => navigate('/canton-mode')} style={{ border: 'none', background: 'transparent', color: '#475569', display: 'flex', gap: 8, alignItems: 'center', fontWeight: 900, padding: 0 }}><ArrowLeft size={18} /> Canton</button>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, color: '#0369a1', fontWeight: 950 }}><Sparkles size={17} /> Silly AI <VersionBadge align="inline" /></div>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <button onClick={() => navigate('/canton-mode')} style={{ border: 'none', background: 'transparent', color: '#475569', display: 'flex', gap: 8, alignItems: 'center', fontWeight: 900, padding: 0 }}><ArrowLeft size={18} /> Canton</button>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, color: '#0369a1', fontWeight: 950 }}><Sparkles size={17} /> Silly AI <VersionBadge align="inline" /></div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {LOCAL_MODEL_OPTIONS.map((option) => {
+                const active = activeLocalModel === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    disabled={isReplying || isSwitchingModel}
+                    onClick={async () => {
+                      if (option.id === activeLocalModel) return;
+                      setIsSwitchingModel(true);
+                      setActiveLocalModel(option.id);
+                      setTimeout(() => setIsSwitchingModel(false), 900);
+                    }}
+                    style={{
+                      border: active ? '1px solid #0284c7' : '1px solid #cbd5e1',
+                      background: active ? '#e0f2fe' : '#fff',
+                      color: active ? '#0369a1' : '#475569',
+                      borderRadius: 999,
+                      padding: '7px 11px',
+                      fontSize: 12,
+                      fontWeight: active ? 800 : 700,
+                      cursor: isReplying || isSwitchingModel ? 'not-allowed' : 'pointer',
+                      opacity: isReplying || isSwitchingModel ? 0.65 : 1,
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 700 }}>
+              {isSwitchingModel ? 'Switching model…' : `Current local model: ${LOCAL_MODEL_OPTIONS.find((item) => item.id === activeLocalModel)?.label}`}
+            </div>
+          </div>
         </div>
       </header>
 
