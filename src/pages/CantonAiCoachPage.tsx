@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { VersionBadge } from '../components/VersionBadge';
-import { buildLocalCoachPrompt, generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
+import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
 import type { Profile, TaskItem, TaskStatus } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
@@ -773,18 +773,24 @@ export function CantonAiCoachPage() {
       }
 
       try {
-        const prompt = buildLocalCoachPrompt(userText, {
-          currentUserName,
-          tasks: tasks.map((task) => ({
-            title: task.title,
-            status: task.status,
-            due_date: task.due_date,
-            assignees: task.assignees.map((a) => a.name),
-            progress: task.progress_percent ?? 0,
-          })),
-        });
-        const reply = await generateLocalChatReply(bridgeUrl, activeLocalModel, prompt, sessionId);
-        startTypingMessage(reply || '收到。');
+        const reply = await generateLocalChatReply(
+          bridgeUrl,
+          activeLocalModel,
+          userText,
+          sessionId,
+          {
+            today: new Date().toISOString().slice(0, 10),
+            tasks: tasks.map((task) => ({
+              title: task.title,
+              status: task.status,
+              due_date: task.due_date,
+              assignees: task.assignees.map((a) => a.name),
+              progress: task.progress_percent ?? 0,
+            })),
+            profiles: profiles.map((profile) => ({ name: profile.name })),
+          },
+        );
+        startTypingMessage(reply || '我收到你嘅問題，但今次本地 model 冇完整答到。我可以再試一次，或者你切另一個 model。');
       } catch (error: any) {
         startTypingMessage(`${error?.message || '本地 AI 暫時無法回應。'}\n\n你可以試下切去另一個 model 再試。`);
       } finally {
