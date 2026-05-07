@@ -11,10 +11,7 @@ import type { Profile, TaskItem, TaskStatus } from '../types';
 // Fallback bridge URL if Supabase config is not available
 const FALLBACK_BRIDGE_URL = 'https://counting-hereby-manufacturers-dominant.trycloudflare.com';
 const LOCAL_ONLY_MODE = true;
-const LOCAL_MODEL_OPTIONS: Array<{ id: LocalModelId; label: string }> = [
-  { id: 'gemma4:e4b', label: 'Gemma 4' },
-  { id: 'qwen3:8b', label: 'Qwen 3' },
-];
+const FIXED_LOCAL_MODEL: LocalModelId = 'qwen3:8b';
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
@@ -43,8 +40,6 @@ export function CantonAiCoachPage() {
   const [subtaskComposerTaskId, setSubtaskComposerTaskId] = useState<string | null>(null);
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
-  const [activeLocalModel, setActiveLocalModel] = useState<LocalModelId>('gemma4:e4b');
-  const [isSwitchingModel, setIsSwitchingModel] = useState(false);
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -776,7 +771,7 @@ export function CantonAiCoachPage() {
       try {
         const reply = await generateLocalChatReply(
           bridgeUrl,
-          activeLocalModel,
+          FIXED_LOCAL_MODEL,
           userText,
           sessionId,
           {
@@ -899,38 +894,11 @@ export function CantonAiCoachPage() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, color: '#0369a1', fontWeight: 950 }}><Sparkles size={17} /> Silly AI <VersionBadge align="inline" /></div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {LOCAL_MODEL_OPTIONS.map((option) => {
-                const active = activeLocalModel === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    disabled={isReplying || isSwitchingModel}
-                    onClick={async () => {
-                      if (option.id === activeLocalModel) return;
-                      setIsSwitchingModel(true);
-                      setActiveLocalModel(option.id);
-                      setTimeout(() => setIsSwitchingModel(false), 900);
-                    }}
-                    style={{
-                      border: active ? '1px solid #0284c7' : '1px solid #cbd5e1',
-                      background: active ? '#e0f2fe' : '#fff',
-                      color: active ? '#0369a1' : '#475569',
-                      borderRadius: 999,
-                      padding: '7px 11px',
-                      fontSize: 12,
-                      fontWeight: active ? 800 : 700,
-                      cursor: isReplying || isSwitchingModel ? 'not-allowed' : 'pointer',
-                      opacity: isReplying || isSwitchingModel ? 0.65 : 1,
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
             <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 700 }}>
-              {isSwitchingModel ? 'Switching model…' : `Current local model: ${LOCAL_MODEL_OPTIONS.find((item) => item.id === activeLocalModel)?.label}`}
+              Local AI: Qwen 3 8B
+            </div>
+            <div style={{ fontSize: 11.5, color: '#94a3b8', fontWeight: 600 }}>
+              speed + accuracy mode
             </div>
           </div>
         </div>

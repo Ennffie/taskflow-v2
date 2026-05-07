@@ -1,4 +1,4 @@
-export type LocalModelId = 'gemma4:e4b' | 'qwen3:8b';
+export type LocalModelId = 'qwen3:8b';
 
 export async function generateLocalChatReply(
   bridgeUrl: string,
