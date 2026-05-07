@@ -179,7 +179,7 @@ export function CantonModePage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6d28d9', fontWeight: 900, fontSize: 14 }}><Waves size={17} /> 而家浮面嘅 task</div>
                 </div>
 
-                <div style={{ position: 'relative', height: 600, borderRadius: '30px 30px 0 0', overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '34px 12px' }}>
+                <div style={{ position: 'relative', height: 760, borderRadius: '30px 30px 0 0', overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '28px 8px 72px' }}>
                   <SunCenter />
                   {visibleTasks.length === 0 ? (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#64748b', padding: 28 }}>
@@ -217,7 +217,7 @@ function SunCenter() {
     <div style={{
       position: 'absolute',
       left: '50%',
-      top: '46%',
+      top: '42%',
       width: 116,
       height: 116,
       transform: 'translate(-50%, -50%)',
@@ -270,6 +270,7 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
   const laneRadius = getPlanetLaneRadius(index, total);
   const size = getPlanetSize(index, total, isOverdue(task));
   const isFocusBubble = task.is_focus || index === 0;
+  const isPrimaryBubble = total > 4 ? index < 4 : true;
   const userColor = getUserColor(task);
   const bg = isOverdue(task)
     ? `radial-gradient(circle at 34% 24%, #fff1f2 0%, ${hexToRgba(userColor, 0.42)} 44%, #fca5a5 100%)`
@@ -287,7 +288,7 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
       style={{
         position: 'absolute',
         left: '50%',
-        top: '46%',
+        top: '42%',
         width: 0,
         height: 0,
         zIndex: 5 + index,
@@ -320,20 +321,20 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
             border: '1px solid rgba(255,255,255,0.75)',
             background: bg,
             boxShadow: isFocusBubble ? `0 18px 36px ${hexToRgba(userColor, 0.24)}` : `0 14px 28px ${hexToRgba(userColor, 0.18)}`,
-            padding: index === 0 ? 10 : 9,
+            padding: total > 4 ? (isPrimaryBubble ? 10 : 7) : (index === 0 ? 10 : 9),
             textAlign: 'center',
             cursor: 'pointer',
             color: textColor,
           }}
         >
-          <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-            <div style={{ fontSize: index === 0 ? 9.2 : 8.4, lineHeight: 1, fontWeight: 900, opacity: 0.86 }}>{dueLabel(task.due_date)}</div>
-            <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center' }}>
-              <div style={{ fontSize: index === 0 ? 12 : 10.5, lineHeight: 1.04, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</div>
+          <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: isPrimaryBubble ? 2 : 1 }}>
+            <div style={{ fontSize: total > 4 ? (isPrimaryBubble ? (index === 0 ? 9.8 : 9.2) : 7.4) : (index === 0 ? 9.2 : 8.4), lineHeight: 1, fontWeight: 900, opacity: 0.86, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dueLabel(task.due_date)}</div>
+            <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center', width: '100%' }}>
+              <div style={{ fontSize: total > 4 ? (isPrimaryBubble ? (index === 0 ? 13.5 : 12.5) : 9.1) : (index === 0 ? 12 : 10.5), lineHeight: isPrimaryBubble ? 1.04 : 1.03, fontWeight: 900, display: '-webkit-box', WebkitLineClamp: total > 4 ? (isPrimaryBubble ? 3 : 2) : 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word', maxWidth: '100%' }}>{task.title}</div>
             </div>
-            <div style={{ fontSize: index === 0 ? 8.8 : 8, opacity: 0.8, fontWeight: 800 }}>{assigneeLabel(task)}</div>
+            <div style={{ fontSize: total > 4 ? (isPrimaryBubble ? (index === 0 ? 9 : 8.3) : 7) : (index === 0 ? 8.8 : 8), opacity: 0.8, fontWeight: 800, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{assigneeLabel(task)}</div>
           </div>
-          {subtasks.slice(0, 6).map((subtask, subIndex) => {
+          {isPrimaryBubble && subtasks.slice(0, 6).map((subtask, subIndex) => {
             const subAngle = (360 / Math.max(Math.min(subtasks.length, 6), 1)) * subIndex - 90;
             const subProgress = subtask.is_finished || subtask.status === 'done' ? 100 : (subtask.progress_percent ?? 0);
             const subOrbitDur = Math.max(4.2, baseSubtaskOrbitDur + subProgress * 0.045 + subIndex * 0.35);
