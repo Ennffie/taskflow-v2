@@ -783,7 +783,7 @@ export function CantonAiCoachPage() {
             progress: task.progress_percent ?? 0,
           })),
         });
-        const reply = await generateLocalChatReply(activeLocalModel, prompt);
+        const reply = await generateLocalChatReply(bridgeUrl, activeLocalModel, prompt, sessionId);
         startTypingMessage(reply || '收到。');
       } catch (error: any) {
         startTypingMessage(`${error?.message || '本地 AI 暫時無法回應。'}\n\n你可以試下切去另一個 model 再試。`);

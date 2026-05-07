@@ -1,19 +1,14 @@
-const OLLAMA_URL = 'http://localhost:11434/api/generate';
-
 export type LocalModelId = 'gemma4:e4b' | 'qwen3:8b';
 
-export async function generateLocalChatReply(model: LocalModelId, prompt: string) {
-  const response = await fetch(OLLAMA_URL, {
+export async function generateLocalChatReply(bridgeUrl: string, model: LocalModelId, prompt: string, sessionId: string) {
+  const response = await fetch(`${bridgeUrl}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      text: prompt,
+      session_id: `local-${sessionId}`,
       model,
-      prompt,
-      stream: false,
-      options: {
-        num_predict: 220,
-        temperature: 0.4,
-      },
+      context: {},
     }),
   });
 
@@ -22,7 +17,7 @@ export async function generateLocalChatReply(model: LocalModelId, prompt: string
   }
 
   const data = await response.json();
-  return (data.response ?? '').trim();
+  return (data.reply ?? '').trim();
 }
 
 export function buildLocalCoachPrompt(input: string, context: {
