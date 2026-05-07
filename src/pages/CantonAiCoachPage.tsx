@@ -5,6 +5,7 @@ import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees,
 import { supabase } from '../lib/supabase';
 import { VersionBadge } from '../components/VersionBadge';
 import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
+import { tryBuildDeterministicSummary } from '../lib/cantonSummary';
 import type { Profile, TaskItem, TaskStatus } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
@@ -747,7 +748,6 @@ export function CantonAiCoachPage() {
       setIsReplying(true);
 
       const lower = userText.toLowerCase();
-      const overdueTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.due_date && t.due_date < new Date().toISOString().slice(0, 10));
 
       if (/my\s*task|task\s*list|我.?task/.test(lower)) {
         const myTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && (t.assignees.some(a => a.name === currentUserName) || t.created_by === currentUserId));
@@ -766,8 +766,9 @@ export function CantonAiCoachPage() {
         return;
       }
 
-      if (/有咩未交|今日重點|risk|overdue/.test(lower) && overdueTasks.length) {
-        startTypingMessage(`而家最急大概有 ${overdueTasks.length} 個：\n\n${overdueTasks.map(t => `• ${t.title}（到期 ${t.due_date}）`).join('\n')}`);
+      const deterministicReply = tryBuildDeterministicSummary(userText, tasks, currentUserName);
+      if (deterministicReply) {
+        startTypingMessage(deterministicReply);
         setIsReplying(false);
         return;
       }
