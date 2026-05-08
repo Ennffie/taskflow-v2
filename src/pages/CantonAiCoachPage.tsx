@@ -772,6 +772,22 @@ export function CantonAiCoachPage() {
         return;
       }
 
+      if (/(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(lower)) {
+        const focusTasks = tasks.filter(t => t.is_focus === true).map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(`而家 Focus task 總共有 ${focusTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
+          _action: 'task_list',
+          _data: { tasks: focusTasks }
+        });
+        setIsReplying(false);
+        return;
+      }
+
       if (/my\s*task|task\s*list|我.?task/.test(lower)) {
         const myTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && (t.assignees.some(a => a.name === currentUserName) || t.created_by === currentUserId));
         const list = myTasks.map(t => ({
@@ -1130,7 +1146,7 @@ export function CantonAiCoachPage() {
                       }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
                         <span style={{ textDecoration: 'underline', fontSize: 19, fontWeight: 400 }}>{task.title}</span>
                         <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
-                          {task.status} | {task.assignees?.join(', ') || '未指派'} | {task.due_date || '未設定 due date'}
+                          {task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}
                         </div>
                       </button>
                     ))}
