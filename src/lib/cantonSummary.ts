@@ -36,7 +36,9 @@ function rootOpenTasks(tasks: TaskItem[]) {
 }
 
 function topTasks(tasks: TaskItem[], limit = 4) {
-  return [...tasks].sort((a, b) => score(b) - score(a) || (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99')).slice(0, limit);
+  return [...tasks]
+    .sort((a, b) => score(b) - score(a) || (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99'))
+    .slice(0, limit);
 }
 
 function line(task: TaskItem) {
@@ -48,13 +50,21 @@ function line(task: TaskItem) {
 
 export function tryBuildDeterministicSummary(input: string, tasks: TaskItem[], currentUserName: string) {
   const text = input.trim().toLowerCase();
+
+  const allFocus = tasks.filter((t) => t.is_focus === true);
   const openRoot = rootOpenTasks(tasks);
   const dueToday = openRoot.filter(isDueToday);
   const overdue = openRoot.filter(isOverdue);
   const myTasks = openRoot.filter((t) => t.assignees?.some((a) => a.name === currentUserName) || t.created_by === currentUserName);
   const urgent = topTasks(openRoot, 4);
 
-  if (/(今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today)/.test(text)) {
+  if (/(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(text)) {
+    return allFocus.length
+      ? `而家 Focus task 總共有 ${allFocus.length} 個：\n\n${allFocus.slice(0, 10).map(line).join('\n')}`
+      : '暫時未見有 Focus task。';
+  }
+
+  if (/(今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)/.test(text)) {
     const top = topTasks([...dueToday, ...overdue, ...openRoot], 4);
     return [
       `Bro，你而家要留意嘅 main task 有 ${openRoot.length} 個。今日到期 ${dueToday.length} 個，overdue ${overdue.length} 個。`,
