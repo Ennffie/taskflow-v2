@@ -1,15 +1,41 @@
 export type LocalModelId = 'qwen3:8b';
 
+export type LocalTaskFact = {
+  title: string;
+  status: string;
+  due_date: string | null;
+  assignees: string[];
+  progress?: number | null;
+  is_focus?: boolean;
+  priority?: string;
+};
+
+export type LocalDecisionContext = {
+  today: string;
+  currentUserName: string;
+  summary: {
+    openMainCount: number;
+    dueTodayCount: number;
+    overdueCount: number;
+    myOpenCount: number;
+  };
+  topPriority: Array<{
+    title: string;
+    due_date: string | null;
+    assignees: string[];
+    progress: number;
+    reason: string;
+  }>;
+  tasks: LocalTaskFact[];
+  profiles: Array<{ name: string }>;
+};
+
 export async function generateLocalChatReply(
   bridgeUrl: string,
   model: LocalModelId,
   input: string,
   sessionId: string,
-  context: {
-    today: string;
-    tasks: Array<{ title: string; status: string; due_date: string | null; assignees: string[]; progress?: number | null }>;
-    profiles: Array<{ name: string }>;
-  },
+  context: LocalDecisionContext,
 ) {
   const response = await fetch(`${bridgeUrl}/chat`, {
     method: 'POST',

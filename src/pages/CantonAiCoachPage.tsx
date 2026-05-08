@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { VersionBadge } from '../components/VersionBadge';
 import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
 import { tryBuildDeterministicSummary } from '../lib/cantonSummary';
+import { buildDecisionContext } from '../lib/cantonDecisionContext';
 import type { Profile, TaskItem, TaskStatus } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
@@ -774,21 +775,11 @@ export function CantonAiCoachPage() {
           FIXED_LOCAL_MODEL,
           userText,
           sessionId,
-          {
-            today: new Date().toISOString().slice(0, 10),
-            tasks: tasks.map((task) => ({
-              title: task.title,
-              status: task.status,
-              due_date: task.due_date,
-              assignees: task.assignees.map((a) => a.name),
-              progress: task.progress_percent ?? 0,
-            })),
-            profiles: profiles.map((profile) => ({ name: profile.name })),
-          },
+          buildDecisionContext(tasks, currentUserName, profiles.map((profile) => ({ name: profile.name }))),
         );
-        startTypingMessage(reply || '我收到你嘅問題，但今次本地 model 冇完整答到。我可以再試一次，或者你切另一個 model。');
+        startTypingMessage(reply || '我收到你嘅問題，但今次本地 AI 未完整答到。你可以再問得直接少少，例如：我依家最應該做邊樣先？');
       } catch (error: any) {
-        startTypingMessage(`${error?.message || '本地 AI 暫時無法回應。'}\n\n你可以試下切去另一個 model 再試。`);
+        startTypingMessage(`${error?.message || '本地 AI 暫時無法回應。'}\n\n你可以再試一次，或者直接問：今日有咩做／最 urgent 係乜。`);
       } finally {
         setIsReplying(false);
       }
