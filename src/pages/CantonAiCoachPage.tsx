@@ -747,8 +747,15 @@ export function CantonAiCoachPage() {
       const lower = userText.toLowerCase();
 
       const profileNames = Array.from(new Set(tasks.flatMap((task) => task.assignees?.map((assignee) => assignee.name) || []))).sort((a, b) => b.length - a.length);
-      const matchedPerson = profileNames.find((name) => lower.includes(name.toLowerCase().replace(/\s+/g, ' ')) || lower.includes(name.toLowerCase().split(' ')[0]));
-      if (matchedPerson && /(task|tasks|有咩做|有啲咩做|未做|手上|跟緊|負責)/.test(lower)) {
+      const personAliases = profileNames.flatMap((name) => {
+        const lowerName = name.toLowerCase();
+        const parts = lowerName.split(' ');
+        const aliases = new Set<string>([lowerName, lowerName.replace(/\s+/g, ' '), parts[0]]);
+        if (parts[0] && parts[0].length >= 3) aliases.add(parts[0].slice(0, 3));
+        return Array.from(aliases).map((alias) => ({ alias, name }));
+      }).sort((a, b) => b.alias.length - a.alias.length);
+      const matchedPerson = personAliases.find((item) => lower.includes(item.alias))?.name;
+      if (matchedPerson && /(task|tasks|有咩做|有啲咩做|未做|手上|跟緊|負責|check)/.test(lower)) {
         const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.assignees.some(a => a.name === matchedPerson));
         const list = personTasks.map(t => ({
           id: t.id,
