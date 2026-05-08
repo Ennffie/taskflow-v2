@@ -12,7 +12,7 @@ import type { Profile, TaskItem, TaskStatus } from '../types';
 // Fallback bridge URL if Supabase config is not available
 const FALLBACK_BRIDGE_URL = 'https://counting-hereby-manufacturers-dominant.trycloudflare.com';
 const LOCAL_ONLY_MODE = true;
-const FIXED_LOCAL_MODEL: LocalModelId = 'qwen3:8b';
+const FIXED_LOCAL_MODEL: LocalModelId = 'llama3:8b';
 
 export function CantonAiCoachPage() {
   const navigate = useNavigate();
@@ -886,7 +886,7 @@ export function CantonAiCoachPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 700 }}>
-              Local AI: Qwen 3 8B
+              Local AI: Llama 3 8B
             </div>
             <div style={{ fontSize: 11.5, color: '#94a3b8', fontWeight: 600 }}>
               speed + accuracy mode
