@@ -41,6 +41,7 @@ export function CantonAiCoachPage() {
   const [subtaskComposerTaskId, setSubtaskComposerTaskId] = useState<string | null>(null);
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
+  const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -1084,26 +1085,40 @@ export function CantonAiCoachPage() {
                 </div>
               )}
 
-              {message._action === 'task_list' && message._data?.tasks && (
-                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {message._data.tasks.map((task: any) => (
-                    <button key={task.id} onClick={() => {
-                      const selectedTask = tasks.find(t => t.id === task.id);
-                      setMessages(current => [...current, { role: 'user', text: `check ${task.title}` }]);
-                      if (selectedTask) {
-                        showTaskActions(selectedTask);
-                      } else {
-                        startTypingMessage('呢個 task 資料剛剛 refresh 咗，請再撳一次 My Task list。');
-                      }
-                    }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
-                      <span style={{ textDecoration: 'underline', fontSize: 19, fontWeight: 400 }}>{task.title}</span>
-                      <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
-                        {task.status} | {task.assignees?.join(', ') || '未指派'} | {task.due_date || '未設定 due date'}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {message._action === 'task_list' && message._data?.tasks && (() => {
+                const messageKey = `${index}-${message.text}`;
+                const visibleCount = taskListVisibleCounts[messageKey] ?? 10;
+                const visibleTasks = message._data.tasks.slice(0, visibleCount);
+                const hasMore = message._data.tasks.length > visibleCount;
+                return (
+                  <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {visibleTasks.map((task: any) => (
+                      <button key={task.id} onClick={() => {
+                        const selectedTask = tasks.find(t => t.id === task.id);
+                        setMessages(current => [...current, { role: 'user', text: `check ${task.title}` }]);
+                        if (selectedTask) {
+                          showTaskActions(selectedTask);
+                        } else {
+                          startTypingMessage('呢個 task 資料剛剛 refresh 咗，請再撳一次 task list。');
+                        }
+                      }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
+                        <span style={{ textDecoration: 'underline', fontSize: 19, fontWeight: 400 }}>{task.title}</span>
+                        <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
+                          {task.status} | {task.assignees?.join(', ') || '未指派'} | {task.due_date || '未設定 due date'}
+                        </div>
+                      </button>
+                    ))}
+                    {hasMore && (
+                      <button
+                        onClick={() => setTaskListVisibleCounts((current) => ({ ...current, [messageKey]: visibleCount + 10 }))}
+                        style={{ alignSelf: 'flex-start', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', borderRadius: 999, padding: '8px 14px', fontSize: 14, fontWeight: 800 }}
+                      >
+                        ↓ 顯示更多（再睇 10 個）
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           ))}
           {/* Welcome typing message */}
