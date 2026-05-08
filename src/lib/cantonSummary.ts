@@ -57,7 +57,6 @@ export function tryBuildDeterministicSummary(input: string, tasks: TaskItem[], c
   const overdue = openRoot.filter(isOverdue);
   const myTasks = openRoot.filter((t) => t.assignees?.some((a) => a.name === currentUserName) || t.created_by === currentUserName);
   const urgent = topTasks(openRoot, 4);
-  const profileNames = Array.from(new Set(tasks.flatMap((t) => t.assignees?.map((a) => a.name) || []))).sort((a, b) => b.length - a.length);
 
   if (/(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(text)) {
     return allFocus.length
@@ -89,14 +88,6 @@ export function tryBuildDeterministicSummary(input: string, tasks: TaskItem[], c
     return overdue.length
       ? `而家 overdue main task 有 ${overdue.length} 個：\n\n${topTasks(overdue, 6).map(line).join('\n')}`
       : '暫時未見有 overdue main task。';
-  }
-
-  const matchedPerson = profileNames.find((name) => text.includes(name.toLowerCase().replace(/\s+/g, ' ')) || text.includes(name.toLowerCase().split(' ')[0]));
-  if (matchedPerson && /(task|tasks|有咩做|有啲咩做|未做|手上|跟緊|負責)/.test(text)) {
-    const personTasks = openRoot.filter((t) => t.assignees?.some((a) => a.name === matchedPerson));
-    return personTasks.length
-      ? `${matchedPerson} 而家手上未完成 main task 有 ${personTasks.length} 個：\n\n${topTasks(personTasks, 8).map(line).join('\n')}`
-      : `${matchedPerson} 而家暫時未見有未完成 main task。`;
   }
 
   if (/(最 urgent|最緊急|最重要|priority)/.test(text)) {

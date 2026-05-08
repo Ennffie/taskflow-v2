@@ -746,6 +746,25 @@ export function CantonAiCoachPage() {
 
       const lower = userText.toLowerCase();
 
+      const profileNames = Array.from(new Set(tasks.flatMap((task) => task.assignees?.map((assignee) => assignee.name) || []))).sort((a, b) => b.length - a.length);
+      const matchedPerson = profileNames.find((name) => lower.includes(name.toLowerCase().replace(/\s+/g, ' ')) || lower.includes(name.toLowerCase().split(' ')[0]));
+      if (matchedPerson && /(task|tasks|有咩做|有啲咩做|未做|手上|跟緊|負責)/.test(lower)) {
+        const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.assignees.some(a => a.name === matchedPerson));
+        const list = personTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(`${matchedPerson} 而家手上未完成 main task 有 ${personTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
+          _action: 'task_list',
+          _data: { tasks: list }
+        });
+        setIsReplying(false);
+        return;
+      }
+
       if (/my\s*task|task\s*list|我.?task/.test(lower)) {
         const myTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && (t.assignees.some(a => a.name === currentUserName) || t.created_by === currentUserId));
         const list = myTasks.map(t => ({
