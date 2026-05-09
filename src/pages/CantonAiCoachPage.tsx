@@ -855,7 +855,7 @@ export function CantonAiCoachPage() {
         return;
       }
 
-      const deterministicReply = tryBuildDeterministicSummary(userText, tasks, currentUserName);
+      const deterministicReply = tryBuildDeterministicSummary(userText, tasks, currentUserName, currentUserId);
       if (deterministicReply) {
         startTypingMessage(deterministicReply);
         setIsReplying(false);

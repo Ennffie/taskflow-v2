@@ -48,14 +48,22 @@ function line(task: TaskItem) {
   return `• ${task.title}（${due}｜${assignees}｜${progress}%）`;
 }
 
-export function tryBuildDeterministicSummary(input: string, tasks: TaskItem[], currentUserName: string) {
+export function tryBuildDeterministicSummary(input: string, tasks: TaskItem[], currentUserName: string, currentUserId?: string | null) {
   const text = input.trim().toLowerCase();
 
   const allFocus = tasks.filter((t) => t.is_focus === true);
   const openRoot = rootOpenTasks(tasks);
   const dueToday = openRoot.filter(isDueToday);
   const overdue = openRoot.filter(isOverdue);
-  const myTasks = openRoot.filter((t) => t.assignees?.some((a) => a.name === currentUserName) || t.created_by === currentUserName);
+  const myTasks = openRoot.filter((t) => {
+    const isAssignee = currentUserId
+      ? t.assignees?.some((a) => a.id === currentUserId)
+      : t.assignees?.some((a) => a.name === currentUserName);
+    const isCreator = currentUserId
+      ? t.created_by === currentUserId
+      : t.created_by === currentUserName;
+    return isAssignee || isCreator;
+  });
   const urgent = topTasks(openRoot, 4);
 
   if (/(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(text)) {
