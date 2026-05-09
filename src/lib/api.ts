@@ -409,6 +409,61 @@ export async function fetchTasks(): Promise<TaskItem[]> {
   }); // close withRetry
 }
 
+export async function fetchTasksForCantonAi(): Promise<TaskItem[]> {
+  return withRetry(async () => {
+    const { data: tasks, error: taskError } = await supabase
+      .from('tasks')
+      .select('id,parent_id,is_focus,title,description,today_update,next_day_focus,status,priority,due_date,created_by,updated_by,created_at,updated_at,progress_percent,round_number,is_finished')
+      .order('due_date', { ascending: true });
+
+    if (taskError || !tasks || tasks.length === 0) return [];
+
+    const taskIds = tasks.map(t => t.id);
+    const [{ data: assignees }, { data: profiles }] = await Promise.all([
+      supabase.from('task_assignees').select('task_id, user_id').in('task_id', taskIds),
+      supabase.from('profiles').select('id, name, email, role'),
+    ]);
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p as Profile]));
+    const assigneeMap = new Map<string, Profile[]>();
+
+    (assignees ?? []).forEach((a: any) => {
+      const profile = profileMap.get(a.user_id);
+      if (!profile) return;
+      const list = assigneeMap.get(a.task_id) ?? [];
+      list.push(profile);
+      assigneeMap.set(a.task_id, list);
+    });
+
+    return tasks.map((t) => {
+      const aggregate = computeParentProgress(t, tasks);
+      return {
+        id: t.id,
+        parent_id: t.parent_id ?? null,
+        is_focus: t.is_focus ?? false,
+        title: t.title,
+        description: t.description,
+        today_update: t.today_update ?? null,
+        next_day_focus: t.next_day_focus ?? null,
+        status: t.status,
+        priority: t.priority,
+        due_date: t.due_date,
+        created_by: t.created_by,
+        updated_by: t.updated_by,
+        created_at: t.created_at,
+        updated_at: t.updated_at,
+        progress_percent: aggregate.progress_percent,
+        round_number: t.parent_id ? (t.round_number ?? 1) : aggregate.round_number,
+        is_finished: aggregate.is_finished,
+        assignees: assigneeMap.get(t.id) ?? [],
+        tags: [],
+        log_count: 0,
+        subtask_count: tasks.filter(st => st.parent_id === t.id).length,
+      };
+    }) as TaskItem[];
+  });
+}
+
 export async function fetchTask(taskId: string): Promise<TaskItem | null> {
   const { data: task, error } = await supabase
     .from('tasks')
