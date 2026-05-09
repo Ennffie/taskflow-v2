@@ -1,4 +1,4 @@
-export type LocalModelId = 'llama3:8b';
+export type LocalModelId = 'llama3:8b' | 'qwen2.5:3b';
 
 export type LocalTaskFact = {
   title: string;
