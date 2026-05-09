@@ -805,6 +805,42 @@ export function CantonAiCoachPage() {
         return;
       }
 
+      if (/(今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)/.test(lower)) {
+        const today = new Date().toISOString().slice(0, 10);
+        const openRoot = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.status !== 'cancelled');
+        const dueToday = openRoot.filter(t => t.due_date && t.due_date === today);
+        const overdue = openRoot.filter(t => t.due_date && t.due_date < today);
+        const scored = [...new Set([...overdue, ...dueToday, ...openRoot])]
+          .sort((a, b) => {
+            const score = (task: typeof a) => {
+              let n = 0;
+              if (task.due_date && task.due_date < today) n += 100;
+              if (task.priority === 'urgent') n += 40;
+              else if (task.priority === 'high') n += 24;
+              if (task.is_focus) n += 18;
+              if (task.due_date === today) n += 16;
+              if ((task.progress_percent ?? 0) === 0) n += 6;
+              return n;
+            };
+            return score(b) - score(a) || (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99');
+          })
+          .slice(0, 10)
+          .map(t => ({
+            id: t.id,
+            title: t.title,
+            due_date: t.due_date,
+            status: t.status,
+            assignees: t.assignees.map(a => a.name),
+          }));
+
+        startTypingMessage(`Bro，你而家要留意嘅 main task 有 ${openRoot.length} 個。今日到期 ${dueToday.length} 個，overdue ${overdue.length} 個。撳 task 名可以即刻開新對話睇 detail。`, {
+          _action: 'task_list',
+          _data: { tasks: scored }
+        });
+        setIsReplying(false);
+        return;
+      }
+
       const deterministicReply = tryBuildDeterministicSummary(userText, tasks, currentUserName);
       if (deterministicReply) {
         startTypingMessage(deterministicReply);
@@ -938,7 +974,7 @@ export function CantonAiCoachPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 700 }}>
-              Local AI: Llama 3 8B
+              Local AI: Qwen 2.5 3B
             </div>
             <div style={{ fontSize: 11.5, color: '#94a3b8', fontWeight: 600 }}>
               speed + accuracy mode
