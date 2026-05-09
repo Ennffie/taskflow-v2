@@ -509,57 +509,6 @@ export function CantonAiCoachPage() {
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       const userVal = userText.trim();
-      if (createMode === 'main') {
-        if (guidedStep === 0) {
-          if (!userVal) { startTypingMessage('唔該俾個 Task 名稱～'); return; }
-          setGuidedDraft(d => ({ ...d, title: userVal }));
-          setGuidedStep(1);
-          startTypingMessage(`收到！「${userVal}」\n\nDescription 寫啲咩？（必須）`);
-          return;
-        }
-        if (guidedStep === 1) {
-          if (!userVal) { startTypingMessage('唔該寫少少 Description～'); return; }
-          setGuidedDraft(d => ({ ...d, description: userVal }));
-          setGuidedStep(2);
-          const btns = profiles.slice(0, 6).map(p => `[${p.name}]`).join(' ');
-          startTypingMessage(`Assign 俾邊個？\n${btns}\n（打名稱或 Me）`);
-          return;
-        }
-        if (guidedStep === 2) {
-          const norm = userVal.toLowerCase();
-          const target = ['me','myself','我','自己'].includes(norm) ? currentUserName : userVal;
-          const profile = profiles.find(p => p.name.toLowerCase() === target.toLowerCase() || p.name.toLowerCase().split(' ')[0] === target.toLowerCase());
-          const resolved = profile?.name || target;
-          setGuidedDraft(d => ({ ...d, assignee: resolved }));
-          setGuidedStep(3);
-          startTypingMessage(`收到，Assign 俾 ${resolved}\n\n幾時到期？\n[TBC] [Today] [Tomorrow] [下星期一]`);
-          return;
-        }
-        if (guidedStep === 3) {
-          let dueIso = '', dueLabel = 'TBC';
-          const lower = userVal.toLowerCase();
-          if (lower === 'tbc' || !userVal) { dueIso = ''; dueLabel = 'TBC'; }
-          else if (['today','今日'].includes(lower)) { dueIso = new Date().toISOString().split('T')[0]; dueLabel = 'Today'; }
-          else if (['tomorrow','明天','聽日'].includes(lower)) { const t=new Date();t.setDate(t.getDate()+1);dueIso=t.toISOString().split('T')[0];dueLabel='Tomorrow'; }
-          else if (/^\d{4}-\d{2}-\d{2}$/.test(userVal)) { dueIso = userVal; dueLabel = userVal; }
-          setGuidedDraft(d => ({ ...d, dueDate: dueIso, dueLabel }));
-          setGuidedStep(4);
-          setTimeout(() => {
-            const draft = { ...guidedDraft, dueDate: dueIso, dueLabel };
-            startTypingMessage(
-              `📋 確認新增 Task\n\n` +
-              `• 名稱：${draft.title}\n` +
-              `• 描述：${draft.description}\n` +
-              `• 負責：${draft.assignee}\n` +
-              `• 到期：${dueLabel}\n` +
-              `• Status：Todo\n\n` +
-              `確定要加嗎？`,
-              { _action: 'confirm_create', _data: { ...draft, status: 'todo', statusLabel: '待辦', dueDate: dueIso, dueDateLabel: dueLabel } }
-            );
-          }, 0);
-          return;
-        }
-      }
       if (createMode === 'subtask') {
         if (guidedStep === -1) {
           const mainTasks = tasks.filter(t => !t.parent_id);
@@ -665,13 +614,10 @@ export function CantonAiCoachPage() {
       return;
     }
 
-    // ── Main Task creation via AI (guided flow) ──
+    // ── Main Task creation via AI (quick help, not guided) ──
     if (explicitCreateIntent) {
       setInput('');
-      setCreateMode('main');
-      setGuidedStep(0);
-      setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
-      startTypingMessage('想加 Main Task！\n\nTask 名係？（必須）');
+      startTypingMessage('加 Task 快速格式：\n\n```\nCRCE-1234 | Description | 8 May | Claire | WIP\n```\n\n或分開每行打：\n```\nCRCE-1234\nChange design\n8 May\nClaire\n```\n\n（| 分隔，Status 可留空 = Todo）');
       return;
     }
 
