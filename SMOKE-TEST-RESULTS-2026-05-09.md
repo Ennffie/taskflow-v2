@@ -50,7 +50,7 @@
 - [x] Repo 已補裝 `@playwright/test`
 - [ ] Browser E2E 未有 reusable auth bootstrap
 - [x] 已開始加入基本 test selectors（chat input / send / quick buttons / task list item）
-- [x] 已定位並修正一個真實 UAT fail case：Focus count inconsistency（All Tasks/My Tasks 原本計入 done focus，Canton AI 不計）
+- [x] 已定位並修正一個真實 UAT fail case：Focus count inconsistency（現已統一定義為：Focus = main tasks with `is_focus = true`，done 照計，subtask 不計，與 landing page 一致）
 
 ### Browser smoke progress
 - [x] Playwright infrastructure 已可執行

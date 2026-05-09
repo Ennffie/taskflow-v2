@@ -46,7 +46,7 @@ _Last updated: 2026-05-09 11:37 HKT_
 **現象：**
 - 今日Focus / overdue / my tasks 等規則容易混亂
 - main task / subtask / done / cancelled 邊界未完全固定
-- **2026-05-09 實例：All Tasks Focus section 顯示 10，但 Silly AI 今日Focus 顯示 8；原因係一邊計 main focus（含 done），另一邊計 open main focus（done 不計）**
+- **2026-05-09 實例：All Tasks Focus section 顯示 10，但 Silly AI 今日Focus 曾顯示 8；原因係一邊計 main focus（含 done），另一邊計 open main focus（done 不計）。現已定義統一：Focus = `parent_id = null` 且 `is_focus = true`，done 照計，subtask 不計。**
 
 **風險：**
 - 答案時準時唔準

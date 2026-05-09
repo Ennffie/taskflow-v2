@@ -33,9 +33,9 @@ _Last updated: 2026-05-09 11:37 HKT_
 # A. 查詢類（Read Queries）
 
 ## A1. 今日Focus
-**目的：** 應只列出 database 裡 `is_focus = true` 嘅未完成 main tasks
+**目的：** 應列出 database 裡 `is_focus = true` 嘅 main tasks，口徑與 landing page Focus section 完全一致
 
-> 2026-05-09 補充：All Tasks / My Tasks / Canton AI 都必須統一跟同一規則，唔可以一邊連 done 一齊計、一邊又剔走 done。
+> 2026-05-09 補充：All Tasks / My Tasks / Canton AI 都必須統一跟同一規則。現定義為：`parent_id = null` 且 `is_focus = true`；done 照計，subtask 不計。
 
 ### Test Steps
 1. 打開 Canton AI
