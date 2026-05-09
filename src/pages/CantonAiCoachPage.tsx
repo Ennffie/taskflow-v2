@@ -51,7 +51,6 @@ export function CantonAiCoachPage() {
   const [guidedDraft, setGuidedDraft] = useState<{
     title: string; description: string; assignee: string; dueDate: string; dueLabel: string; parentTaskId: string | null;
   }>({ title: '', description: '', assignee: '', dueDate: '', dueLabel: '', parentTaskId: null });
-  const subtaskPrefixes = ['Wed', 'App', 'Kiosk'];
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -266,7 +265,6 @@ export function CantonAiCoachPage() {
       setCreateMode('idle');
       setGuidedStep(0);
       setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
-    }
     } catch (e: any) {
       setLockedCreateActions(current => {
         const next = { ...current };
@@ -546,7 +544,6 @@ export function CantonAiCoachPage() {
           else if (/^\d{4}-\d{2}-\d{2}$/.test(userVal)) { dueIso = userVal; dueLabel = userVal; }
           setGuidedDraft(d => ({ ...d, dueDate: dueIso, dueLabel }));
           setGuidedStep(4);
-          const d = guidedDraft; // will use updated in confirm
           setTimeout(() => {
             const draft = { ...guidedDraft, dueDate: dueIso, dueLabel };
             startTypingMessage(
@@ -642,6 +639,16 @@ export function CantonAiCoachPage() {
     const taskNamePattern = /^(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+|task\s*\d+|#\d+)/i;
     const normalizeTaskRef = (value: string) => value.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
     
+    // CR/CRCE code must mean search/check first unless user explicitly says create/add.
+    const crMatch = userText.match(/^(?:ok[:：]\s*)?(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)/i) || userText.match(/\b(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)\b/i);
+    const hasPipe = userText.includes('|');
+    const lines = userText.split('\n').map(l => l.trim()).filter(Boolean);
+    const addSubtaskIntent = /add\s+subtask|加\s*subtask|新增\s*subtask|new\s+subtask/i.test(userText);
+    const explicitCreateIntent = /我要加\s*task|加\s*task|新增|create\s*task|new\s*task/i.test(userText);
+    const checkIntent = /check|查|搵|睇|點樣|status|進度|progress|咩情況/i.test(userText);
+    const looksLikeMultilineTask = lines.length >= 3 && !checkIntent && !/^(check|查|搵|睇)\b/i.test(lines[0]);
+    let parsedFields: any = null;
+    
     // ── Subtask creation via AI text ──
     if (addSubtaskIntent) {
       setInput('');
@@ -671,12 +678,6 @@ export function CantonAiCoachPage() {
     // Expert mode: pipe-separated or multiline bypasses guided flow
     if (hasPipe || looksLikeMultilineTask) {
       const today = new Date();
-      const isoToday = today.toISOString().split('T')[0];
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const isoTomorrow = tomorrow.toISOString().split('T')[0];
-      const currentYear = today.getFullYear();
-      const monthMap: Record<string, number> = {
       const isoToday = today.toISOString().split('T')[0];
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
