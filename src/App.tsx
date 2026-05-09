@@ -16,7 +16,7 @@ const ReviewBeforeExportPage = lazy(() => import('./pages/ReviewBeforeExportPage
 const AdminLogsPage = lazy(() => import('./pages/AdminLogsPage').then((mod) => ({ default: mod.AdminLogsPage })));
 const CantonModeMockupPage = lazy(() => import('./pages/CantonModeMockupPage').then((mod) => ({ default: mod.CantonModeMockupPage })));
 const CantonModePage = lazy(() => import('./pages/CantonModePage').then((mod) => ({ default: mod.CantonModePage })));
-const CantonAiCoachPage = lazy(() => import('./pages/CantonAiCoachPage').then((mod) => ({ default: mod.CantonAiCoachPage })));
+const CantonAiCoachPage = lazy(() => import('./pages/CantonAiCoachPage').then((mod) => ({ default: mod.CantonAiCoachPage }))); // lazy route v2
 const AiParseDemoPage = lazy(() => import('./pages/AiParseDemoPage').then((mod) => ({ default: mod.AiParseDemoPage })));
 
 function PageFallback() {

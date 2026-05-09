@@ -66,7 +66,7 @@ export function CantonAiCoachPage() {
   const loadTasks = async () => {
     try { 
       const fetchedTasks = await fetchTasksForCantonAi();
-      console.log('[CantonAI] Tasks loaded:', fetchedTasks.length);
+      console.log('[CantonAI::v2335] Tasks loaded:', fetchedTasks.length);
       setTasks(fetchedTasks); 
       return fetchedTasks;
     } catch (e) { console.error(e); return null; }
@@ -861,6 +861,7 @@ export function CantonAiCoachPage() {
         return;
       }
 
+      // v2-reload: life-chat refresh 2026-05-09
       const looksLikeTaskQuery = /(task|tasks|deadline|due|overdue|urgent|priority|focus|今日focus|progress|status|assign|assignee|subtask|todo|in progress|done|未做|有咩做|有啲咩做|今日重點|今日到期|最 urgent|最緊急|最重要|我.?task|my\s*task|check)/.test(lower);
       const looksLikeLifeChat = /(放工|收工|今晚|放假|週末|weekend|食咩|去邊|做咩好|hea|chill|休息|行街|睇戲|玩咩|有咩好做|好食|想食|宵夜|下午茶|早餐|午餐|晚餐|飲咩|甜品|唔講公事|唔講工作|唔講task|chat|傾偈|聊聊|肚餓|餓|食嘢|肚空|餓到|餓咗|肚仔餓|好餓)/.test(lower);
 
