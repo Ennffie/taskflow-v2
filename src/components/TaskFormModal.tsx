@@ -30,6 +30,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   const [saving, setSaving] = useState(false);
   const [isFocus, setIsFocus] = useState(false);
   const [focusSaving, setFocusSaving] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
   const [roundNumber, setRoundNumber] = useState(1);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     setAssigneeIds(initialTask.assignees.map(a => a.id));
     setTagInput(initialTask.tags.join(', '));
     setIsFocus(initialTask.is_focus ?? false);
+    setIsFinished(initialTask.is_finished ?? false);
     setRoundNumber(initialTask.round_number ?? 1);
   }, [initialTask]);
 
@@ -145,6 +147,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           priority,
           due_date: dueDate || null,
           is_focus: isFocus,
+          is_finished: isFinished,
           round_number: roundNumber,
         });
 
@@ -182,6 +185,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           tags: nextTags,
           parent_id: parentTaskId ?? null,
           is_focus: isFocus,
+          is_finished: isFinished,
           round_number: roundNumber,
         });
       }
@@ -196,7 +200,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   };
 
   return (
-    <ModalFrame title={copy?.title ?? (mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task')} onClose={onClose} isFocus={isFocus} onToggleFocus={handleToggleFocus} focusSaving={focusSaving}>
+    <ModalFrame title={copy?.title ?? (mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task')} onClose={onClose} isFinished={isFinished} isFocus={isFocus} onToggleFinish={() => { const next = !isFinished; setIsFinished(next); if (next) setStatus('finished'); }} onToggleFocus={handleToggleFocus} focusSaving={focusSaving}>
       <div style={{ display: 'grid', gap: '18px' }}>
         {parentTaskId && parentTaskTitle && (
           <div style={{ padding: '12px 14px', borderRadius: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
@@ -211,7 +215,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
         </div>
         {/* Status + Priority in one row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          <Field label={copy?.status ?? 'Status'}><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} style={inputStyle}>{TASK_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{STATUS_META[value].label}</option>)}</select></Field>
+          <Field label={copy?.status ?? 'Status'}><select value={status} onChange={(e) => { const s = e.target.value as TaskStatus; setStatus(s); setIsFinished(s === 'finished'); }} style={inputStyle}>{TASK_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{STATUS_META[value].label}</option>)}</select></Field>
           <Field label={copy?.priority ?? 'Priority'}><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         </div>
         {parentTaskId && (
@@ -344,7 +348,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label style={{ display: 'grid', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#374151' }}>{label}{children}</label>;
 }
 
-function ModalFrame({ title, onClose, isFocus, onToggleFocus, focusSaving = false, children }: { title: string; onClose: () => void; isFocus?: boolean; onToggleFocus?: () => void; focusSaving?: boolean; children: React.ReactNode }) {
+function ModalFrame({ title, onClose, isFinished, isFocus, onToggleFinish, onToggleFocus, focusSaving = false, children }: { title: string; onClose: () => void; isFinished?: boolean; isFocus?: boolean; onToggleFinish?: () => void; onToggleFocus?: () => void; focusSaving?: boolean; children: React.ReactNode }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: '24px', zIndex: 300 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '85vh', overflow: 'auto', background: '#fff', borderRadius: '28px', padding: '28px', boxShadow: '0 28px 80px rgba(15,23,42,0.22)', zIndex: 301, marginBottom: '80px' }}>
@@ -353,6 +357,27 @@ function ModalFrame({ title, onClose, isFocus, onToggleFocus, focusSaving = fals
             <div style={{ fontSize: '24px', fontWeight: 800, color: '#111827' }}>{title}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Finish Toggle */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleFinish?.(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 14px',
+                borderRadius: '20px',
+                border: isFinished ? '2px solid #059669' : '2px solid #e5e7eb',
+                background: isFinished ? '#d1fae5' : '#fff',
+                color: isFinished ? '#059669' : '#6b7280',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>{isFinished ? '✅' : '⬜'}</span>
+              {isFinished ? 'Finished' : 'Mark Finished'}
+            </button>
             {/* Focus Toggle */}
             <button
               onClick={(e) => { e.stopPropagation(); onToggleFocus?.(); }}
