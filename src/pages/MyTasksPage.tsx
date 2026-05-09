@@ -261,7 +261,7 @@ export function MyTasksPage() {
 
   const groupedTasks = useMemo(() => {
     const rootOnly = filtered.filter(t => !t.parent_id);
-    const focusTasks = rootOnly.filter(t => t.is_focus).sort(sortByDueDate);
+    const focusTasks = rootOnly.filter(t => t.is_focus && t.status !== 'done' && t.status !== 'cancelled' && !t.is_finished).sort(sortByDueDate);
     const overdueTasks = rootOnly.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
     const otherTasks = rootOnly.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
     const doneTasks = rootOnly.filter(t => t.status === 'done').sort(sortByDueDate);
@@ -277,7 +277,7 @@ export function MyTasksPage() {
 
   // Stats for compact cards - match All Tasks counting (root tasks only)
   const rootTasks = filtered.filter(t => !t.parent_id);
-  const focusCount = rootTasks.filter(t => t.is_focus).length;
+  const focusCount = rootTasks.filter(t => t.is_focus && t.status !== 'done' && t.status !== 'cancelled' && !t.is_finished).length;
   const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
   const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
   const allCount = rootTasks.length;
