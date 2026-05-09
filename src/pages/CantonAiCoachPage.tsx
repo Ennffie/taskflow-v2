@@ -773,7 +773,7 @@ export function CantonAiCoachPage() {
       }
 
       if (/(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(lower)) {
-        const focusTasks = tasks.filter(t => !t.parent_id && t.is_focus === true).map(t => ({
+        const focusTasks = tasks.filter((t) => !t.parent_id && t.is_focus === true).map((t) => ({
           id: t.id,
           title: t.title,
           due_date: t.due_date,
@@ -827,7 +827,7 @@ export function CantonAiCoachPage() {
 
       if (/(今日focus|focus task|focus tasks|今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)/.test(lower)) {
         const focusTasks = tasks
-          .filter(t => !t.parent_id && t.is_focus === true)
+          .filter((t) => !t.parent_id && t.is_focus === true)
           .sort((a, b) => (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99'));
 
         const list = focusTasks.map(t => ({
