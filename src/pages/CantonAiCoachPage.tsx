@@ -44,6 +44,14 @@ export function CantonAiCoachPage() {
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
   const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
+  // ── Guided creation flow ──
+  type CreateMode = 'idle' | 'main' | 'subtask';
+  const [createMode, setCreateMode] = useState<CreateMode>('idle');
+  const [guidedStep, setGuidedStep] = useState(0); // 0:title 1:desc 2:assignee 3:due 4:confirm
+  const [guidedDraft, setGuidedDraft] = useState<{
+    title: string; description: string; assignee: string; dueDate: string; dueLabel: string; parentTaskId: string | null;
+  }>({ title: '', description: '', assignee: '', dueDate: '', dueLabel: '', parentTaskId: null });
+  const subtaskPrefixes = ['Wed', 'App', 'Kiosk'];
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -150,7 +158,6 @@ export function CantonAiCoachPage() {
       switch (action.action) {
         case 'create_task': {
           let dueDate = action.due_date;
-          // Validate/fix due_date - reject Chinese placeholder text
           if (dueDate && typeof dueDate === 'string') {
             const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(dueDate);
             if (!isValidDate) dueDate = undefined;
@@ -164,7 +171,7 @@ export function CantonAiCoachPage() {
             due_date: dueDate || undefined,
             assignee_ids: assignee ? [assignee.id] : [],
             tags: [],
-            parent_id: null,
+            parent_id: action.parent_id ?? null,
           });
           await loadTasks();
           return `✅ 已建立「${action.title || '未命名 task'}」\n\n📋 Task Details:\n• 名稱：${action.title || '未命名 task'}\n• 到期：${dueDate || '未設定'}\n• 負責：${assignee ? assignee.name : currentUserName}\n• 內容：${action.description || '無'}\n• Status：${action.status || 'todo'}`;
@@ -241,18 +248,25 @@ export function CantonAiCoachPage() {
     try {
       await createTask({
         title: data.title,
-        description: data.description,
-        status: data.status,
+        description: data.description || '',
+        status: data.status || 'todo',
         priority: 'medium',
         due_date: data.dueDate || undefined,
         assignee_ids: assigneeProfile ? [assigneeProfile.id] : [],
         tags: [],
-        parent_id: null,
+        parent_id: data.parentTaskId || null,
       });
       
       await loadTasks();
       
-      startTypingMessage(`✅ 已建立「${data.title}」\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDateLabel || data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}`);
+      const isSub = !!data.parentTaskId;
+      startTypingMessage(`✅ 已建立「${data.title}」${isSub ? '（Subtask）' : ''}\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDateLabel || data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}`);
+      
+      // Reset guided flow
+      setCreateMode('idle');
+      setGuidedStep(0);
+      setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
+    }
     } catch (e: any) {
       setLockedCreateActions(current => {
         const next = { ...current };
@@ -269,6 +283,10 @@ export function CantonAiCoachPage() {
     const actionKey = getCreateActionKey(data);
     if (lockedCreateActions[actionKey]) return;
     setLockedCreateActions(current => ({ ...current, [actionKey]: 'cancelled' }));
+    // Reset guided flow on cancel too
+    setCreateMode('idle');
+    setGuidedStep(0);
+    setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
     startTypingMessage('取消咗～有咩再講 💕');
   };
 
@@ -488,24 +506,177 @@ export function CantonAiCoachPage() {
       setPendingTaskAction(null);
     }
     
+    // ── Guided Creation Flow State Machine ──
+    if (createMode !== 'idle') {
+      setMessages(current => [...current, { role: 'user', text: userText }]);
+      setInput('');
+      const userVal = userText.trim();
+      if (createMode === 'main') {
+        if (guidedStep === 0) {
+          if (!userVal) { startTypingMessage('唔該俾個 Task 名稱～'); return; }
+          setGuidedDraft(d => ({ ...d, title: userVal }));
+          setGuidedStep(1);
+          startTypingMessage(`收到！「${userVal}」\n\nDescription 寫啲咩？（必須）`);
+          return;
+        }
+        if (guidedStep === 1) {
+          if (!userVal) { startTypingMessage('唔該寫少少 Description～'); return; }
+          setGuidedDraft(d => ({ ...d, description: userVal }));
+          setGuidedStep(2);
+          const btns = profiles.slice(0, 6).map(p => `[${p.name}]`).join(' ');
+          startTypingMessage(`Assign 俾邊個？\n${btns}\n（打名稱或 Me）`);
+          return;
+        }
+        if (guidedStep === 2) {
+          const norm = userVal.toLowerCase();
+          const target = ['me','myself','我','自己'].includes(norm) ? currentUserName : userVal;
+          const profile = profiles.find(p => p.name.toLowerCase() === target.toLowerCase() || p.name.toLowerCase().split(' ')[0] === target.toLowerCase());
+          const resolved = profile?.name || target;
+          setGuidedDraft(d => ({ ...d, assignee: resolved }));
+          setGuidedStep(3);
+          startTypingMessage(`收到，Assign 俾 ${resolved}\n\n幾時到期？\n[TBC] [Today] [Tomorrow] [下星期一]`);
+          return;
+        }
+        if (guidedStep === 3) {
+          let dueIso = '', dueLabel = 'TBC';
+          const lower = userVal.toLowerCase();
+          if (lower === 'tbc' || !userVal) { dueIso = ''; dueLabel = 'TBC'; }
+          else if (['today','今日'].includes(lower)) { dueIso = new Date().toISOString().split('T')[0]; dueLabel = 'Today'; }
+          else if (['tomorrow','明天','聽日'].includes(lower)) { const t=new Date();t.setDate(t.getDate()+1);dueIso=t.toISOString().split('T')[0];dueLabel='Tomorrow'; }
+          else if (/^\d{4}-\d{2}-\d{2}$/.test(userVal)) { dueIso = userVal; dueLabel = userVal; }
+          setGuidedDraft(d => ({ ...d, dueDate: dueIso, dueLabel }));
+          setGuidedStep(4);
+          const d = guidedDraft; // will use updated in confirm
+          setTimeout(() => {
+            const draft = { ...guidedDraft, dueDate: dueIso, dueLabel };
+            startTypingMessage(
+              `📋 確認新增 Task\n\n` +
+              `• 名稱：${draft.title}\n` +
+              `• 描述：${draft.description}\n` +
+              `• 負責：${draft.assignee}\n` +
+              `• 到期：${dueLabel}\n` +
+              `• Status：Todo\n\n` +
+              `確定要加嗎？`,
+              { _action: 'confirm_create', _data: { ...draft, status: 'todo', statusLabel: '待辦', dueDate: dueIso, dueDateLabel: dueLabel } }
+            );
+          }, 0);
+          return;
+        }
+      }
+      if (createMode === 'subtask') {
+        if (guidedStep === -1) {
+          const mainTasks = tasks.filter(t => !t.parent_id);
+          let parentId: string | null = null;
+          // 嘗試 match 數字
+          const num = parseInt(userVal);
+          if (!isNaN(num) && num >= 1 && num <= mainTasks.length) {
+            parentId = mainTasks[num-1].id;
+          } else {
+            // 嘗試 match 名稱
+            const found = mainTasks.find(t => t.title.toLowerCase().includes(userVal.toLowerCase()));
+            if (found) parentId = found.id;
+          }
+          if (!parentId) {
+            startTypingMessage('搵唔到呢個 Main Task，試吓打數字或者完整名稱？');
+            return;
+          }
+          setGuidedDraft(d => ({ ...d, parentTaskId: parentId }));
+          setGuidedStep(0);
+          startTypingMessage('得咗！\n\nSubtask 名係？（可用 [Wed] [App] [Kiosk] 做 prefix，例如：Wed UI Fix）');
+          return;
+        }
+        if (guidedStep === 0) {
+          if (!userVal) { startTypingMessage('唔該俾個 Subtask 名稱～'); return; }
+          setGuidedDraft(d => ({ ...d, title: userVal }));
+          setGuidedStep(1);
+          startTypingMessage(`收到！「${userVal}」\n\nDescription 寫啲咩？（選填，直接 Enter 可跳過）`);
+          return;
+        }
+        if (guidedStep === 1) {
+          setGuidedDraft(d => ({ ...d, description: userVal }));
+          setGuidedStep(2);
+          const btns = profiles.slice(0, 6).map(p => `[${p.name}]`).join(' ');
+          startTypingMessage(`Assign 俾邊個？\n${btns}\n（打名稱或 Me）`);
+          return;
+        }
+        if (guidedStep === 2) {
+          const norm = userVal.toLowerCase();
+          const target = ['me','myself','我','自己'].includes(norm) ? currentUserName : userVal;
+          const profile = profiles.find(p => p.name.toLowerCase() === target.toLowerCase() || p.name.toLowerCase().split(' ')[0] === target.toLowerCase());
+          const resolved = profile?.name || target;
+          setGuidedDraft(d => ({ ...d, assignee: resolved }));
+          setGuidedStep(3);
+          startTypingMessage(`收到，Assign 俾 ${resolved}\n\n幾時到期？\n[TBC] [Today] [Tomorrow]`);
+          return;
+        }
+        if (guidedStep === 3) {
+          let dueIso = '', dueLabel = 'TBC';
+          const lower = userVal.toLowerCase();
+          if (lower === 'tbc' || !userVal) { dueIso = ''; dueLabel = 'TBC'; }
+          else if (['today','今日'].includes(lower)) { dueIso = new Date().toISOString().split('T')[0]; dueLabel = 'Today'; }
+          else if (['tomorrow','明天','聽日'].includes(lower)) { const t=new Date();t.setDate(t.getDate()+1);dueIso=t.toISOString().split('T')[0];dueLabel='Tomorrow'; }
+          else if (/^\d{4}-\d{2}-\d{2}$/.test(userVal)) { dueIso = userVal; dueLabel = userVal; }
+          setGuidedDraft(d => ({ ...d, dueDate: dueIso, dueLabel }));
+          setGuidedStep(4);
+          setTimeout(() => {
+            const draft = { ...guidedDraft, dueDate: dueIso, dueLabel };
+            startTypingMessage(
+              `📋 確認新增 Subtask\n\n` +
+              `• 名稱：${draft.title}\n` +
+              `${draft.description ? `• 描述：${draft.description}\n` : ''}` +
+              `• 負責：${draft.assignee}\n` +
+              `• 到期：${dueLabel}\n` +
+              `• Status：Todo\n` +
+              `• 綁定 Main Task：${draft.parentTaskId ? tasks.find(t => t.id === draft.parentTaskId)?.title || '已選' : '已選'}\n\n` +
+              `確定要加嗎？`,
+              { _action: 'confirm_create', _data: { ...draft, status: 'todo', statusLabel: '待辦', dueDate: dueIso, dueDateLabel: dueLabel } }
+            );
+          }, 0);
+          return;
+        }
+      }
+    }
+    
     // Frontend search setup
     let searchResult = null;
     const taskNamePattern = /^(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+|task\s*\d+|#\d+)/i;
     const normalizeTaskRef = (value: string) => value.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
     
-    // CR/CRCE code must mean search/check first unless user explicitly says create/add.
-    const crMatch = userText.match(/^(?:ok[:：]\s*)?(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)/i) || userText.match(/\b(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)\b/i);
-    const hasPipe = userText.includes('|');
-    const lines = userText.split('\n').map(l => l.trim()).filter(Boolean);
-    const explicitCreateIntent = /我要加\s*task|加\s*task|新增|create\s*task|new\s*task/i.test(userText);
-    const checkIntent = /check|查|搵|睇|點樣|status|進度|progress|咩情況/i.test(userText);
-    const looksLikeMultilineTask = lines.length >= 3 && !checkIntent && !/^(check|查|搵|睇)\b/i.test(lines[0]);
-    const isCreateIntent = explicitCreateIntent || hasPipe || looksLikeMultilineTask;
-    
-    let parsedFields: any = null;
-    
-    if (isCreateIntent) {
+    // ── Subtask creation via AI text ──
+    if (addSubtaskIntent) {
+      setInput('');
+      const myMainTasks = tasks.filter(t => !t.parent_id).slice(0, 8);
+      if (myMainTasks.length === 0) {
+        startTypingMessage('你而家冇 Main Task，不如先加個 Main Task？你可以打「我要加Task」開始。');
+        return;
+      }
+      setCreateMode('subtask');
+      setGuidedStep(-1); // -1 = pick parent task
+      setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
+      const list = myMainTasks.map((t,i) => `${i+1}. ${t.title}`).join('\n');
+      startTypingMessage(`想加 Subtask 去邊個 Main Task？\n${list}\n\n（打數字 1-${myMainTasks.length}，或 Task 名）`);
+      return;
+    }
+
+    // ── Main Task creation via AI (guided flow) ──
+    if (explicitCreateIntent) {
+      setInput('');
+      setCreateMode('main');
+      setGuidedStep(0);
+      setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
+      startTypingMessage('想加 Main Task！\n\nTask 名係？（必須）');
+      return;
+    }
+
+    // Expert mode: pipe-separated or multiline bypasses guided flow
+    if (hasPipe || looksLikeMultilineTask) {
       const today = new Date();
+      const isoToday = today.toISOString().split('T')[0];
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const isoTomorrow = tomorrow.toISOString().split('T')[0];
+      const currentYear = today.getFullYear();
+      const monthMap: Record<string, number> = {
       const isoToday = today.toISOString().split('T')[0];
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1229,9 +1400,16 @@ export function CantonAiCoachPage() {
                           </div>
                         )}
                         {subtaskComposerTaskId === taskId && (
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-                            <input value={subtaskDrafts[taskId] || ''} onChange={(e) => setSubtaskDrafts(current => ({ ...current, [taskId]: e.target.value }))} placeholder="SubTask 名稱" disabled={isReplying} style={{ minWidth: 0, border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 12px', fontSize: 15, fontWeight: 700 }} />
-                            <button disabled={isReplying || !(subtaskDrafts[taskId] || '').trim()} onClick={() => void addSubtask(taskId, title)} style={actionButtonStyle('primary')}>Add</button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              {['Wed','App','Kiosk'].map(pr => (
+                                <button key={pr} disabled={isReplying} onClick={() => setSubtaskDrafts(current => ({ ...current, [taskId]: (current[taskId]||'') + (current[taskId] ? ' ' : '') + pr }))} style={{ ...actionButtonStyle('soft'), fontSize: 12, padding: '6px 10px' }}>+{pr}</button>
+                              ))}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                              <input value={subtaskDrafts[taskId] || ''} onChange={(e) => setSubtaskDrafts(current => ({ ...current, [taskId]: e.target.value }))} placeholder="SubTask 名稱" disabled={isReplying} style={{ minWidth: 0, border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 12px', fontSize: 15, fontWeight: 700 }} />
+                              <button disabled={isReplying || !(subtaskDrafts[taskId] || '').trim()} onClick={() => void addSubtask(taskId, title)} style={actionButtonStyle('primary')}>Add</button>
+                            </div>
                           </div>
                         )}
                       </div>
