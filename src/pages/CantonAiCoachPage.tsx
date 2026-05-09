@@ -773,7 +773,7 @@ export function CantonAiCoachPage() {
       }
 
       if (/(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(lower)) {
-        const focusTasks = tasks.filter(t => t.is_focus === true).map(t => ({
+        const focusTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.status !== 'cancelled' && t.is_focus === true).map(t => ({
           id: t.id,
           title: t.title,
           due_date: t.due_date,
@@ -783,6 +783,26 @@ export function CantonAiCoachPage() {
         startTypingMessage(`而家 Focus task 總共有 ${focusTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
           _action: 'task_list',
           _data: { tasks: focusTasks }
+        });
+        setIsReplying(false);
+        return;
+      }
+
+      if (/(有咩未交|overdue|risk|風險|過期)/.test(lower)) {
+        const today = new Date().toISOString().slice(0, 10);
+        const overdueTasks = tasks
+          .filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.status !== 'cancelled' && t.due_date && t.due_date < today)
+          .sort((a, b) => (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99'))
+          .map(t => ({
+            id: t.id,
+            title: t.title,
+            due_date: t.due_date,
+            status: t.status,
+            assignees: t.assignees.map(a => a.name),
+          }));
+        startTypingMessage(`而家 overdue main task 有 ${overdueTasks.length} 個。撳 task 名可以即刻開新對話睇 detail。`, {
+          _action: 'task_list',
+          _data: { tasks: overdueTasks }
         });
         setIsReplying(false);
         return;
