@@ -59,10 +59,11 @@ export function tryBuildDeterministicSummary(input: string, tasks: TaskItem[], c
     const isAssignee = currentUserId
       ? t.assignees?.some((a) => a.id === currentUserId)
       : t.assignees?.some((a) => a.name === currentUserName);
-    const isCreator = currentUserId
+    // Only include as owner if unassigned (implied owner)
+    const isUnassignedOwner = !t.assignees?.length && (currentUserId
       ? t.created_by === currentUserId
-      : t.created_by === currentUserName;
-    return isAssignee || isCreator;
+      : t.created_by === currentUserName);
+    return isAssignee || isUnassignedOwner;
   });
   const urgent = topTasks(openRoot, 4);
 
