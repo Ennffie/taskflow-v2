@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createTask, fetchProfiles, fetchTasks, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
+import { createTask, fetchProfiles, fetchTasksForCantonAi, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { VersionBadge } from '../components/VersionBadge';
 import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
@@ -10,7 +10,7 @@ import { buildDecisionContext } from '../lib/cantonDecisionContext';
 import type { Profile, TaskItem, TaskStatus } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
-const FALLBACK_BRIDGE_URL = 'https://counting-hereby-manufacturers-dominant.trycloudflare.com';
+const FALLBACK_BRIDGE_URL = 'https://ai.ans67.xyz';
 const LOCAL_ONLY_MODE = true;
 const FIXED_LOCAL_MODEL: LocalModelId = 'qwen2.5:3b';
 
@@ -64,7 +64,7 @@ export function CantonAiCoachPage() {
 
   const loadTasks = async () => {
     try { 
-      const fetchedTasks = await fetchTasks();
+      const fetchedTasks = await fetchTasksForCantonAi();
       console.log('[CantonAI] Tasks loaded:', fetchedTasks.length);
       setTasks(fetchedTasks); 
       return fetchedTasks;
@@ -1217,7 +1217,7 @@ export function CantonAiCoachPage() {
                 return (
                   <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {visibleTasks.map((task: any) => (
-                      <button key={task.id} onClick={() => {
+                      <button data-testid={`task-list-item-${task.id}`} key={task.id} onClick={() => {
                         const selectedTask = tasks.find(t => t.id === task.id);
                         setMessages(current => [...current, { role: 'user', text: `check ${task.title}` }]);
                         if (selectedTask) {
@@ -1309,7 +1309,7 @@ export function CantonAiCoachPage() {
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
             {['退下', '有咩未交？', '我要加Task', '今日Focus', 'My Task list'].map(preset => (
-              <button key={preset} onClick={() => {
+              <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
                 if (preset === '退下') {
                   navigate('/canton-mode');
                   return;
@@ -1330,6 +1330,7 @@ export function CantonAiCoachPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <div style={{ position: 'relative' }}>
               <textarea
+                data-testid="chat-input"
                 placeholder="隨意問 task 相關問題…"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -1345,6 +1346,7 @@ export function CantonAiCoachPage() {
               />
             </div>
             <button 
+              data-testid="send-button"
               onClick={() => { if (input.trim()) void send(); }} 
               disabled={isReplying || !input.trim()} 
               style={{ border: 'none', borderRadius: 18, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 950, fontSize: 16, opacity: isReplying || !input.trim() ? 0.5 : 1, cursor: isReplying || !input.trim() ? 'default' : 'pointer' }}
