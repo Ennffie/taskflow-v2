@@ -43,6 +43,7 @@ export function CantonAiCoachPage() {
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
+  const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -895,8 +896,12 @@ export function CantonAiCoachPage() {
           '放工就放松下啦，食餐好嘅，hea 吓都係應該嘅 😌',
           '餓嘅話就食嘢先啦，食飽先有力做嘢 🍜',
           '想食乜？食嘢最開心 🥢',
-          '放工後嘅時間係自己嘅，想做咩都好 💆‍♂️',
+          '放工後嘅時間係自己嘅，想做咩都好 💆\u200d♂️',
           '唔好太緊張，搵個舒服嘅地方坐低飲杯嘢先 ☕',
+          '我建議試下長洲大魚蛋，或者去中環食碗靚拉麵 🍜',
+          '糖水舖？豆腐花配薑汁都幾正 🍮',
+          '想輕食嘅話，去茶餐廳食個蛋治奶茶啦 🥪',
+          '如果唔介意遠少少，可以去西環食海鮮盅飯 🦐',
         ];
         let idx = Math.floor(Math.random() * lifeReplies.length);
         if (lifeReplies[idx] === lastLifeReply && lifeReplies.length > 1) {
@@ -904,6 +909,25 @@ export function CantonAiCoachPage() {
         }
         const reply = lifeReplies[idx];
         setLastLifeReply(reply);
+        setLastReplyType('life');
+        startTypingMessage(reply);
+        setIsReplying(false);
+        return;
+      }
+
+      // Context-aware: if last reply was life-chat, keep the casual vibe
+      if (lastReplyType === 'life' && !looksLikeTaskQuery) {
+        const followUpReplies = [
+          '再講多樣：冰室嘅奶油豬都幾好食 🥐',
+          '或者去試下新開嘅 cafe，飲杯凍檸茶 ☕',
+          '你想食辣定清淡？我可以再 narrow down 😄',
+          '長洲街市附近都有幾間隱世好食嘅店 🏮',
+          '最緊要食得開心，唔好諗咁多，隨便搵間順眼嘅入去就得 🍽️',
+        ];
+        const idx = Math.floor(Math.random() * followUpReplies.length);
+        const reply = followUpReplies[idx];
+        setLastLifeReply(reply);
+        setLastReplyType('life');
         startTypingMessage(reply);
         setIsReplying(false);
         return;
