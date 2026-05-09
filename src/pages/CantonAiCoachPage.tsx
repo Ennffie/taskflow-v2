@@ -851,6 +851,31 @@ export function CantonAiCoachPage() {
       const looksLikeTaskQuery = /(task|tasks|deadline|due|overdue|urgent|priority|focus|progress|status|assign|assignee|subtask|todo|in progress|done|未做|有咩做|有啲咩做|今日重點|今日到期|最 urgent|最緊急|最重要|我.?task|my\s*task|check)/.test(lower);
       const looksLikeLifeChat = /(放工|收工|今晚|放假|週末|weekend|食咩|去邊|做咩好|hea|chill|休息|行街|睇戲|玩咩|有咩好做)/.test(lower);
 
+      const exactDateMatch = userText.match(/(\d{1,2})\s*[\/月.-]\s*(\d{1,2})\s*(?:日|號)?/) || userText.match(/(\d{1,2})\s*(?:號|日)/);
+      const asksHowMany = /(幾多個|多少個|幾多|幾個|how many)/i.test(userText);
+      const asksDueOrComplete = /(完成|到期|due|deadline)/i.test(userText);
+      if (exactDateMatch && asksHowMany && asksDueOrComplete) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = exactDateMatch[2] ? Number(exactDateMatch[1]) : now.getMonth() + 1;
+        const day = exactDateMatch[2] ? Number(exactDateMatch[2]) : Number(exactDateMatch[1]);
+        const targetDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const matchedTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.status !== 'cancelled' && t.due_date === targetDate);
+        const list = matchedTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(`而家有 ${matchedTasks.length} 個 main task 係 ${targetDate} 到期。${matchedTasks.length ? '撳 task 名可以即刻開新對話睇 detail。' : ''}`, matchedTasks.length ? {
+          _action: 'task_list',
+          _data: { tasks: list }
+        } : undefined);
+        setIsReplying(false);
+        return;
+      }
+
       if (looksLikeLifeChat && !looksLikeTaskQuery) {
         startTypingMessage('放工想點先～想輕鬆啲，定想做啲自己嘢？😌\n\n如果你今日好攰，就食餐好啲、散下步、沖個熱水涼，之後早啲抖；\n如果仲有少少電，可以做一件細細但有滿足感嘅事，例如做下運動、睇套戲、行下街，或者約朋友食飯。\n\n你想我幫你諗邊種：\n• chill 啲\n• 充實啲\n• 長洲 / 出市區行程');
         setIsReplying(false);
