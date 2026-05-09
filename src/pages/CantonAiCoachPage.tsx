@@ -861,7 +861,7 @@ export function CantonAiCoachPage() {
       }
 
       const looksLikeTaskQuery = /(task|tasks|deadline|due|overdue|urgent|priority|focus|今日focus|progress|status|assign|assignee|subtask|todo|in progress|done|未做|有咩做|有啲咩做|今日重點|今日到期|最 urgent|最緊急|最重要|我.?task|my\s*task|check)/.test(lower);
-      const looksLikeLifeChat = /(放工|收工|今晚|放假|週末|weekend|食咩|去邊|做咩好|hea|chill|休息|行街|睇戲|玩咩|有咩好做)/.test(lower);
+      const looksLikeLifeChat = /(放工|收工|今晚|放假|週末|weekend|食咩|去邊|做咩好|hea|chill|休息|行街|睇戲|玩咩|有咩好做|好食|想食|宵夜|下午茶|早餐|午餐|晚餐|飲咩|甜品|唔講公事|唔講工作|唔講task|chat|傾偈|聊聊)/.test(lower);
 
       const exactDateMatch = userText.match(/(\d{1,2})\s*[\/月.-]\s*(\d{1,2})\s*(?:日|號)?/) || userText.match(/(\d{1,2})\s*(?:號|日)/);
       const asksHowMany = /(幾多個|多少個|幾多|幾個|how many)/i.test(userText);
