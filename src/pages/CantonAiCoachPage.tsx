@@ -42,6 +42,7 @@ export function CantonAiCoachPage() {
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
+  const [lastLifeReply, setLastLifeReply] = useState<string>('');
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
     setTypedMessageMeta(meta ?? null);
@@ -861,7 +862,7 @@ export function CantonAiCoachPage() {
       }
 
       const looksLikeTaskQuery = /(task|tasks|deadline|due|overdue|urgent|priority|focus|今日focus|progress|status|assign|assignee|subtask|todo|in progress|done|未做|有咩做|有啲咩做|今日重點|今日到期|最 urgent|最緊急|最重要|我.?task|my\s*task|check)/.test(lower);
-      const looksLikeLifeChat = /(放工|收工|今晚|放假|週末|weekend|食咩|去邊|做咩好|hea|chill|休息|行街|睇戲|玩咩|有咩好做|好食|想食|宵夜|下午茶|早餐|午餐|晚餐|飲咩|甜品|唔講公事|唔講工作|唔講task|chat|傾偈|聊聊)/.test(lower);
+      const looksLikeLifeChat = /(放工|收工|今晚|放假|週末|weekend|食咩|去邊|做咩好|hea|chill|休息|行街|睇戲|玩咩|有咩好做|好食|想食|宵夜|下午茶|早餐|午餐|晚餐|飲咩|甜品|唔講公事|唔講工作|唔講task|chat|傾偈|聊聊|肚餓|餓|食嘢|肚空|餓到|餓咗|肚仔餓|好餓)/.test(lower);
 
       const exactDateMatch = userText.match(/(\d{1,2})\s*[\/月.-]\s*(\d{1,2})\s*(?:日|號)?/) || userText.match(/(\d{1,2})\s*(?:號|日)/);
       const asksHowMany = /(幾多個|多少個|幾多|幾個|how many)/i.test(userText);
@@ -889,7 +890,20 @@ export function CantonAiCoachPage() {
       }
 
       if (looksLikeLifeChat && !looksLikeTaskQuery) {
-        startTypingMessage('放工就放松下啦，食餐好嘅，hea 吓都係應該嘅 😌');
+        const lifeReplies = [
+          '放工就放松下啦，食餐好嘅，hea 吓都係應該嘅 😌',
+          '餓嘅話就食嘢先啦，食飽先有力做嘢 🍜',
+          '想食乜？食嘢最開心 🥢',
+          '放工後嘅時間係自己嘅，想做咩都好 💆‍♂️',
+          '唔好太緊張，搵個舒服嘅地方坐低飲杯嘢先 ☕',
+        ];
+        let idx = Math.floor(Math.random() * lifeReplies.length);
+        if (lifeReplies[idx] === lastLifeReply && lifeReplies.length > 1) {
+          idx = (idx + 1) % lifeReplies.length;
+        }
+        const reply = lifeReplies[idx];
+        setLastLifeReply(reply);
+        startTypingMessage(reply);
         setIsReplying(false);
         return;
       }
