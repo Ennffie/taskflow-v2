@@ -64,7 +64,7 @@ export function tryBuildDeterministicSummary(input: string, tasks: TaskItem[], c
       : '暫時未見有 Focus task。';
   }
 
-  if (/(今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)/.test(text)) {
+  if (/(今日focus|focus task|focus tasks|今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)/.test(text)) {
     const top = topTasks([...dueToday, ...overdue, ...openRoot], 4);
     return [
       `Bro，你而家要留意嘅 main task 有 ${openRoot.length} 個。今日到期 ${dueToday.length} 個，overdue ${overdue.length} 個。`,

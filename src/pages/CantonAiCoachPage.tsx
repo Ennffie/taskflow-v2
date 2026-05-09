@@ -805,38 +805,30 @@ export function CantonAiCoachPage() {
         return;
       }
 
-      if (/(今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)/.test(lower)) {
-        const today = new Date().toISOString().slice(0, 10);
-        const openRoot = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.status !== 'cancelled');
-        const dueToday = openRoot.filter(t => t.due_date && t.due_date === today);
-        const overdue = openRoot.filter(t => t.due_date && t.due_date < today);
-        const scored = [...new Set([...overdue, ...dueToday, ...openRoot])]
-          .sort((a, b) => {
-            const score = (task: typeof a) => {
-              let n = 0;
-              if (task.due_date && task.due_date < today) n += 100;
-              if (task.priority === 'urgent') n += 40;
-              else if (task.priority === 'high') n += 24;
-              if (task.is_focus) n += 18;
-              if (task.due_date === today) n += 16;
-              if ((task.progress_percent ?? 0) === 0) n += 6;
-              return n;
-            };
-            return score(b) - score(a) || (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99');
-          })
-          .slice(0, 10)
-          .map(t => ({
-            id: t.id,
-            title: t.title,
-            due_date: t.due_date,
-            status: t.status,
-            assignees: t.assignees.map(a => a.name),
-          }));
+      if (/(今日focus|focus task|focus tasks|今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)/.test(lower)) {
+        const focusTasks = tasks
+          .filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.status !== 'cancelled' && t.is_focus === true)
+          .sort((a, b) => (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99'));
 
-        startTypingMessage(`Bro，你而家要留意嘅 main task 有 ${openRoot.length} 個。今日到期 ${dueToday.length} 個，overdue ${overdue.length} 個。撳 task 名可以即刻開新對話睇 detail。`, {
-          _action: 'task_list',
-          _data: { tasks: scored }
-        });
+        const list = focusTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+
+        startTypingMessage(
+          focusTasks.length
+            ? `Bro，今日 Focus 係而家 database 入面標記咗 Focus 嘅 main task，共 ${focusTasks.length} 個。撳 task 名可以即刻開新對話睇 detail。`
+            : 'Bro，而家 database 入面暫時未有標記做 Focus 嘅 main task。',
+          focusTasks.length
+            ? {
+                _action: 'task_list',
+                _data: { tasks: list }
+              }
+            : undefined
+        );
         setIsReplying(false);
         return;
       }
@@ -848,7 +840,7 @@ export function CantonAiCoachPage() {
         return;
       }
 
-      const looksLikeTaskQuery = /(task|tasks|deadline|due|overdue|urgent|priority|focus|progress|status|assign|assignee|subtask|todo|in progress|done|未做|有咩做|有啲咩做|今日重點|今日到期|最 urgent|最緊急|最重要|我.?task|my\s*task|check)/.test(lower);
+      const looksLikeTaskQuery = /(task|tasks|deadline|due|overdue|urgent|priority|focus|今日focus|progress|status|assign|assignee|subtask|todo|in progress|done|未做|有咩做|有啲咩做|今日重點|今日到期|最 urgent|最緊急|最重要|我.?task|my\s*task|check)/.test(lower);
       const looksLikeLifeChat = /(放工|收工|今晚|放假|週末|weekend|食咩|去邊|做咩好|hea|chill|休息|行街|睇戲|玩咩|有咩好做)/.test(lower);
 
       const exactDateMatch = userText.match(/(\d{1,2})\s*[\/月.-]\s*(\d{1,2})\s*(?:日|號)?/) || userText.match(/(\d{1,2})\s*(?:號|日)/);
@@ -936,7 +928,7 @@ export function CantonAiCoachPage() {
         }
 
         const friendly = upstreamAuthBroken
-          ? 'AI backend 而家登入有問題，我已經搵到原因，唔係你操作錯。你而家仍然可以先用快捷功能：check task、加 task、睇今日重點。'
+          ? 'AI backend 而家登入有問題，我已經搵到原因，唔係你操作錯。你而家仍然可以先用快捷功能：check task、加 task、睇今日Focus。'
           : `AI 暫時無法回應：HTTP ${resp.status}`;
         throw new Error(friendly);
       }
@@ -1296,7 +1288,7 @@ export function CantonAiCoachPage() {
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {['退下', '有咩未交？', '我要加Task', '今日重點', 'My Task list'].map(preset => (
+            {['退下', '有咩未交？', '我要加Task', '今日Focus', 'My Task list'].map(preset => (
               <button key={preset} onClick={() => {
                 if (preset === '退下') {
                   navigate('/canton-mode');
