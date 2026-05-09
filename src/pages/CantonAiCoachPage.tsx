@@ -889,7 +889,7 @@ export function CantonAiCoachPage() {
       }
 
       if (looksLikeLifeChat && !looksLikeTaskQuery) {
-        startTypingMessage('放工想點先～想輕鬆啲，定想做啲自己嘢？😌\n\n如果你今日好攰，就食餐好啲、散下步、沖個熱水涼，之後早啲抖；\n如果仲有少少電，可以做一件細細但有滿足感嘅事，例如做下運動、睇套戲、行下街，或者約朋友食飯。\n\n你想我幫你諗邊種：\n• chill 啲\n• 充實啲\n• 長洲 / 出市區行程');
+        startTypingMessage('放工就放松下啦，食餐好嘅，hea 吓都係應該嘅 😌');
         setIsReplying(false);
         return;
       }
