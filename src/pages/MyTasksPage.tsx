@@ -13,7 +13,7 @@ function StatusIcon({ status }: { status: TaskStatus }) {
   const iconStyle = { width: '16px', height: '16px', borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
   switch (status) {
-    case 'done':
+    case 'finished':
       return <div style={{ ...iconStyle, borderColor: '#10b981', background: '#10b981' }}><CheckCircle2 size={12} color="#fff" /></div>;
     case 'in_progress':
     case 'round_1_wip':
@@ -24,7 +24,7 @@ function StatusIcon({ status }: { status: TaskStatus }) {
     case 'round_1_review':
     case 'round_2_review':
     case 'round_3_review':
-    case 'review':
+    case 'internal_review':
       return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={12} color="#7c3aed" /></div>;
     case 'planning':
       return <div style={{ ...iconStyle, borderColor: '#0f766e', background: '#ccfbf1' }}><AlertCircle size={12} color="#0f766e" /></div>;
@@ -262,9 +262,9 @@ export function MyTasksPage() {
   const groupedTasks = useMemo(() => {
     const rootOnly = filtered.filter(t => !t.parent_id);
     const focusTasks = rootOnly.filter(t => t.is_focus).sort(sortByDueDate);
-    const overdueTasks = rootOnly.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
-    const otherTasks = rootOnly.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).sort(sortByDueDate);
-    const doneTasks = rootOnly.filter(t => t.status === 'done').sort(sortByDueDate);
+    const overdueTasks = rootOnly.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus).sort(sortByDueDate);
+    const otherTasks = rootOnly.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus).sort(sortByDueDate);
+    const doneTasks = rootOnly.filter(t => t.status === 'finished').sort(sortByDueDate);
 
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups["Focus"] = focusTasks;
@@ -278,8 +278,8 @@ export function MyTasksPage() {
   // Stats for compact cards - match All Tasks counting (root tasks only)
   const rootTasks = filtered.filter(t => !t.parent_id);
   const focusCount = rootTasks.filter(t => t.is_focus).length;
-  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
-  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus).length;
+  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus).length;
   const allCount = rootTasks.length;
 
   return (

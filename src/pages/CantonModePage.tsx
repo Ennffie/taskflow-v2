@@ -23,7 +23,7 @@ function getGreeting() {
 }
 
 function isDone(task: TaskItem) {
-  return task.status === 'done' || task.is_finished;
+  return task.status === 'finished' || task.is_finished;
 }
 
 function isOverdue(task: TaskItem) {
@@ -336,9 +336,9 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
           </div>
           {isPrimaryBubble && subtasks.slice(0, 6).map((subtask, subIndex) => {
             const subAngle = (360 / Math.max(Math.min(subtasks.length, 6), 1)) * subIndex - 90;
-            const subProgress = subtask.is_finished || subtask.status === 'done' ? 100 : (subtask.progress_percent ?? 0);
+            const subProgress = subtask.is_finished || subtask.status === 'finished' ? 100 : (subtask.progress_percent ?? 0);
             const subOrbitDur = Math.max(4.2, baseSubtaskOrbitDur + subProgress * 0.045 + subIndex * 0.35);
-            const dotSize = subtask.is_finished || subtask.status === 'done' ? 11 : 13;
+            const dotSize = subtask.is_finished || subtask.status === 'finished' ? 11 : 13;
             return (
               <span
                 key={subtask.id}
@@ -363,7 +363,7 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
                     height: dotSize,
                     transform: 'translate(-50%, -50%)',
                     borderRadius: '50%',
-                    background: subtask.is_finished || subtask.status === 'done' ? '#22c55e' : '#8b5cf6',
+                    background: subtask.is_finished || subtask.status === 'finished' ? '#22c55e' : '#8b5cf6',
                     border: '2px solid #fff',
                     boxShadow: '0 2px 6px rgba(15,23,42,0.16)',
                   }}

@@ -754,7 +754,7 @@ export function CantonAiCoachPage() {
       const statusSource = `${statusRaw} ${userText}`.toLowerCase();
       if (/review|檢查|審批/.test(statusSource)) { status = 'review'; statusLabel = 'Review'; }
       if (/wip|in progress|進行/.test(statusSource)) { status = 'in_progress'; statusLabel = '進行中'; }
-      if (/done|完成/.test(statusSource)) { status = 'done'; statusLabel = '完成'; }
+      if (/done|完成/.test(statusSource)) { status = 'finished'; statusLabel = '完成'; }
       if (/todo|待辦/.test(statusSource)) { status = 'todo'; statusLabel = '待辦'; }
       
       const subtaskMatch = userText.match(/Sub task[s]?[：:]\s*(.+)/i);
@@ -872,18 +872,18 @@ export function CantonAiCoachPage() {
               const nextProgress = Math.max(0, Math.min(100, Number(progressMatch[1])));
               await updateTask(foundTask.id, {
                 progress_percent: nextProgress,
-                status: nextProgress >= 100 ? 'done' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status),
+                status: nextProgress >= 100 ? 'finished' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status),
                 is_finished: nextProgress >= 100,
               });
             } else if (wantsDone) {
               await updateTask(foundTask.id, {
                 progress_percent: 100,
-                status: 'done',
+                status: 'finished',
                 is_finished: true,
               });
             }
             await loadTasks();
-            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• Status：${wantsDone || Number(progressMatch?.[1]) >= 100 ? 'done' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status)}\n• Progress：${wantsDone ? 100 : Number(progressMatch?.[1] || foundTask.progress_percent || 0)}%\n\n仲想改其他嘢嗎？`, {
+            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• Status：${wantsDone || Number(progressMatch?.[1]) >= 100 ? 'finished' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status)}\n• Progress：${wantsDone ? 100 : Number(progressMatch?.[1] || foundTask.progress_percent || 0)}%\n\n仲想改其他嘢嗎？`, {
               _action: 'task_actions',
               _data: { taskId: foundTask.id, title: foundTask.title }
             });
@@ -937,7 +937,7 @@ export function CantonAiCoachPage() {
       }).sort((a, b) => b.alias.length - a.alias.length);
       const matchedPerson = personAliases.find((item) => lower.includes(item.alias))?.name;
       if (matchedPerson && /(task|tasks|有咩做|有啲咩做|未做|手上|跟緊|負責|check)/.test(lower)) {
-        const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.assignees.some(a => a.name === matchedPerson));
+        const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.assignees.some(a => a.name === matchedPerson));
         const list = personTasks.map(t => ({
           id: t.id,
           title: t.title,
@@ -972,7 +972,7 @@ export function CantonAiCoachPage() {
       if (/(有咩未交|overdue|risk|風險|過期)/.test(lower)) {
         const today = new Date().toISOString().slice(0, 10);
         const overdueTasks = tasks
-          .filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.status !== 'cancelled' && t.due_date && t.due_date < today)
+          .filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'cancelled' && t.due_date && t.due_date < today)
           .sort((a, b) => (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99'))
           .map(t => ({
             id: t.id,
@@ -993,7 +993,7 @@ export function CantonAiCoachPage() {
         console.log('[MyTaskList] currentUserName:', currentUserName, 'currentUserId:', currentUserId);
         const myTasks = tasks.filter(t => {
           const isAssignee = t.assignees?.some(a => a.name === currentUserName);
-          const shouldInclude = !t.parent_id && !t.is_finished && t.status !== 'done' && isAssignee;
+          const shouldInclude = !t.parent_id && !t.is_finished && t.status !== 'finished' && isAssignee;
           if (t.title.includes('CRCE') || t.title.includes('個Task俾我')) {
             console.log(`[MyTaskList] Task: ${t.title}, assignees: ${t.assignees?.map(a=>a.name).join(',')}, created_by: ${t.created_by}, isAssignee: ${isAssignee}, include: ${shouldInclude}`);
           }
@@ -1062,7 +1062,7 @@ export function CantonAiCoachPage() {
         const month = exactDateMatch[2] ? Number(exactDateMatch[1]) : now.getMonth() + 1;
         const day = exactDateMatch[2] ? Number(exactDateMatch[2]) : Number(exactDateMatch[1]);
         const targetDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const matchedTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && t.status !== 'cancelled' && t.due_date === targetDate);
+        const matchedTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'cancelled' && t.due_date === targetDate);
         const list = matchedTasks.map(t => ({
           id: t.id,
           title: t.title,
@@ -1379,7 +1379,7 @@ export function CantonAiCoachPage() {
                           ['Round 2 Review', 'round_2_review'],
                           ['Round 3 WIP', 'round_3_wip'],
                           ['Round 3 Review', 'round_3_review'],
-                          ['Pending for NFC', 'pending_mpfa_pc'],
+                          ['Pending for NFC', 'pending_mpfa_pc_nfc'],
                           ['Finished', 'finished'],
                           ['Cancelled', 'cancelled'],
                         ].map(([label, value]) => (
@@ -1393,7 +1393,7 @@ export function CantonAiCoachPage() {
                     {expandedMoreTaskId === taskId && (
                       <div style={{ display: 'grid', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'done', progress_percent: 100, is_finished: true }, '堅係完成：100% Done')} style={actionButtonStyle('primary')}>堅係完成</button>
+                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true }, '堅係完成：100% Done')} style={actionButtonStyle('primary')}>堅係完成</button>
                           <button disabled={isReplying} onClick={() => {
                             setAssigneePickerTaskId(current => current === taskId ? null : taskId);
                             setSubtaskComposerTaskId(null);
@@ -1463,7 +1463,7 @@ export function CantonAiCoachPage() {
                             setProgressSlider(null);
                             void quickUpdateTask(taskId, title, {
                               progress_percent: nextProgress,
-                              status: nextProgress >= 100 ? 'done' : (selectedTask?.status === 'todo' ? 'in_progress' : selectedTask?.status),
+                              status: nextProgress >= 100 ? 'finished' : (selectedTask?.status === 'todo' ? 'in_progress' : selectedTask?.status),
                               is_finished: nextProgress >= 100,
                             }, `Progress：${nextProgress}%`);
                           }} style={{ flex: 1, ...actionButtonStyle('primary') }}>Confirm</button>

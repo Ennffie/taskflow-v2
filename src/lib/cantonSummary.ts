@@ -5,7 +5,7 @@ function todayStr() {
 }
 
 function isDone(task: TaskItem) {
-  return task.is_finished || task.status === 'done' || task.status === 'cancelled';
+  return task.is_finished || task.status === 'finished' || task.status === 'cancelled';
 }
 
 function isRoot(task: TaskItem) {

@@ -41,7 +41,7 @@ function StatusIcon({ status }: { status: TaskStatus }) {
   const iconStyle = { width: '16px', height: '16px', borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center' };
   
   switch (status) {
-    case 'done':
+    case 'finished':
       return <div style={{ ...iconStyle, borderColor: '#10b981', background: '#10b981' }}><CheckCircle2 size={12} color="#fff" /></div>;
     case 'in_progress':
     case 'round_1_wip':
@@ -52,7 +52,7 @@ function StatusIcon({ status }: { status: TaskStatus }) {
     case 'round_1_review':
     case 'round_2_review':
     case 'round_3_review':
-    case 'review':
+    case 'internal_review':
       return <div style={{ ...iconStyle, borderColor: '#7c3aed', background: '#ede9fe' }}><AlertCircle size={12} color="#7c3aed" /></div>;
     case 'planning':
       return <div style={{ ...iconStyle, borderColor: '#0f766e', background: '#ccfbf1' }}><AlertCircle size={12} color="#0f766e" /></div>;
@@ -207,9 +207,9 @@ export function TaskListPage() {
   const groupedTasks = useMemo(() => {
     const rootTasks = filtered.filter(t => !t.parent_id);
     const focusTasks = sortTasks(rootTasks.filter(t => t.is_focus), sortOption);
-    const overdueTasks = sortTasks(rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus), sortOption);
-    const otherTasks = sortTasks(rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus), sortOption);
-    const doneTasks = sortTasks(rootTasks.filter(t => t.status === 'done'), sortOption);
+    const overdueTasks = sortTasks(rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus), sortOption);
+    const otherTasks = sortTasks(rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus), sortOption);
+    const doneTasks = sortTasks(rootTasks.filter(t => t.status === 'finished'), sortOption);
     
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups['Focus'] = focusTasks;
@@ -231,8 +231,8 @@ export function TaskListPage() {
   // Stats for compact cards - use filtered tasks to match list
   const rootTasks = filtered.filter(t => !t.parent_id);
   const focusCount = rootTasks.filter(t => t.is_focus).length;
-  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
-  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'done' && !t.is_focus).length;
+  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus).length;
+  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus).length;
   const allCount = rootTasks.length;
 
   return (
@@ -614,9 +614,9 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       const looksLikeStatus = (value: string) => {
         const normalized = value.trim().toLowerCase();
         return [
-          'wip', 'in progress', 'done', 'new', 'waiting', 'planning', 'focus', 'priority',
+          'wip', 'in progress', 'finished', 'new', 'waiting', 'planning', 'focus', 'priority',
           'pending for approval', 'pending on tech team', 'pending for further requirement',
-          'to do', 'todo', 'submitted', 'review', 'internal review',
+          'to do', 'todo', 'submitted', 'internal_review', 'internal review',
         ].some((keyword) => normalized === keyword || normalized.includes(keyword));
       };
       
@@ -758,7 +758,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           
           // Infer status from update text
           const updateLower = update.toLowerCase();
-          if (updateLower.includes('completed') || updateLower.includes('done') || updateLower.includes('finish')) {
+          if (updateLower.includes('completed') || updateLower.includes('finished') || updateLower.includes('finish')) {
             status = 'Done';
           } else if (updateLower.includes('progress') || updateLower.includes('working') || updateLower.includes('wip')) {
             status = 'In Progress';

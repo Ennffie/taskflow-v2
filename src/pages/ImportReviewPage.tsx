@@ -29,12 +29,12 @@ interface MatchResult {
 
 // Status mapping from XLS to TaskStatus
 const STATUS_MAP: Record<string, TaskStatus> = {
-  '完成': 'done',
+  '完成': 'finished',
   '進行中': 'in_progress',
   '新開始': 'todo',
   '計劃中': 'planning',
   '等待中': 'todo',
-  'Done': 'done',
+  'Done': 'finished',
   'In Progress': 'in_progress',
   'Internal Review': 'internal_review',
   'Round 1 WIP': 'round_1_wip',
