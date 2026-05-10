@@ -101,6 +101,10 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   const handleToggleFocus = async () => {
     const nextFocus = !isFocus;
     setIsFocus(nextFocus);
+    if (nextFocus && isFinished) {
+      setIsFinished(false);
+      setStatus('todo');
+    }
 
     if (mode !== 'edit' || !initialTask) return;
 
