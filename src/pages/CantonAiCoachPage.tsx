@@ -487,7 +487,7 @@ export function CantonAiCoachPage() {
     setDueDatePicker(null);
     if (!userText || isReplying) return;
 
-    const cleanPendingActionText = (value: string, title: string, kind: NonNullable<typeof pendingTaskAction>['kind']) => {
+    const cleanPendingActionText = (value: string, title: string, _kind: NonNullable<typeof pendingTaskAction>['kind']) => {
       const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const patterns: RegExp[] = [
         new RegExp(`^${escapedTitle}\\s*(今日做咗|今日做咗乜|今日做咗：|今日做咗:|today\\s*update:?|daily\\s*log:?)\\s*`, 'i'),
@@ -497,8 +497,9 @@ export function CantonAiCoachPage() {
       ];
       let cleaned = value.trim();
       patterns.forEach(pattern => { cleaned = cleaned.replace(pattern, '').trim(); });
-      if (!cleaned && kind === 'progress_update') return value.trim();
-      return cleaned || value.trim();
+      // If empty after stripping prefix, return null to indicate no actual input
+      if (!cleaned) return null;
+      return cleaned;
     };
 
     if (pendingTaskAction) {
@@ -509,6 +510,16 @@ export function CantonAiCoachPage() {
         setIsReplying(true);
         try {
           const actionText = cleanPendingActionText(userText, pendingTaskAction.title, pendingTaskAction.kind);
+          if (!actionText) {
+            // No actual input provided, just the prefix
+            setIsReplying(false);
+            setPendingTaskAction(null);
+            startTypingMessage(`冇收到新資料，請輸入內容後再 send～`, {
+              _action: 'task_actions',
+              _data: { taskId: pendingTask.id, title: pendingTask.title }
+            });
+            return;
+          }
           if (pendingTaskAction.kind === 'today') {
             await updateTask(pendingTask.id, { today_update: actionText });
             await createTaskEventLog(pendingTask.id, `[What I have done]\n${actionText}`);
@@ -1303,21 +1314,21 @@ export function CantonAiCoachPage() {
                         resetInlineTaskPanels();
                         setDueDatePicker(null);
                         setPendingTaskAction({ taskId, title, kind: 'today' });
-                        setInput(`${title} 今日做咗：`);
+                        setInput(`${title} 今日做咗：\n`);
                         scrollToInput();
                       }} style={actionButtonStyle()}>今日做咗</button>
                       <button disabled={isReplying} onClick={() => {
                         resetInlineTaskPanels();
                         setDueDatePicker(null);
                         setPendingTaskAction({ taskId, title, kind: 'tomorrow' });
-                        setInput(`${title} 明天focus：`);
+                        setInput(`${title} 明天focus：\n`);
                         scrollToInput();
                       }} style={actionButtonStyle()}>明天做乜</button>
                       <button disabled={isReplying} onClick={() => {
                         resetInlineTaskPanels();
                         setDueDatePicker(null);
                         setPendingTaskAction({ taskId, title, kind: 'blocker' });
-                        setInput(`${title} blocker：`);
+                        setInput(`${title} blocker：\n`);
                         scrollToInput();
                       }} style={actionButtonStyle()}>Blocker</button>
                       <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { is_focus: !(selectedTask?.is_focus ?? false) }, `${focusLabel}：${selectedTask?.is_focus ? 'No' : 'Yes'}`)} style={actionButtonStyle(selectedTask?.is_focus ? 'primary' : 'soft')}>{focusLabel}</button>
@@ -1332,7 +1343,7 @@ export function CantonAiCoachPage() {
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
                         setPendingTaskAction(null);
-                        setInput(`${title} 進度改做：`);
+                        setInput(`${title} 進度改做：\n`);
                         scrollToInput();
                       }} style={actionButtonStyle()}>改進度</button>
                       <button disabled={isReplying} onClick={() => {
@@ -1550,6 +1561,12 @@ export function CantonAiCoachPage() {
                     e.preventDefault();
                     if (input.trim()) void send();
                   }
+                }}
+                onInput={(e) => {
+                  // Auto-resize textarea
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 96) + 'px';
                 }}
                 rows={1}
                 disabled={isReplying}
