@@ -1587,13 +1587,10 @@ export function CantonAiCoachPage() {
                   }
                 }}
                 onInput={(e) => {
-                  // Auto-resize textarea - max 5 rows then scroll
+                  // Auto-resize textarea based on content
                   const target = e.target as HTMLTextAreaElement;
                   target.style.height = 'auto';
-                  const lineHeight = 26; // increased for better visibility
-                  const maxHeight = lineHeight * 5; // 5 rows max
-                  const newHeight = Math.min(target.scrollHeight, maxHeight);
-                  target.style.height = newHeight + 'px';
+                  target.style.height = target.scrollHeight + 'px';
                 }}
                 rows={1}
                 disabled={isReplying}
