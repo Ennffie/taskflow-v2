@@ -1587,14 +1587,17 @@ export function CantonAiCoachPage() {
                   }
                 }}
                 onInput={(e) => {
-                  // Auto-resize textarea
+                  // Auto-resize textarea - max 5 rows then scroll
                   const target = e.target as HTMLTextAreaElement;
                   target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 96) + 'px';
+                  const lineHeight = 22; // approximate line height
+                  const maxHeight = lineHeight * 5; // 5 rows max
+                  const newHeight = Math.min(target.scrollHeight, maxHeight);
+                  target.style.height = newHeight + 'px';
                 }}
                 rows={1}
                 disabled={isReplying}
-                style={{ width: '100%', resize: 'none', minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
+                style={{ width: '100%', resize: 'none', minHeight: 22, maxHeight: 110, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
               />
               {/* Autocomplete dropdown for search mode */}
               {messages[messages.length - 1]?.text.includes('想搵邊個') 
