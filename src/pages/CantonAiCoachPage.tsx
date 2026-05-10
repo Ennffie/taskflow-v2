@@ -1369,15 +1369,23 @@ export function CantonAiCoachPage() {
                     {statusPickerTaskId === taskId && (
                       <div ref={statusPickerRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         {[
-                          ['待辦', 'todo'],
-                          ['進行中', 'in_progress'],
+                          ['Todo', 'todo'],
+                          ['Planning', 'planning'],
+                          ['In Progress', 'in_progress'],
+                          ['Internal Review', 'internal_review'],
+                          ['Round 1 WIP', 'round_1_wip'],
+                          ['Round 1 Review', 'round_1_review'],
+                          ['Round 2 WIP', 'round_2_wip'],
+                          ['Round 2 Review', 'round_2_review'],
+                          ['Round 3 WIP', 'round_3_wip'],
+                          ['Round 3 Review', 'round_3_review'],
+                          ['Pending MPFA/PC', 'pending_mpfa_pc'],
                           ['Review', 'review'],
-                          ['Blocked', 'blocked'],
-                          ['QA', 'qa'],
-                          ['Deploy', 'deploy'],
                           ['Finish', 'done'],
+                          ['Finished', 'finished'],
+                          ['Cancelled', 'cancelled'],
                         ].map(([label, value]) => (
-                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'done', progress_percent: value === 'done' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
+                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: ['done','finished','cancelled'].includes(value), progress_percent: ['done','finished'].includes(value) ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
                             {label}
                           </button>
                         ))}
