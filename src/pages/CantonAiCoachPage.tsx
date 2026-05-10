@@ -362,13 +362,18 @@ export function CantonAiCoachPage() {
     window.setTimeout(() => {
       const inputEl = document.querySelector('textarea[data-testid="chat-input"]') as HTMLTextAreaElement;
       if (inputEl) {
-        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        inputEl.focus();
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        // iOS requires this pattern to show keyboard
+        inputEl.readOnly = false;
+        inputEl.disabled = false;
+        inputEl.focus({ preventScroll: true });
         // Place cursor at the end
         const len = inputEl.value.length;
         inputEl.setSelectionRange(len, len);
+        // Trigger input event to resize
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       }
-    }, 150);
+    }, 200);
   };
 
   const handleDeleteTask = async (taskId: string) => {
