@@ -822,7 +822,127 @@ export function CantonAiCoachPage() {
       return;
     }
 
-    // ── Check for "tomorrow due" intent ──
+    // ── Check for "overdue" intent ──
+    const overdueIntent = /overdue|過期|逾期|遲咗|有咩遲咗|有咩過期/i.test(userText);
+    if (overdueIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
+      const today = new Date().toISOString().slice(0, 10);
+      const overdueTasks = tasks.filter(t => !t.parent_id && t.due_date && t.due_date < today && !t.is_finished && t.status !== 'finished');
+      
+      setMessages(current => [...current, { role: 'user', text: userText }]);
+      setInput('');
+      
+      if (overdueTasks.length > 0) {
+        const list = overdueTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(`小人稟報恩公，有 ${overdueTasks.length} 個 task 已過期：\n\n${overdueTasks.map((t, i) => `${i+1}. ${t.title} (到期：${t.due_date})`).join('\n')}\n\n撳 task 名可以睇 details。`, {
+          _action: 'task_list',
+          _data: { tasks: list }
+        });
+      } else {
+        startTypingMessage(`小人稟報恩公，暫時冇 task 過期。恩公好嘢！👍`);
+      }
+      return;
+    }
+
+    // ── Check for "this week" intent ──
+    const thisWeekIntent = /今個禮拜|本週|this week|呢個禮拜/i.test(userText);
+    if (thisWeekIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      
+      const weekTasks = tasks.filter(t => {
+        if (t.parent_id || !t.due_date || t.is_finished || t.status === 'finished') return false;
+        const due = new Date(t.due_date);
+        return due >= startOfWeek && due <= endOfWeek;
+      });
+      
+      setMessages(current => [...current, { role: 'user', text: userText }]);
+      setInput('');
+      
+      if (weekTasks.length > 0) {
+        const list = weekTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(`小人稟報恩公，今個禮拜有 ${weekTasks.length} 個 task 到期：\n\n${weekTasks.map((t, i) => `${i+1}. ${t.title} (${t.due_date})`).join('\n')}\n\n撳 task 名可以睇 details。`, {
+          _action: 'task_list',
+          _data: { tasks: list }
+        });
+      } else {
+        startTypingMessage(`小人稟報恩公，今個禮拜暫時冇 task 到期。`);
+      }
+      return;
+    }
+
+    // ── Check for "high priority" intent ──
+    const highPriorityIntent = /high priority|urgent|緊急|急|重要|priority/i.test(userText);
+    if (highPriorityIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
+      const urgentTasks = tasks.filter(t => !t.parent_id && (t.priority === 'urgent' || t.priority === 'high') && !t.is_finished && t.status !== 'finished');
+      
+      setMessages(current => [...current, { role: 'user', text: userText }]);
+      setInput('');
+      
+      if (urgentTasks.length > 0) {
+        const list = urgentTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(`小人稟報恩公，有 ${urgentTasks.length} 個 urgent/high priority task：\n\n${urgentTasks.map((t, i) => `${i+1}. ${t.title} [${t.priority.toUpperCase()}]`).join('\n')}\n\n撳 task 名可以睇 details。`, {
+          _action: 'task_list',
+          _data: { tasks: list }
+        });
+      } else {
+        startTypingMessage(`小人稟報恩公，暫時冇 urgent/high priority task。`);
+      }
+      return;
+    }
+
+    // ── Check for "recently added" intent ──
+    const recentIntent = /最近加咗|新加|最近新增|recently added|new task/i.test(userText);
+    if (recentIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentTasks = tasks.filter(t => {
+        if (t.parent_id) return false;
+        const created = new Date(t.created_at);
+        return created >= sevenDaysAgo;
+      }).slice(0, 10);
+      
+      setMessages(current => [...current, { role: 'user', text: userText }]);
+      setInput('');
+      
+      if (recentTasks.length > 0) {
+        const list = recentTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(`小人稟報恩公，最近 7 日加咗 ${recentTasks.length} 個 task：\n\n${recentTasks.map((t, i) => `${i+1}. ${t.title} (${getStatusMeta(t.status).label})`).join('\n')}\n\n撳 task 名可以睇 details。`, {
+          _action: 'task_list',
+          _data: { tasks: list }
+        });
+      } else {
+        startTypingMessage(`小人稟報恩公，最近 7 日冇新加 task。`);
+      }
+      return;
+    }
     const tomorrowDueIntent = /明日要交|明日到期|明日有咩做|明天到期|明天要交|明天有咩做|聽日到期|聽日要交|聽日有咩做|tomorrow due|due tomorrow/i.test(userText);
     if (tomorrowDueIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
       const tomorrow = new Date();
