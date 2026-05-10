@@ -44,6 +44,10 @@ export function CantonAiCoachPage() {
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
   const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
+  // Refs for scrolling to inline panels
+  const statusPickerRef = useRef<HTMLDivElement | null>(null);
+  const assigneePickerRef = useRef<HTMLDivElement | null>(null);
+  const subtaskComposerRef = useRef<HTMLDivElement | null>(null);
   // ── Guided creation flow ──
   type CreateMode = 'idle' | 'main' | 'subtask';
   const [createMode, setCreateMode] = useState<CreateMode>('idle');
@@ -122,6 +126,23 @@ export function CantonAiCoachPage() {
   useEffect(() => {
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
   }, [messages, isReplying, typingIndex]);
+
+  // Auto-scroll to inline panels when they open
+  useEffect(() => {
+    if (statusPickerTaskId) {
+      window.setTimeout(() => statusPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    }
+  }, [statusPickerTaskId]);
+  useEffect(() => {
+    if (assigneePickerTaskId) {
+      window.setTimeout(() => assigneePickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    }
+  }, [assigneePickerTaskId]);
+  useEffect(() => {
+    if (subtaskComposerTaskId) {
+      window.setTimeout(() => subtaskComposerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    }
+  }, [subtaskComposerTaskId]);
 
   const getContext = (searchResult?: any) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -1306,7 +1327,7 @@ export function CantonAiCoachPage() {
                     </div>
 
                     {statusPickerTaskId === taskId && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                      <div ref={statusPickerRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         {[
                           ['Todo', 'todo'],
                           ['WIP', 'in_progress'],
@@ -1346,7 +1367,7 @@ export function CantonAiCoachPage() {
                         )}
 
                         {assigneePickerTaskId === taskId && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          <div ref={assigneePickerRef} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             {profiles.map(profile => (
                               <button key={profile.id} disabled={isReplying} onClick={() => void assignTaskTo(taskId, title, profile)} style={actionButtonStyle(selectedTask?.assignees.some(a => a.id === profile.id) ? 'primary' : 'soft')}>
                                 {profile.name.split(' ')[0]}
@@ -1355,7 +1376,7 @@ export function CantonAiCoachPage() {
                           </div>
                         )}
                         {subtaskComposerTaskId === taskId && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div ref={subtaskComposerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               {['Wed','App','Kiosk'].map(pr => (
                                 <button key={pr} disabled={isReplying} onClick={() => setSubtaskDrafts(current => ({ ...current, [taskId]: (current[taskId]||'') + (current[taskId] ? ' ' : '') + pr }))} style={{ ...actionButtonStyle('soft'), fontSize: 12, padding: '6px 10px' }}>+{pr}</button>
