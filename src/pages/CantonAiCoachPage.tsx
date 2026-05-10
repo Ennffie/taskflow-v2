@@ -795,6 +795,33 @@ export function CantonAiCoachPage() {
       return;
     }
 
+    // ── Check for "today due" intent ──
+    const todayDueIntent = /今日要交|今日到期|今日有咩做|今日做咩|due today|today due/i.test(userText);
+    if (todayDueIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
+      const today = new Date().toISOString().slice(0, 10);
+      const todayTasks = tasks.filter(t => !t.parent_id && t.due_date === today && !t.is_finished && t.status !== 'finished');
+      
+      setMessages(current => [...current, { role: 'user', text: userText }]);
+      setInput('');
+      
+      if (todayTasks.length > 0) {
+        const list = todayTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(`小人稟報恩公，今日有 ${todayTasks.length} 個 task 到期：\n\n${todayTasks.map((t, i) => `${i+1}. ${t.title} (${getStatusMeta(t.status).label})`).join('\n')}\n\n撳 task 名可以睇 details。`, {
+          _action: 'task_list',
+          _data: { tasks: list }
+        });
+      } else {
+        startTypingMessage(`小人稟報恩公，今日暫時冇 task 到期。\n\n恩公可以問「明日有咩做？」或「我有咩未做？」睇其他 task。`);
+      }
+      return;
+    }
+
     // ── Universal Task Search ──
     // Any user input that doesn't match other patterns is treated as a search
     const searchKeywords = userText.trim().toLowerCase().replace(/^(搵|查|睇|search|find|check)\s*/i, '').replace(/^#/, '');
