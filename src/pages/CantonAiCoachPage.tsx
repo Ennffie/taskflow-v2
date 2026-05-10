@@ -7,6 +7,7 @@ import { VersionBadge } from '../components/VersionBadge';
 import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
 import { tryBuildDeterministicSummary } from '../lib/cantonSummary';
 import { buildDecisionContext } from '../lib/cantonDecisionContext';
+import { getStatusMeta } from '../types';
 import type { Profile, TaskItem, TaskStatus } from '../types';
 
 // Fallback bridge URL if Supabase config is not available
@@ -645,8 +646,8 @@ export function CantonAiCoachPage() {
     }
     
     // Frontend search setup
-    let searchResult = null;
-    const taskNamePattern = /^(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+|task\s*\d+|#\d+|\d{2,})/i;
+    let searchResult: { id: string; title: string; status: string; due_date: string | null; assignees: string[]; description: string; progress: number; subtasks?: any[] } | null = null;
+    // taskNamePattern removed - using universal search instead
     const normalizeTaskRef = (value: string) => value.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
     
     // CR/CRCE code must mean search/check first unless user explicitly says create/add.
@@ -794,131 +795,68 @@ export function CantonAiCoachPage() {
       return;
     }
 
-    // Use first token (before first space) as keyword for task search
-    // This handles multi-line input where first line is task name
-    const firstToken = userText.split(/\s/)[0];
-    if ((taskNamePattern.test(firstToken) || crMatch) && !parsedFields) {
-      const extractedRef = crMatch?.[1] || userText.match(/(CRCE?\s*-?\s*\d+)/i)?.[1] || firstToken;
-      const keyword = normalizeTaskRef(extractedRef.replace(/^(check|搵|查|睇)\s*/i, '').replace(/^(task\s*)/i, '').replace(/^#/, ''));
-      console.log(`[Frontend Search] Pattern matched. Keyword: "${keyword}"`);
-      const foundTask = tasks.find(t => {
+    // ── Universal Task Search ──
+    // Any user input that doesn't match other patterns is treated as a search
+    const searchKeywords = userText.trim().toLowerCase().replace(/^(搵|查|睇|search|find|check)\s*/i, '').replace(/^#/, '');
+    if (searchKeywords && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
+      console.log(`[Frontend Search] Searching for: "${searchKeywords}"`);
+      
+      // Search in all tasks (both title and ID)
+      const foundTasks = tasks.filter(t => {
         const normalizedTitle = normalizeTaskRef(t.title);
-        const titleMatch = normalizedTitle.includes(keyword) || keyword.includes(normalizedTitle);
-        const idMatch = normalizeTaskRef(t.id) === keyword;
-        if (titleMatch || idMatch) {
-          console.log(`[Frontend Search] Found: "${t.title}" (titleMatch=${titleMatch}, idMatch=${idMatch})`);
-        }
+        const normalizedId = normalizeTaskRef(t.id);
+        const normalizedKeyword = normalizeTaskRef(searchKeywords);
+        const titleMatch = normalizedTitle.includes(normalizedKeyword) || normalizedKeyword.includes(normalizedTitle);
+        const idMatch = normalizedId.includes(normalizedKeyword);
         return titleMatch || idMatch;
       });
-      if (foundTask) {
+      
+      if (foundTasks.length > 0) {
+        // Show first match with details
+        const foundTask = foundTasks[0];
         searchResult = {
           id: foundTask.id,
           title: foundTask.title,
           status: foundTask.status,
-          due_date: foundTask.due_date,
+          due_date: foundTask.due_date || null,
           assignees: foundTask.assignees.map(a => a.name),
-          description: foundTask.description,
-          progress: foundTask.progress_percent,
+          description: foundTask.description || '',
+          progress: foundTask.progress_percent ?? 0,
           subtasks: foundTask.subtasks?.map((s: any) => ({
             title: s.title,
             status: s.status,
             assignees: s.assignees.map((a: any) => a.name),
           })) || [],
         };
-        console.log(`[Frontend Search] Result created:`, searchResult);
-
-        const progressMatch = userText.match(/(?:進度(?:改做)?|progress(?:\s*to)?|改做)\s*[:：]?\s*(\d{1,3})/i);
-        const wantsDone = /mark\s*完成|mark\s*done|完成咗|已完成|done\b/i.test(userText);
-
-        if (pendingTaskAction && pendingTaskAction.taskId === foundTask.id) {
-          setMessages(current => [...current, { role: 'user', text: userText }]);
-          setInput('');
-          setIsReplying(true);
-          try {
-            if (pendingTaskAction.kind === 'today') {
-              await updateTask(foundTask.id, { today_update: userText });
-              await createTaskEventLog(foundTask.id, `Daily Log updated: ${userText}`);
-            } else if (pendingTaskAction.kind === 'tomorrow') {
-              await updateTask(foundTask.id, { next_day_focus: userText });
-              await createTaskEventLog(foundTask.id, `Next Day Focus updated: ${userText}`);
-            } else if (pendingTaskAction.kind === 'blocker') {
-              const merged = [foundTask.description, `Blocker: ${userText}`].filter(Boolean).join('\n\n');
-              await updateTask(foundTask.id, { description: merged });
-              await createTaskEventLog(foundTask.id, `[Blocker]\n${userText}`);
-            } else if (pendingTaskAction.kind === 'progress_update') {
-              await createTaskEventLog(foundTask.id, `[Progress Update]\n${userText}`);
-            }
-            await loadTasks();
-            const actionKind = pendingTaskAction.kind;
-            setPendingTaskAction(null);
-            startTypingMessage(`✅ 小人稟報恩公，已更新「${foundTask.title}」\n\n• ${actionKind === 'today' ? 'Daily Log' : actionKind === 'tomorrow' ? 'Next Day Focus Log' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update'}：${userText}\n\n仲想改其他嘢嗎？`, {
-              _action: 'task_actions',
-              _data: { taskId: foundTask.id, title: foundTask.title }
-            });
-          } catch (e: any) {
-            startTypingMessage(`❌ 小人該死，更新失敗：${e?.message || 'Unknown error'}`);
-          } finally {
-            setIsReplying(false);
-          }
-          return;
-        }
-
-        if (progressMatch || wantsDone) {
-          setMessages(current => [...current, { role: 'user', text: userText }]);
-          setInput('');
-          setIsReplying(true);
-          try {
-            if (progressMatch) {
-              const nextProgress = Math.max(0, Math.min(100, Number(progressMatch[1])));
-              await updateTask(foundTask.id, {
-                progress_percent: nextProgress,
-                status: nextProgress >= 100 ? 'finished' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status),
-                is_finished: nextProgress >= 100,
-              });
-            } else if (wantsDone) {
-              await updateTask(foundTask.id, {
-                progress_percent: 100,
-                status: 'finished',
-                is_finished: true,
-              });
-            }
-            await loadTasks();
-            startTypingMessage(`✅ 小人稟報恩公，已更新「${foundTask.title}」\n\n• Status：${wantsDone || Number(progressMatch?.[1]) >= 100 ? 'finished' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status)}\n• Progress：${wantsDone ? 100 : Number(progressMatch?.[1] || foundTask.progress_percent || 0)}%\n\n仲想改其他嘢嗎？`, {
-              _action: 'task_actions',
-              _data: { taskId: foundTask.id, title: foundTask.title }
-            });
-          } catch (e: any) {
-            startTypingMessage(`❌ 小人該死，更新失敗：${e?.message || 'Unknown error'}`);
-          } finally {
-            setIsReplying(false);
-          }
-          return;
-        }
-
-        // Deterministic check-task flow: if user mentions CR code and doesn't explicitly create, show task first.
-        if (crMatch && !explicitCreateIntent && (checkIntent || !hasPipe)) {
-          setMessages(current => [...current, { role: 'user', text: userText }]);
-          startTypingMessage(
-            `${foundTask.title}\n\n• Status：${foundTask.status}\n• Progress：${foundTask.progress_percent ?? 0}%\n• 到期：${foundTask.due_date || '未設定'}\n• 負責：${foundTask.assignees.map(a => a.name).join(', ') || '未指派'}\n\n想下一步做咩？`,
-            { _action: 'task_actions', _data: { taskId: foundTask.id, title: foundTask.title } }
-          );
-          setInput('');
-          return;
-        }
+        
+        setMessages(current => [...current, { role: 'user', text: userText }]);
+        setInput('');
+        setIsReplying(true);
+        
+        const subtaskList = (searchResult as any).subtasks?.length 
+          ? `\n\n📋 Subtasks:\n${(searchResult as any).subtasks.map((s: any) => `• ${s.title} (${s.status})`).join('\n')}`
+          : '';
+          
+        startTypingMessage(`✅ 小人稟報恩公，搵到「${(searchResult as any).title}」\n\n• Status：${(searchResult as any).status}\n• 到期：${(searchResult as any).due_date || '未設定'}\n• 負責：${(searchResult as any).assignees.join('、') || '未指派'}\n• 進度：${(searchResult as any).progress}%${subtaskList}\n\n仲想改咩？`, {
+          _action: 'task_actions',
+          _data: { taskId: (searchResult as any).id, title: (searchResult as any).title }
+        });
+        setIsReplying(false);
+        return;
       } else {
-        console.log(`[Frontend Search] No task found matching "${keyword}"`);
-        if (crMatch && !explicitCreateIntent) {
-          setMessages(current => [...current, { role: 'user', text: userText }]);
-          startTypingMessage(
-            `搵唔到 ${crMatch[1]}。\n\n你想我點做？`,
-            { _action: 'task_not_found', _data: { code: crMatch[1], originalText: userText } }
-          );
-          setInput('');
-          return;
-        }
+        // No results - show all tasks
+        const allTasksList = tasks
+          .filter(t => !t.parent_id)
+          .slice(0, 10)
+          .map((t, i) => `${i+1}. ${t.title} (${getStatusMeta(t.status).label})`)
+          .join('\n');
+          
+        startTypingMessage(`小人該死，搵唔到「${userText}」相關嘅 task。\n\n還請恩公過目全部 task 列表，或再試其他關鍵字：\n\n${allTasksList}\n\n...共 ${tasks.filter(t => !t.parent_id).length} 個 task`, {
+          _action: 'task_list',
+          _data: { tasks: tasks.filter(t => !t.parent_id).slice(0, 10).map(t => ({ id: t.id, title: t.title, status: t.status, due_date: t.due_date, assignees: t.assignees.map(a => a.name) })) }
+        });
+        return;
       }
-    } else {
-      console.log(`[Frontend Search] Pattern did NOT match for: "${userText}"`);
     }
     if (LOCAL_ONLY_MODE) {
       setMessages(current => [...current, { role: 'user', text: userText }]);
@@ -1169,9 +1107,10 @@ export function CantonAiCoachPage() {
 
       if (!resp.ok || upstreamAuthBroken) {
         if (searchResult) {
+          const sr = searchResult as any;
           startTypingMessage(
-            `${searchResult.title}\n\n• Status：${searchResult.status}\n• Progress：${searchResult.progress ?? 0}%\n• 到期：${searchResult.due_date || '未設定'}\n• 負責：${searchResult.assignees?.join(', ') || '未指派'}\n\n想下一步做咩？`,
-            { _action: 'task_actions', _data: { taskId: searchResult.id, title: searchResult.title } }
+            `${sr.title}\n\n• Status：${sr.status}\n• Progress：${sr.progress ?? 0}%\n• 到期：${sr.due_date || '未設定'}\n• 負責：${sr.assignees?.join(', ') || '未指派'}\n\n想下一步做咩？`,
+            { _action: 'task_actions', _data: { taskId: sr.id, title: sr.title } }
           );
           return;
         }
