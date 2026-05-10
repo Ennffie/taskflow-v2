@@ -100,7 +100,7 @@ export function CantonAiCoachPage() {
       setCurrentUserName(name);
       // Start welcome typewriter after getting user name
       setTimeout(() => {
-        const welcome = `小人參見 ${name.split(' ')[0]} 大人~\n小人係Silly，有咩吩咐儘管開聲～`;
+        const welcome = `參見 ${name.split(' ')[0]} 大人~\n小人係Silly，有咩吩咐儘管開聲～`;
         startTypingMessage(welcome);
       }, 300);
     }).catch(console.error);
