@@ -1371,7 +1371,7 @@ export function CantonAiCoachPage() {
                         {[
                           ['Todo', 'todo'],
                           ['Planning', 'planning'],
-                          ['In Progress', 'in_progress'],
+                          ['WIP', 'in_progress'],
                           ['Internal Review', 'internal_review'],
                           ['Round 1 WIP', 'round_1_wip'],
                           ['Round 1 Review', 'round_1_review'],
@@ -1379,13 +1379,11 @@ export function CantonAiCoachPage() {
                           ['Round 2 Review', 'round_2_review'],
                           ['Round 3 WIP', 'round_3_wip'],
                           ['Round 3 Review', 'round_3_review'],
-                          ['Pending MPFA/PC', 'pending_mpfa_pc'],
-                          ['Review', 'review'],
-                          ['Finish', 'done'],
+                          ['Pending for NFC', 'pending_mpfa_pc'],
                           ['Finished', 'finished'],
                           ['Cancelled', 'cancelled'],
                         ].map(([label, value]) => (
-                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: ['done','finished','cancelled'].includes(value), progress_percent: ['done','finished'].includes(value) ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
+                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: ['finished','cancelled'].includes(value), progress_percent: value === 'finished' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
                             {label}
                           </button>
                         ))}
