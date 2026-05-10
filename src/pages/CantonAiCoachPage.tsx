@@ -351,6 +351,21 @@ export function CantonAiCoachPage() {
     setPendingDeleteTaskId(null);
   };
 
+  const clearInputAndPanels = () => {
+    setInput('');
+    setPendingTaskAction(null);
+    resetInlineTaskPanels();
+    setDueDatePicker(null);
+  };
+
+  const scrollToInput = () => {
+    window.setTimeout(() => {
+      const inputEl = document.querySelector('textarea[data-testid="chat-input"]');
+      inputEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (inputEl as HTMLTextAreaElement)?.focus();
+    }, 100);
+  };
+
   const handleDeleteTask = async (taskId: string) => {
     setIsReplying(true);
     try {
@@ -1289,39 +1304,39 @@ export function CantonAiCoachPage() {
                         setDueDatePicker(null);
                         setPendingTaskAction({ taskId, title, kind: 'today' });
                         setInput(`${title} 今日做咗：`);
+                        scrollToInput();
                       }} style={actionButtonStyle()}>今日做咗</button>
                       <button disabled={isReplying} onClick={() => {
                         resetInlineTaskPanels();
                         setDueDatePicker(null);
                         setPendingTaskAction({ taskId, title, kind: 'tomorrow' });
                         setInput(`${title} 明天focus：`);
+                        scrollToInput();
                       }} style={actionButtonStyle()}>明天做乜</button>
                       <button disabled={isReplying} onClick={() => {
                         resetInlineTaskPanels();
                         setDueDatePicker(null);
                         setPendingTaskAction({ taskId, title, kind: 'blocker' });
                         setInput(`${title} blocker：`);
+                        scrollToInput();
                       }} style={actionButtonStyle()}>Blocker</button>
                       <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { is_focus: !(selectedTask?.is_focus ?? false) }, `${focusLabel}：${selectedTask?.is_focus ? 'No' : 'Yes'}`)} style={actionButtonStyle(selectedTask?.is_focus ? 'primary' : 'soft')}>{focusLabel}</button>
                       <button disabled={isReplying} onClick={() => {
-                        setDueDatePicker(null);
+                        clearInputAndPanels();
                         setStatusPickerTaskId(current => current === taskId ? null : taskId);
-                        setAssigneePickerTaskId(null);
-                        setSubtaskComposerTaskId(null);
                       }} style={actionButtonStyle()}>Status</button>
                       <button disabled={isReplying} onClick={() => {
-                        setDueDatePicker(null);
+                        clearInputAndPanels();
                         setExpandedMoreTaskId(current => current === taskId ? null : taskId);
-                        resetInlineTaskPanels();
                       }} style={actionButtonStyle()}>其他</button>
                       <button disabled={isReplying} onClick={() => {
-                        resetInlineTaskPanels();
+                        clearInputAndPanels();
                         setPendingTaskAction(null);
                         setInput(`${title} 進度改做：`);
+                        scrollToInput();
                       }} style={actionButtonStyle()}>改進度</button>
                       <button disabled={isReplying} onClick={() => {
-                        resetInlineTaskPanels();
-                        setPendingTaskAction(null);
+                        clearInputAndPanels();
                         setDueDatePicker({ taskId, title, value: '' });
                       }} style={actionButtonStyle()}>改Due date</button>
                     </div>
