@@ -1611,7 +1611,13 @@ export function CantonAiCoachPage() {
                     .map(t => (
                       <div
                         key={t.id}
-                        onClick={() => { setInput(t.title); }}
+                        onClick={() => { 
+                          setInput(t.title); 
+                          // Auto-send and show task detail
+                          setTimeout(() => {
+                            void send(t.title);
+                          }, 50);
+                        }}
                         style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: 14 }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
                         onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
