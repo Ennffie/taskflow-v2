@@ -1608,7 +1608,7 @@ export function CantonAiCoachPage() {
                     scrollToInput();
                     return;
                   }
-                  setMessages(current => [...current, { role: 'ai', text: '小人謹遵台命，恩公想搵邊個 task？請賜告 task 名稱或關鍵字，小人即刻去 database 內搜尋。' }]);
+                  setMessages(current => [...current, { role: 'ai', text: '小人遵命，斗膽一問，大人想搵邊個Task呢？' }]);
                   setInput('');
                   scrollToInput();
                   return;
