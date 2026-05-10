@@ -664,7 +664,7 @@ export function CantonAiCoachPage() {
       setInput('');
       const myMainTasks = tasks.filter(t => !t.parent_id).slice(0, 8);
       if (myMainTasks.length === 0) {
-        startTypingMessage('你而家冇 Main Task，不如先加個 Main Task？你可以打「我要加Task」開始。');
+        startTypingMessage(`小人謹遵台命，恩公而家冇 Main Task，不如先加個 Main Task？恩公可以打「我要加Task」開始。`);
         return;
       }
       setCreateMode('subtask');
@@ -1006,7 +1006,7 @@ export function CantonAiCoachPage() {
           status: t.status,
           assignees: t.assignees.map(a => a.name),
         }));
-        startTypingMessage(`你而家有 ${myTasks.length} 個未完成 main task。撳 task 名可以即刻開新對話睇 detail。`, {
+        startTypingMessage(`小人稟報恩公，你而家有 ${myTasks.length} 個未完成 main task。撳 task 名可以即刻開新對話睇 detail。`, {
           _action: 'task_list',
           _data: { tasks: list }
         });
@@ -1029,8 +1029,8 @@ export function CantonAiCoachPage() {
 
         startTypingMessage(
           focusTasks.length
-            ? `Bro，今日 Focus 係而家 database 入面標記咗 Focus 嘅 main task，共 ${focusTasks.length} 個。口徑同 landing page 一樣。撳 task 名可以即刻開新對話睇 detail。`
-            : 'Bro，而家 database 入面暫時未有標記做 Focus 嘅 main task。',
+            ? `小人稟報恩公，今日 Focus 係而家 database 入面標記咗 Focus 嘅 main task，共 ${focusTasks.length} 個。口徑同 landing page 一樣。撳 task 名可以即刻開新對話睇 detail。`
+            : '小人稟報恩公，而家 database 入面暫時未有標記做 Focus 嘅 main task。',
           focusTasks.length
             ? {
                 _action: 'task_list',
@@ -1177,7 +1177,7 @@ export function CantonAiCoachPage() {
         }
 
         const friendly = upstreamAuthBroken
-          ? 'AI backend 而家登入有問題，我已經搵到原因，唔係你操作錯。你而家仍然可以先用快捷功能：check task、加 task、睇今日Focus。'
+          ? '小人稟報恩公，AI backend 而家登入有問題，小人已經搵到原因，唔係恩公操作錯。恩公而家仍然可以先用快捷功能：check task、加 task、睇今日Focus。'
           : `AI 暫時無法回應：HTTP ${resp.status}`;
         throw new Error(friendly);
       }
@@ -1223,7 +1223,7 @@ export function CantonAiCoachPage() {
         startTypingMessage('AI 諗得太耐，可能網絡慢或者伺服器忙。請再試一次，或者打短啲嘅問題。');
       } else {
         setMessages(current => current.filter(m => m.text !== '諗緊…'));
-        startTypingMessage(`${error?.message || 'AI 暫時無法回應，請檢查網絡連接。'}\n\n你可以繼續用我嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險`);
+        startTypingMessage(`${error?.message || '小人稟報恩公，AI 暫時無法回應，還請恩公檢查網絡連接。'}\n\n恩公可以繼續用小人嘅基本功能，例如：\n• 撳「我要加Task」逐步加 task\n• 問「有咩未交？」睇風險`);
       }
     } finally {
       setIsReplying(false);
