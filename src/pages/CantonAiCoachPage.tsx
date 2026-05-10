@@ -1608,6 +1608,8 @@ export function CantonAiCoachPage() {
                     scrollToInput();
                     return;
                   }
+                  // Add user message first, then AI response
+                  setMessages(current => [...current, { role: 'user', text: '搵Task' }]);
                   startTypingMessage('小人遵命，斗膽一問，大人想搵邊個Task呢？');
                   setInput('');
                   scrollToInput();
