@@ -646,7 +646,7 @@ export function CantonAiCoachPage() {
     
     // Frontend search setup
     let searchResult = null;
-    const taskNamePattern = /^(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+|task\s*\d+|#\d+)/i;
+    const taskNamePattern = /^(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+|task\s*\d+|#\d+|\d{2,})/i;
     const normalizeTaskRef = (value: string) => value.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
     
     // CR/CRCE code must mean search/check first unless user explicitly says create/add.
