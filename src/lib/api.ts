@@ -592,6 +592,11 @@ export async function createTask(payload: {
     await supabase.from('task_assignees').insert(
       payload.assignee_ids.map((uid) => ({ task_id: task.id, user_id: uid }))
     );
+  } else if (userId) {
+    // Default assignee: creator
+    await supabase.from('task_assignees').insert(
+      [{ task_id: task.id, user_id: userId }]
+    );
   }
 
   if (payload.tags.length > 0) {
