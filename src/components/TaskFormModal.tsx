@@ -215,7 +215,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
         </div>
         {/* Status + Priority in one row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          <Field label={copy?.status ?? 'Status'}><select value={status} onChange={(e) => { const s = e.target.value as TaskStatus; setStatus(s); setIsFinished(s === 'finished'); }} style={inputStyle}>{TASK_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{STATUS_META[value].label}</option>)}</select></Field>
+          <Field label={copy?.status ?? 'Status'}><select value={status} onChange={(e) => { const s = e.target.value as TaskStatus; setStatus(s); setIsFinished(s === 'finished'); }} style={inputStyle}>{TASK_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{(STATUS_META as any)[value]?.label ?? value}</option>)}</select></Field>
           <Field label={copy?.priority ?? 'Priority'}><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         </div>
         {parentTaskId && (
