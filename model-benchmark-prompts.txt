@@ -1,0 +1,14 @@
+[TASK_CHECK]
+今日有咩到期？請用廣東話簡潔列出重點。
+
+[TASK_UPDATE_PARSE]
+CRCE-1906 / 2513 progress 改做 80，順便提醒我今日要跟進。
+
+[TASK_CREATE_PARSE]
+幫我加 task：跟進 Alice onboarding page，明天下午3點前交 first draft。
+
+[CANTON_CHAT]
+你幫我用廣東話講返今日最 urgent 嘅 task，語氣自然少少。
+
+[STRUCTURED_JSON]
+請將呢句轉成 JSON："幫 Pamela 跟進 onboarding page，下星期三早上 11 點前俾我 first draft"。輸出格式只可以係 JSON，key 用 title, assignee, due_date, due_time, note。

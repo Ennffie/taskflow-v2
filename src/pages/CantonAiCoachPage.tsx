@@ -929,7 +929,17 @@ export function CantonAiCoachPage() {
       }
 
       if (/my\s*task|task\s*list|我.?task/.test(lower)) {
-        const myTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'done' && (t.assignees.some(a => a.name === currentUserName) || t.created_by === currentUserId));
+        console.log('[MyTaskList] currentUserName:', currentUserName, 'currentUserId:', currentUserId);
+        const myTasks = tasks.filter(t => {
+          const isAssignee = t.assignees?.some(a => a.name === currentUserName);
+          // Only include as owner if unassigned (implied owner)
+          const isUnassignedOwner = !t.assignees?.length && t.created_by === currentUserId;
+          const shouldInclude = !t.parent_id && !t.is_finished && t.status !== 'done' && (isAssignee || isUnassignedOwner);
+          if (t.title.includes('CRCE') || t.title.includes('個Task俾我')) {
+            console.log(`[MyTaskList] Task: ${t.title}, assignees: ${t.assignees?.map(a=>a.name).join(',')}, created_by: ${t.created_by}, isAssignee: ${isAssignee}, isUnassignedOwner: ${isUnassignedOwner}, include: ${shouldInclude}`);
+          }
+          return shouldInclude;
+        });
         const list = myTasks.map(t => ({
           id: t.id,
           title: t.title,
