@@ -1556,8 +1556,15 @@ export function CantonAiCoachPage() {
                 }
 
                 if (preset === '加Task') {
+                  // Cancel search mode if active
                   setMessages(current => [...current, { role: 'user', text: preset }]);
                   startTypingMessage('照跟打就得：\n\n例如：\nCRCE-1234\nChange design\n8 May\nme\nWIP');
+                } else if (preset === 'Focus') {
+                  setMessages(current => [...current, { role: 'user', text: preset }]);
+                  void send(preset);
+                } else if (preset === 'My Task') {
+                  setMessages(current => [...current, { role: 'user', text: preset }]);
+                  void send(preset);
                 } else {
                   void send(preset);
                 }
@@ -1570,7 +1577,7 @@ export function CantonAiCoachPage() {
             <div style={{ position: 'relative' }}>
               <textarea
                 data-testid="chat-input"
-                placeholder="隨意問 task 相關問題…"
+                placeholder={messages[messages.length - 1]?.text.includes('想搵邊個') ? '輸入 task 名稱或關鍵字...' : '隨意問 task 相關問題…'}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1589,6 +1596,26 @@ export function CantonAiCoachPage() {
                 disabled={isReplying}
                 style={{ width: '100%', resize: 'none', minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
               />
+              {/* Autocomplete dropdown for search mode */}
+              {messages[messages.length - 1]?.text.includes('想搵邊個') && input.trim().length > 0 && (
+                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto', zIndex: 100, marginBottom: 4 }}>
+                  {tasks
+                    .filter(t => !t.parent_id && t.title.toLowerCase().includes(input.toLowerCase()))
+                    .slice(0, 5)
+                    .map(t => (
+                      <div
+                        key={t.id}
+                        onClick={() => { setInput(t.title); }}
+                        style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: 14 }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+                      >
+                        <div style={{ fontWeight: 700 }}>{t.title}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>{getStatusMeta(t.status).label} · {t.assignees.map(a => a.name.split(' ')[0]).join(', ') || '未指派'}</div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
             <button 
               data-testid="send-button"
