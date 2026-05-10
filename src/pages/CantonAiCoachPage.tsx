@@ -1597,10 +1597,13 @@ export function CantonAiCoachPage() {
                 style={{ width: '100%', resize: 'none', minHeight: 22, maxHeight: 96, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '14px 15px', outline: 'none', fontSize: 16, lineHeight: 1.35, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
               />
               {/* Autocomplete dropdown for search mode */}
-              {messages[messages.length - 1]?.text.includes('想搵邊個') && input.trim().length > 0 && (
+              {messages[messages.length - 1]?.text.includes('想搵邊個') 
+                && input.trim().length > 0 
+                && !tasks.some(t => t.title === input)
+                && (
                 <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto', zIndex: 100, marginBottom: 4 }}>
                   {tasks
-                    .filter(t => !t.parent_id && t.title.toLowerCase().includes(input.toLowerCase()))
+                    .filter(t => !t.parent_id && t.title.toLowerCase().includes(input.toLowerCase()) && t.title !== input)
                     .slice(0, 5)
                     .map(t => (
                       <div
