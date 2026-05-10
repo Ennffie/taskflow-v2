@@ -850,6 +850,9 @@ export function CantonAiCoachPage() {
           .slice(0, 10)
           .map((t, i) => `${i+1}. ${t.title} (${getStatusMeta(t.status).label})`)
           .join('\n');
+        
+        setMessages(current => [...current, { role: 'user', text: userText }]);
+        setInput('');
           
         startTypingMessage(`小人該死，搵唔到「${userText}」相關嘅 task。\n\n還請恩公過目全部 task 列表，或再試其他關鍵字：\n\n${allTasksList}\n\n...共 ${tasks.filter(t => !t.parent_id).length} 個 task`, {
           _action: 'task_list',
