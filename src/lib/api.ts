@@ -561,6 +561,9 @@ export async function createTask(payload: {
   round_number?: number;
   is_finished?: boolean;
 }) {
+  // Map 'finished' to 'done' for database compatibility
+  const dbStatus = payload.status === 'finished' ? 'done' : payload.status;
+
   // Get current user
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
@@ -572,7 +575,7 @@ export async function createTask(payload: {
       description: payload.description,
       today_update: payload.today_update?.trim() || null,
       next_day_focus: payload.next_day_focus?.trim() || null,
-      status: payload.status,
+      status: dbStatus,
       priority: payload.priority,
       due_date: payload.due_date ?? null,
       parent_id: payload.parent_id ?? null,
@@ -657,6 +660,12 @@ export async function updateTask(
     is_finished: boolean;
   }>
 ) {
+  // Map 'finished' to 'done' for database compatibility
+  const dbPayload = { ...payload };
+  if (dbPayload.status === 'finished') {
+    (dbPayload as any).status = 'done';
+  }
+
   // Get current user
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
@@ -671,7 +680,7 @@ export async function updateTask(
 
   const { error } = await supabase
     .from('tasks')
-    .update({ ...payload, updated_at: new Date().toISOString(), updated_by: userId })
+    .update({ ...dbPayload, updated_at: new Date().toISOString(), updated_by: userId })
     .eq('id', taskId);
   if (error) throw error;
 
