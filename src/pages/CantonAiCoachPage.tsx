@@ -41,6 +41,7 @@ export function CantonAiCoachPage() {
   const [subtaskComposerTaskId, setSubtaskComposerTaskId] = useState<string | null>(null);
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
+  const [progressSlider, setProgressSlider] = useState<{ taskId: string; title: string; value: number } | null>(null);
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
   const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
@@ -139,10 +140,13 @@ export function CantonAiCoachPage() {
     }
   }, [assigneePickerTaskId]);
   useEffect(() => {
-    if (subtaskComposerTaskId) {
-      window.setTimeout(() => subtaskComposerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    if (progressSlider) {
+      window.setTimeout(() => {
+        const sliderEl = document.querySelector('[data-testid="progress-slider"]');
+        sliderEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     }
-  }, [subtaskComposerTaskId]);
+  }, [progressSlider]);
 
   const getContext = (searchResult?: any) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -1353,8 +1357,8 @@ export function CantonAiCoachPage() {
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
                         setPendingTaskAction(null);
-                        setInput(`${title} 進度改做：\n`);
-                        scrollToInput();
+                        const task = getLatestTask(taskId);
+                        setProgressSlider({ taskId, title, value: task?.progress_percent ?? 0 });
                       }} style={actionButtonStyle()}>改進度</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
@@ -1424,6 +1428,38 @@ export function CantonAiCoachPage() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {progressSlider?.taskId === taskId && (
+                      <div data-testid="progress-slider" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 14, background: '#f0f9ff', borderRadius: 16, border: '1px solid #bae6fd' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 800, fontSize: 16 }}>進度：{progressSlider?.value ?? 0}%</span>
+                          <span style={{ fontSize: 13, color: '#64748b' }}>{title}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={progressSlider?.value ?? 0}
+                          onChange={(e) => setProgressSlider(prev => prev ? { ...prev, value: Number(e.target.value) } : null)}
+                          disabled={isReplying}
+                          style={{ width: '100%', accentColor: '#0f172a' }}
+                        />
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button disabled={isReplying} onClick={() => {
+                            if (!progressSlider) return;
+                            const nextProgress = progressSlider.value;
+                            setProgressSlider(null);
+                            void quickUpdateTask(taskId, title, {
+                              progress_percent: nextProgress,
+                              status: nextProgress >= 100 ? 'done' : (selectedTask?.status === 'todo' ? 'in_progress' : selectedTask?.status),
+                              is_finished: nextProgress >= 100,
+                            }, `Progress：${nextProgress}%`);
+                          }} style={{ flex: 1, ...actionButtonStyle('primary') }}>Confirm</button>
+                          <button disabled={isReplying} onClick={() => setProgressSlider(null)} style={{ flex: 1, ...actionButtonStyle() }}>Cancel</button>
+                        </div>
                       </div>
                     )}
                   </div>
