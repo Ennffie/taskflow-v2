@@ -1381,9 +1381,8 @@ export function CantonAiCoachPage() {
                           ['Round 3 Review', 'round_3_review'],
                           ['Pending for NFC', 'pending_mpfa_pc_nfc'],
                           ['Finished', 'finished'],
-                          ['Cancelled', 'cancelled'],
                         ].map(([label, value]) => (
-                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: ['finished','cancelled'].includes(value), progress_percent: value === 'finished' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
+                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'finished', progress_percent: value === 'finished' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
                             {label}
                           </button>
                         ))}
@@ -1393,7 +1392,7 @@ export function CantonAiCoachPage() {
                     {expandedMoreTaskId === taskId && (
                       <div style={{ display: 'grid', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true }, '堅係完成：100% Done')} style={actionButtonStyle('primary')}>堅係完成</button>
+                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true }, '堅係完成：100% Finished')} style={actionButtonStyle('primary')}>堅係完成</button>
                           <button disabled={isReplying} onClick={() => {
                             setAssigneePickerTaskId(current => current === taskId ? null : taskId);
                             setSubtaskComposerTaskId(null);
@@ -1403,6 +1402,7 @@ export function CantonAiCoachPage() {
                             setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
                             setAssigneePickerTaskId(null);
                           }} style={actionButtonStyle()}>加SubTask</button>
+                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'cancelled', is_finished: true }, 'Cancelled')} style={actionButtonStyle('danger')}>Cancel Task</button>
                         </div>
 
                         {pendingDeleteTaskId === taskId && (
