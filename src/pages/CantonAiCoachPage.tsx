@@ -1593,7 +1593,7 @@ export function CantonAiCoachPage() {
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {['退下', '有咩未交？', '我要加Task', '今日Focus', 'My Task list'].map(preset => (
+            {['退下', '有咩未交？', '我要加Task', '今日Focus', 'My Task'].map(preset => (
               <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
                 if (preset === '退下') {
                   navigate('/canton-mode');
