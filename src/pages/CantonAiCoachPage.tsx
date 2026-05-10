@@ -1760,9 +1760,10 @@ export function CantonAiCoachPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (input.trim()) void send();
+                  if (e.key === 'Enter') {
+                    // Allow Enter for newline (Telegram style)
+                    // Only send if explicitly clicking send button
+                    e.stopPropagation();
                   }
                 }}
                 onInput={(e) => {
