@@ -1321,6 +1321,7 @@ export function CantonAiCoachPage() {
                 const title = message._data.title;
                 const selectedTask = getLatestTask(taskId);
                 const isSubtask = !!selectedTask?.parent_id;
+                const hasSubtasks = (selectedTask?.subtask_count ?? 0) > 0;
                 const focusLabel = selectedTask?.is_focus ? 'Unfocus' : 'Focus';
                 return (
                   <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
@@ -1383,8 +1384,10 @@ export function CantonAiCoachPage() {
                           ['Pending for NFC', 'pending_mpfa_pc_nfc'],
                           ['Finished', 'finished'],
                         ].filter(([, value]) => {
-                          // Subtasks cannot be 'finished' - only main tasks can
+                          // Subtasks cannot be 'finished'
                           if (isSubtask && value === 'finished') return false;
+                          // Main tasks with subtasks cannot manually set 'finished' - computed from subtasks
+                          if (!isSubtask && hasSubtasks && value === 'finished') return false;
                           return true;
                         }).map(([label, value]) => (
                           <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'finished', is_focus: value === 'finished' ? false : selectedTask?.is_focus, progress_percent: value === 'finished' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
@@ -1397,7 +1400,7 @@ export function CantonAiCoachPage() {
                     {expandedMoreTaskId === taskId && (
                       <div style={{ display: 'grid', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                          {!isSubtask && <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true, is_focus: false }, '堅係Finished：100% Finished')} style={actionButtonStyle('primary')}>堅係Finished</button>}
+                          {!isSubtask && !hasSubtasks && <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true, is_focus: false }, '堅係Finished：100% Finished')} style={actionButtonStyle('primary')}>堅係Finished</button>}
                           <button disabled={isReplying} onClick={() => {
                             setAssigneePickerTaskId(current => current === taskId ? null : taskId);
                             setSubtaskComposerTaskId(null);
