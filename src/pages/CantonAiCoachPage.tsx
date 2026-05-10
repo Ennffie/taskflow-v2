@@ -1369,10 +1369,13 @@ export function CantonAiCoachPage() {
                     {statusPickerTaskId === taskId && (
                       <div ref={statusPickerRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         {[
-                          ['Todo', 'todo'],
-                          ['WIP', 'in_progress'],
+                          ['待辦', 'todo'],
+                          ['進行中', 'in_progress'],
                           ['Review', 'review'],
-                          ['Done', 'done'],
+                          ['Blocked', 'blocked'],
+                          ['QA', 'qa'],
+                          ['Deploy', 'deploy'],
+                          ['Finish', 'done'],
                         ].map(([label, value]) => (
                           <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'done', progress_percent: value === 'done' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
                             {label}
