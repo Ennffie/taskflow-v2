@@ -1608,7 +1608,7 @@ export function CantonAiCoachPage() {
                     scrollToInput();
                     return;
                   }
-                  setMessages(current => [...current, { role: 'ai', text: '小人遵命，斗膽一問，大人想搵邊個Task呢？' }]);
+                  startTypingMessage('小人遵命，斗膽一問，大人想搵邊個Task呢？');
                   setInput('');
                   scrollToInput();
                   return;
