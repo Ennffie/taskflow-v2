@@ -1600,6 +1600,20 @@ export function CantonAiCoachPage() {
                   return;
                 }
 
+                if (preset === '搵 Task') {
+                  // Check if already in search mode (last message was the search prompt)
+                  const lastMsg = messages[messages.length - 1];
+                  if (lastMsg?.role === 'ai' && lastMsg.text.includes('想搵邊個 task')) {
+                    // Already in search mode, just focus input
+                    scrollToInput();
+                    return;
+                  }
+                  setMessages(current => [...current, { role: 'ai', text: '小人謹遵台命，恩公想搵邊個 task？請賜告 task 名稱或關鍵字，小人即刻去 database 內搜尋。' }]);
+                  setInput('');
+                  scrollToInput();
+                  return;
+                }
+
                 if (preset === '加Task') {
                   setMessages(current => [...current, { role: 'user', text: preset }]);
                   startTypingMessage('照跟打就得：\n\n例如：\nCRCE-1234\nChange design\n8 May\nme\nWIP');
