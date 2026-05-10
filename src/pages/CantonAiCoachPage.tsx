@@ -284,7 +284,7 @@ export function CantonAiCoachPage() {
       await loadTasks();
       
       const isSub = !!data.parentTaskId;
-      startTypingMessage(`✅ 已建立「${data.title}」${isSub ? '（Subtask）' : ''}\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDateLabel || data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}`);
+      startTypingMessage(`✅ 小人稟報恩公，已建立「${data.title}」${isSub ? '（Subtask）' : ''}\n\n📋 Task Details:\n• 名稱：${data.title}\n• 到期：${data.dueDateLabel || data.dueDate || '未設定'}\n• 負責：${data.assignee}\n• Status：${data.statusLabel}\n• Description：${data.description || '無'}`);
       
       // Reset guided flow
       setCreateMode('idle');
@@ -296,7 +296,7 @@ export function CantonAiCoachPage() {
         delete next[actionKey];
         return next;
       });
-      startTypingMessage(`❌ 建立失敗：${e?.message || 'Unknown error'}`);
+      startTypingMessage(`❌ 小人該死，建立失敗：${e?.message || 'Unknown error'}`);
     } finally {
       setIsReplying(false);
     }
@@ -310,7 +310,7 @@ export function CantonAiCoachPage() {
     setCreateMode('idle');
     setGuidedStep(0);
     setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
-    startTypingMessage('取消咗～有咩再講 💕');
+    startTypingMessage('小人遵命，已取消～有咩再講 💕');
   };
 
   const showTaskActions = (task: Pick<TaskItem, 'id' | 'title' | 'status' | 'due_date' | 'progress_percent' | 'assignees'>) => {
@@ -397,7 +397,7 @@ export function CantonAiCoachPage() {
       });
       await loadTasks();
     } catch (e: any) {
-      startTypingMessage(`❌ 刪除失敗：${e?.message || 'Unknown error'}`);
+      startTypingMessage(`❌ 小人該死，刪除失敗：${e?.message || 'Unknown error'}`);
     } finally {
       setIsReplying(false);
     }
@@ -428,7 +428,7 @@ export function CantonAiCoachPage() {
       await confirmTaskMutation(taskId, title, `負責：${profile.name}`);
       setAssigneePickerTaskId(null);
     } catch (e: any) {
-      startTypingMessage(`❌ 指派失敗：${e?.message || 'Unknown error'}`);
+      startTypingMessage(`❌ 小人該死，指派失敗：${e?.message || 'Unknown error'}`);
     } finally {
       setIsReplying(false);
     }
@@ -454,7 +454,7 @@ export function CantonAiCoachPage() {
       setSubtaskComposerTaskId(null);
       await confirmTaskMutation(taskId, title, `已加 SubTask：${subtaskTitle}`);
     } catch (e: any) {
-      startTypingMessage(`❌ 加 SubTask 失敗：${e?.message || 'Unknown error'}`);
+      startTypingMessage(`❌ 小人該死，加 SubTask 失敗：${e?.message || 'Unknown error'}`);
     } finally {
       setIsReplying(false);
     }
@@ -481,7 +481,7 @@ export function CantonAiCoachPage() {
       const updated = fresh?.find(t => t.id === taskId);
       if (updated) updateTaskActionBubble(updated);
     } catch (e: any) {
-      startTypingMessage(`❌ 更新 Due date 失敗：${e?.message || 'Unknown error'}`);
+      startTypingMessage(`❌ 小人該死，更新 Due date 失敗：${e?.message || 'Unknown error'}`);
     } finally {
       setIsReplying(false);
     }
@@ -528,7 +528,7 @@ export function CantonAiCoachPage() {
             // No actual input provided, just the prefix
             setIsReplying(false);
             setPendingTaskAction(null);
-            startTypingMessage(`冇收到新資料，請輸入內容後再 send～`, {
+            startTypingMessage(`小人斗膽稟報，冇收到新資料，還請恩公輸入內容後再 send～`, {
               _action: 'task_actions',
               _data: { taskId: pendingTask.id, title: pendingTask.title }
             });
@@ -551,7 +551,7 @@ export function CantonAiCoachPage() {
           const actionKind = pendingTaskAction.kind;
           setPendingTaskAction(null);
           const actionLabel = actionKind === 'today' ? 'What I have done' : actionKind === 'tomorrow' ? 'Next Day Focus' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update';
-          startTypingMessage(`✅ 已更新「${pendingTask.title}」\n\n• ${actionLabel}：${actionText}\n\n仲想改其他嘢嗎？`, {
+          startTypingMessage(`✅ 小人稟報恩公，已更新「${pendingTask.title}」\n\n• ${actionLabel}：${actionText}\n\n仲想改其他嘢嗎？`, {
             _action: 'task_actions',
             _data: { taskId: pendingTask.id, title: pendingTask.title }
           });
@@ -584,26 +584,26 @@ export function CantonAiCoachPage() {
             if (found) parentId = found.id;
           }
           if (!parentId) {
-            startTypingMessage('搵唔到呢個 Main Task，試吓打數字或者完整名稱？');
+            startTypingMessage('小人稟報恩公，搵唔到呢個 Main Task，還請恩公試吓打數字或者完整名稱？');
             return;
           }
           setGuidedDraft(d => ({ ...d, parentTaskId: parentId }));
           setGuidedStep(0);
-          startTypingMessage('得咗！\n\nSubtask 名係？（可用 [Wed] [App] [Kiosk] 做 prefix，例如：Wed UI Fix）');
+          startTypingMessage('小人遵命！\n\nSubtask 名係？（可用 [Wed] [App] [Kiosk] 做 prefix，例如：Wed UI Fix）');
           return;
         }
         if (guidedStep === 0) {
-          if (!userVal) { startTypingMessage('唔該俾個 Subtask 名稱～'); return; }
+          if (!userVal) { startTypingMessage('小人斗膽一問，唔該俾個 Subtask 名稱～'); return; }
           setGuidedDraft(d => ({ ...d, title: userVal }));
           setGuidedStep(1);
-          startTypingMessage(`收到！「${userVal}」\n\nDescription 寫啲咩？（選填，直接 Enter 可跳過）`);
+          startTypingMessage(`小人收到！「${userVal}」\n\nDescription 寫啲咩？（選填，直接 Enter 可跳過）`);
           return;
         }
         if (guidedStep === 1) {
           setGuidedDraft(d => ({ ...d, description: userVal }));
           setGuidedStep(2);
           const btns = profiles.slice(0, 6).map(p => `[${p.name}]`).join(' ');
-          startTypingMessage(`Assign 俾邊個？\n${btns}\n（打名稱或 Me）`);
+          startTypingMessage(`小人斗膽一問，Assign 俾邊個？\n${btns}\n（打名稱或 Me）`);
           return;
         }
         if (guidedStep === 2) {
@@ -613,7 +613,7 @@ export function CantonAiCoachPage() {
           const resolved = profile?.name || target;
           setGuidedDraft(d => ({ ...d, assignee: resolved }));
           setGuidedStep(3);
-          startTypingMessage(`收到，Assign 俾 ${resolved}\n\n幾時到期？\n[TBC] [Today] [Tomorrow]`);
+          startTypingMessage(`小人收到，Assign 俾 ${resolved}\n\n幾時到期？\n[TBC] [Today] [Tomorrow]`);
           return;
         }
         if (guidedStep === 3) {
@@ -851,12 +851,12 @@ export function CantonAiCoachPage() {
             await loadTasks();
             const actionKind = pendingTaskAction.kind;
             setPendingTaskAction(null);
-            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• ${actionKind === 'today' ? 'Daily Log' : actionKind === 'tomorrow' ? 'Next Day Focus Log' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update'}：${userText}\n\n仲想改其他嘢嗎？`, {
+            startTypingMessage(`✅ 小人稟報恩公，已更新「${foundTask.title}」\n\n• ${actionKind === 'today' ? 'Daily Log' : actionKind === 'tomorrow' ? 'Next Day Focus Log' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update'}：${userText}\n\n仲想改其他嘢嗎？`, {
               _action: 'task_actions',
               _data: { taskId: foundTask.id, title: foundTask.title }
             });
           } catch (e: any) {
-            startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+            startTypingMessage(`❌ 小人該死，更新失敗：${e?.message || 'Unknown error'}`);
           } finally {
             setIsReplying(false);
           }
@@ -883,12 +883,12 @@ export function CantonAiCoachPage() {
               });
             }
             await loadTasks();
-            startTypingMessage(`✅ 已更新「${foundTask.title}」\n\n• Status：${wantsDone || Number(progressMatch?.[1]) >= 100 ? 'finished' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status)}\n• Progress：${wantsDone ? 100 : Number(progressMatch?.[1] || foundTask.progress_percent || 0)}%\n\n仲想改其他嘢嗎？`, {
+            startTypingMessage(`✅ 小人稟報恩公，已更新「${foundTask.title}」\n\n• Status：${wantsDone || Number(progressMatch?.[1]) >= 100 ? 'finished' : (foundTask.status === 'todo' ? 'in_progress' : foundTask.status)}\n• Progress：${wantsDone ? 100 : Number(progressMatch?.[1] || foundTask.progress_percent || 0)}%\n\n仲想改其他嘢嗎？`, {
               _action: 'task_actions',
               _data: { taskId: foundTask.id, title: foundTask.title }
             });
           } catch (e: any) {
-            startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+            startTypingMessage(`❌ 小人該死，更新失敗：${e?.message || 'Unknown error'}`);
           } finally {
             setIsReplying(false);
           }
@@ -945,7 +945,7 @@ export function CantonAiCoachPage() {
           status: t.status,
           assignees: t.assignees.map(a => a.name),
         }));
-        startTypingMessage(`${matchedPerson} 而家手上未完成 main task 有 ${personTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
+        startTypingMessage(`${matchedPerson} 大人而家手上未完成 main task 有 ${personTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
           _action: 'task_list',
           _data: { tasks: list }
         });
@@ -961,7 +961,7 @@ export function CantonAiCoachPage() {
           status: t.status,
           assignees: t.assignees.map(a => a.name),
         }));
-        startTypingMessage(`而家 Focus task 總共有 ${focusTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
+        startTypingMessage(`小人稟報恩公，而家 Focus task 總共有 ${focusTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
           _action: 'task_list',
           _data: { tasks: focusTasks }
         });
@@ -981,7 +981,7 @@ export function CantonAiCoachPage() {
             status: t.status,
             assignees: t.assignees.map(a => a.name),
           }));
-        startTypingMessage(`而家 overdue main task 有 ${overdueTasks.length} 個。撳 task 名可以即刻開新對話睇 detail。`, {
+        startTypingMessage(`小人稟報恩公，而家 overdue main task 有 ${overdueTasks.length} 個。撳 task 名可以即刻開新對話睇 detail。`, {
           _action: 'task_list',
           _data: { tasks: overdueTasks }
         });
@@ -1070,7 +1070,7 @@ export function CantonAiCoachPage() {
           status: t.status,
           assignees: t.assignees.map(a => a.name),
         }));
-        startTypingMessage(`而家有 ${matchedTasks.length} 個 main task 係 ${targetDate} 到期。${matchedTasks.length ? '撳 task 名可以即刻開新對話睇 detail。' : ''}`, matchedTasks.length ? {
+        startTypingMessage(`小人稟報恩公，而家有 ${matchedTasks.length} 個 main task 係 ${targetDate} 到期。${matchedTasks.length ? '撳 task 名可以即刻開新對話睇 detail。' : ''}`, matchedTasks.length ? {
           _action: 'task_list',
           _data: { tasks: list }
         } : undefined);
