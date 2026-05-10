@@ -360,10 +360,15 @@ export function CantonAiCoachPage() {
 
   const scrollToInput = () => {
     window.setTimeout(() => {
-      const inputEl = document.querySelector('textarea[data-testid="chat-input"]');
-      inputEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      (inputEl as HTMLTextAreaElement)?.focus();
-    }, 100);
+      const inputEl = document.querySelector('textarea[data-testid="chat-input"]') as HTMLTextAreaElement;
+      if (inputEl) {
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputEl.focus();
+        // Place cursor at the end
+        const len = inputEl.value.length;
+        inputEl.setSelectionRange(len, len);
+      }
+    }, 150);
   };
 
   const handleDeleteTask = async (taskId: string) => {
