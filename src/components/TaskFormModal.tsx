@@ -42,11 +42,13 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   useEffect(() => {
     if (!initialTask) return;
     const cleanDescription = initialTask.description?.split(/\n\n\[\d{4}-\d{2}-\d{2}\]/)[0] || '';
+    // Map legacy 'done' status to 'finished'
+    const normalizedStatus = (initialTask.status as any) === 'done' ? 'finished' : initialTask.status;
     setTitle(initialTask.title);
     setDescription(cleanDescription);
     setTodayUpdate(initialTask.today_update || '');
     setNextDayFocus(initialTask.next_day_focus || '');
-    setStatus(initialTask.status);
+    setStatus(normalizedStatus as TaskStatus);
     setPriority(initialTask.priority);
     setDueDate(initialTask.due_date || '');
     setAssigneeIds(initialTask.assignees.map(a => a.id));
@@ -200,7 +202,7 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   };
 
   return (
-    <ModalFrame title={copy?.title ?? (mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task')} onClose={onClose} isFinished={isFinished} isFocus={isFocus} onToggleFinish={() => { const next = !isFinished; setIsFinished(next); if (next) setStatus('finished'); }} onToggleFocus={handleToggleFocus} focusSaving={focusSaving}>
+    <ModalFrame title={copy?.title ?? (mode === 'edit' ? 'Edit Task' : parentTaskId ? 'Create sub-task' : 'Create task')} onClose={onClose} isFinished={isFinished} isFocus={isFocus} onToggleFinish={() => { const next = !isFinished; setIsFinished(next); if (next) setStatus('finished'); else if (status === 'finished') setStatus('todo'); }} onToggleFocus={handleToggleFocus} focusSaving={focusSaving}>
       <div style={{ display: 'grid', gap: '18px' }}>
         {parentTaskId && parentTaskTitle && (
           <div style={{ padding: '12px 14px', borderRadius: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
