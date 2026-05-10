@@ -1593,20 +1593,20 @@ export function CantonAiCoachPage() {
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {['退下', '有咩未交？', '我要加Task', '今日Focus', 'My Task'].map(preset => (
+            {['退下', '搵 Task', '加Task', 'Focus', 'My Task'].map(preset => (
               <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
                 if (preset === '退下') {
                   navigate('/canton-mode');
                   return;
                 }
 
-                if (preset === '我要加Task') {
+                if (preset === '加Task') {
                   setMessages(current => [...current, { role: 'user', text: preset }]);
                   startTypingMessage('照跟打就得：\n\n例如：\nCRCE-1234\nChange design\n8 May\nme\nWIP');
                 } else {
                   void send(preset);
                 }
-              }} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: preset === '我要加Task' ? '#0f172a' : (preset === '退下' ? '#fff1f2' : '#fff'), color: preset === '我要加Task' ? '#fff' : (preset === '退下' ? '#be123c' : '#0369a1'), borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>
+              }} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: preset === '加Task' ? '#0f172a' : (preset === '退下' ? '#fff1f2' : '#fff'), color: preset === '加Task' ? '#fff' : (preset === '退下' ? '#be123c' : '#0369a1'), borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>
                 {preset}
               </button>
             ))}
