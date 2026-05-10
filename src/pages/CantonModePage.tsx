@@ -5,7 +5,7 @@ import { fetchTasks } from '../lib/api';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
-import { STATUS_META, type TaskItem } from '../types';
+import { getStatusMeta, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
 const cardStyle: React.CSSProperties = {
@@ -382,7 +382,7 @@ function SectionTitle({ icon, title, count }: { icon: React.ReactNode; title: st
 }
 
 function MiniTask({ task, onClick }: { task: TaskItem; onClick: () => void }) {
-  return <button onClick={onClick} style={{ width: '100%', textAlign: 'left', padding: 13, borderRadius: 18, border: '1px solid #e5e7eb', background: isOverdue(task) ? '#fff7ed' : '#fff', marginBottom: 10, cursor: 'pointer' }}><div style={{ color: '#0f172a', fontSize: 14, fontWeight: 900, marginBottom: 5 }}>{task.title}</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#64748b', fontSize: 11, fontWeight: 700 }}><span><CalendarDays size={11} /> {dueLabel(task.due_date)}</span><span><UserRound size={11} /> {assigneeLabel(task)}</span><span style={{ color: STATUS_META[task.status].color }}>{STATUS_META[task.status].label}</span></div></button>;
+  return <button onClick={onClick} style={{ width: '100%', textAlign: 'left', padding: 13, borderRadius: 18, border: '1px solid #e5e7eb', background: isOverdue(task) ? '#fff7ed' : '#fff', marginBottom: 10, cursor: 'pointer' }}><div style={{ color: '#0f172a', fontSize: 14, fontWeight: 900, marginBottom: 5 }}>{task.title}</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#64748b', fontSize: 11, fontWeight: 700 }}><span><CalendarDays size={11} /> {dueLabel(task.due_date)}</span><span><UserRound size={11} /> {assigneeLabel(task)}</span><span style={{ color: getStatusMeta(task.status).color }}>{getStatusMeta(task.status).label}</span></div></button>;
 }
 
 function RiskItem({ item, onClick }: { item: { label: string; detail: string; tone: 'danger' | 'warn' | 'info' }; onClick: () => void }) {

@@ -64,6 +64,17 @@ export const STATUS_META: Record<TaskStatus, { label: string; color: string; bg:
   cancelled: { label: 'Cancelled', color: '#b91c1c', bg: '#fee2e2' },
 };
 
+// Fallback for legacy status values not in TaskStatus type
+export const STATUS_META_FALLBACK: Record<string, { label: string; color: string; bg: string }> = {
+  done: { label: 'Finished', color: '#059669', bg: '#d1fae5' },
+  review: { label: 'Internal Review', color: '#1d4ed8', bg: '#dbeafe' },
+};
+
+// Safe helper to get status meta with fallback
+export function getStatusMeta(status: string): { label: string; color: string; bg: string } {
+  return STATUS_META[status as TaskStatus] || STATUS_META_FALLBACK[status] || { label: status, color: '#6b7280', bg: '#f3f4f6' };
+}
+
 export const TASK_STATUS_OPTIONS: TaskStatus[] = [
   'todo',
   'planning',

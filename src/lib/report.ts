@@ -1,5 +1,5 @@
 import type { LogEntry, TaskItem } from '../types';
-import { STATUS_META } from '../types';
+import { getStatusMeta } from '../types';
 import { addDays } from './date';
 
 export type TrackerRow = {
@@ -98,12 +98,12 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
         member: mainTask.assignees.map((item) => item.name).join(', ') || 'Unassigned',
         mainTask: mainTask.title,
         subtask: '',
-        status: STATUS_META[mainTask.status]?.label ?? mainTask.status,
+        status: getStatusMeta(mainTask.status).label,
         progress: formatProgress(mainTask),
         dueDate: mainTask.due_date?.trim() || 'TBC',
         todayUpdate: today,
         nextDayFocus: next,
-        mainTaskStatus: STATUS_META[mainTask.status]?.label ?? mainTask.status,
+        mainTaskStatus: getStatusMeta(mainTask.status).label,
         mainTaskProgress: formatProgress(mainTask),
         mainTaskDueDate: mainTask.due_date?.trim() || 'TBC',
       }];
@@ -115,12 +115,12 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
       member: subtask.assignees.map((item) => item.name).join(', ') || 'Unassigned',
       mainTask: mainTask.title,
       subtask: subtask.title,
-      status: STATUS_META[subtask.status]?.label ?? subtask.status,
+      status: getStatusMeta(subtask.status).label,
       progress: formatProgress(subtask),
       dueDate: subtask.due_date?.trim() || 'TBC',
       todayUpdate: today,
       nextDayFocus: next,
-      mainTaskStatus: STATUS_META[mainTask.status]?.label ?? mainTask.status,
+      mainTaskStatus: getStatusMeta(mainTask.status).label,
       mainTaskProgress: formatProgress(mainTask),
       mainTaskDueDate: mainTask.due_date?.trim() || 'TBC',
     }));

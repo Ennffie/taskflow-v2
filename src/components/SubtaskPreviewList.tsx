@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { formatDate } from '../lib/date';
-import { STATUS_META, type TaskItem } from '../types';
+import { getStatusMeta, type TaskItem } from '../types';
 
 function getAvatarColor(name: string, id?: string) {
   const normalized = `${id ?? ''}:${name}`.toLowerCase();
@@ -38,7 +38,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
         const assignee = subtask.assignees[0];
         const progress = subtask.is_finished ? 100 : (subtask.progress_percent ?? 0);
         const due = formatDate(subtask.due_date);
-        const statusMeta = STATUS_META[subtask.status];
+        const statusMeta = getStatusMeta(subtask.status);
         const isOverdue = !!subtask.due_date && new Date(subtask.due_date) < new Date(new Date().setHours(0,0,0,0));
         const isSelected = checkedTaskIds?.has(subtask.id) ?? false;
 

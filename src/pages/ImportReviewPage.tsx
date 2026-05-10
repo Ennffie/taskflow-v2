@@ -4,7 +4,7 @@ import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, Use
 import { AppShell } from '../components/AppShell';
 import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, updateTaskAssignees, createTask, createLog } from '../lib/api';
 import type { TaskItem, Profile, TaskStatus } from '../types';
-import { STATUS_META } from '../types';
+import { getStatusMeta } from '../types';
 
 interface ImportRow {
   rowIndex: number;
@@ -236,7 +236,7 @@ export function ImportReviewPage() {
         parsedStatus,
         isDay2: false,
         reason: parsedStatus !== matchedTask.status 
-          ? `Status: ${STATUS_META[matchedTask.status].label} → ${parsedStatus ? STATUS_META[parsedStatus].label : '?'}`
+          ? `Status: ${getStatusMeta(matchedTask.status).label} → ${parsedStatus ? getStatusMeta(parsedStatus).label : '?'}`
           : 'Add new log',
         logExists: false,
       };
@@ -498,7 +498,7 @@ function MatchSection({ title, subtitle, color, expanded, onToggle, results }: {
 
 function MatchResultRow({ result }: { result: MatchResult }) {
   const { row, matchedTask, matchedAssignees, parsedStatus, action, reason } = result;
-  const statusConfig = parsedStatus ? STATUS_META[parsedStatus] : null;
+  const statusConfig = parsedStatus ? getStatusMeta(parsedStatus) : null;
   const extractedId = extractTaskId(row.title);
 
   const actionLabel = action === 'create' ? 'Create' : action === 'update' ? 'Update' : 'Skip';
@@ -564,7 +564,7 @@ function MatchResultRow({ result }: { result: MatchResult }) {
           {matchedTask && (
             <div style={{ padding: '6px 12px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
               → {matchedTask.title}
-              <span style={{ marginLeft: '8px', color: '#94a3b8' }}>({STATUS_META[matchedTask.status].label})</span>
+              <span style={{ marginLeft: '8px', color: '#94a3b8' }}>({getStatusMeta(matchedTask.status).label})</span>
             </div>
           )}
         </div>

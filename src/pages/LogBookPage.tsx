@@ -6,7 +6,7 @@ import { LogFormModal } from '../components/LogFormModal';
 import { fetchLogs, fetchTask, deleteTask, updateLog, deleteLog, fetchSubtasks, updateTask } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import { useAuth } from '../contexts/AuthContext';
-import { PRIORITY_META, STATUS_META, FOCUS_META, type LogEntry, type TaskItem, type LogCategory, type TaskStatus } from '../types';
+import { PRIORITY_META, getStatusMeta, FOCUS_META, type LogEntry, type TaskItem, type LogCategory, type TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
@@ -298,7 +298,7 @@ export function LogBookPage() {
   const effectiveStatusKey = (!task.parent_id && subtasks.length === 0 && derivedParentState.isFinished)
     ? 'finished'
     : task.status;
-  const status = STATUS_META[effectiveStatusKey];
+  const status = getStatusMeta(effectiveStatusKey);
   const priority = PRIORITY_META[task.priority];
 
   const inputStyle = {
