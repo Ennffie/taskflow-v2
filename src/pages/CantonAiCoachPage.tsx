@@ -1621,6 +1621,13 @@ export function CantonAiCoachPage() {
               )}
             </div>
             <button 
+              onClick={() => { setInput(input + '\n'); }}
+              disabled={isReplying}
+              style={{ border: 'none', borderRadius: 12, background: '#f1f5f9', color: '#475569', padding: '0 12px', fontWeight: 700, fontSize: 14, opacity: isReplying ? 0.5 : 1, cursor: isReplying ? 'default' : 'pointer' }}
+            >
+              ⏎ 轉行
+            </button>
+            <button 
               data-testid="send-button"
               onClick={() => { if (input.trim()) void send(); }} 
               disabled={isReplying || !input.trim()} 
