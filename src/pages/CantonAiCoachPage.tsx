@@ -240,7 +240,7 @@ export function CantonAiCoachPage() {
 
   const renderMessage = (text: string, role: 'ai' | 'user') => {
     const displayText = role === 'ai' ? formatAiText(text) : text;
-    const isTaskDetailMessage = role === 'ai' && displayText.includes('• Status：') && displayText.includes('• Progress：');
+    const isTaskDetailMessage = role === 'ai' && displayText.includes('📋') && displayText.includes('📊');
     return displayText.split('\n').map((line, i) => {
       const isBullet = /^[•*-]\s/.test(line);
       const isNumbered = /^\d+[.)]\s/.test(line);
@@ -315,29 +315,23 @@ export function CantonAiCoachPage() {
     startTypingMessage('小人遵命，已取消～有咩再講 💕');
   };
 
-  const showTaskActions = (task: Pick<TaskItem, 'id' | 'title' | 'status' | 'due_date' | 'progress_percent' | 'assignees'>) => {
+  const showTaskActions = (task: Pick<TaskItem, 'id' | 'title' | 'status' | 'due_date' | 'progress_percent' | 'assignees' | 'subtasks'>) => {
+    const statusMeta = getStatusMeta(task.status);
+    const subtaskLines = (task as any).subtasks?.length
+      ? `\n📁 Subtasks (${(task as any).subtasks.length}):\n${(task as any).subtasks.map((s: any) => `• ${s.title} — ${getStatusMeta(s.status).label}`).join('\n')}`
+      : '';
     startTypingMessage(
-      `${task.title}
-
-• Status：${task.status}
-• Progress：${task.progress_percent ?? 0}%
-• 到期：${task.due_date || '未設定'}
-• 負責：${task.assignees.map(a => a.name).join(', ') || '未指派'}
-
-想下一步做咩？`,
+      `✅ 搵到「${task.title}」\n📋 ${statusMeta.label}  |  📅 ${task.due_date || '未設定'}  |  👤 ${task.assignees.map(a => a.name.split(' ')[0]).join('/')}  |  📊 ${task.progress_percent ?? 0}%${subtaskLines}\n\n仲想改咩？`,
       { _action: 'task_actions', _data: { taskId: task.id, title: task.title } }
     );
   };
 
   const updateTaskActionBubble = (task: TaskItem) => {
-    const newText = `${task.title}
-
-• Status：${task.status}
-• Progress：${task.progress_percent ?? 0}%
-• 到期：${task.due_date || '未設定'}
-• 負責：${task.assignees.map(a => a.name).join(', ') || '未指派'}
-
-想下一步做咩？`;
+    const statusMeta = getStatusMeta(task.status);
+    const subtaskLines = task.subtasks?.length
+      ? `\n📁 Subtasks (${task.subtasks.length}):\n${task.subtasks.map(s => `• ${s.title} — ${getStatusMeta(s.status).label}`).join('\n')}`
+      : '';
+    const newText = `✅ 搵到「${task.title}」\n📋 ${statusMeta.label}  |  📅 ${task.due_date || '未設定'}  |  👤 ${task.assignees.map(a => a.name.split(' ')[0]).join('/')}  |  📊 ${task.progress_percent ?? 0}%${subtaskLines}\n\n仲想改咩？`;
     setMessages(current => {
       const idx = current.findLastIndex(m => m._action === 'task_actions' && m._data?.taskId === task.id);
       if (idx === -1) return current;
@@ -1011,11 +1005,11 @@ export function CantonAiCoachPage() {
         setInput('');
         setIsReplying(true);
         
-        const subtaskList = (searchResult as any).subtasks?.length 
-          ? `\n\n📋 Subtasks:\n${(searchResult as any).subtasks.map((s: any) => `• ${s.title} (${s.status})`).join('\n')}`
+        const statusMeta2 = getStatusMeta((searchResult as any).status);
+        const subtaskList2 = (searchResult as any).subtasks?.length
+          ? `\n📁 Subtasks (${(searchResult as any).subtasks.length}):\n${(searchResult as any).subtasks.map((s: any) => `• ${s.title} — ${getStatusMeta(s.status).label}`).join('\n')}`
           : '';
-          
-        startTypingMessage(`✅ 小人稟報恩公，搵到「${(searchResult as any).title}」\n\n• Status：${(searchResult as any).status}\n• 到期：${(searchResult as any).due_date || '未設定'}\n• 負責：${(searchResult as any).assignees.join('、') || '未指派'}\n• 進度：${(searchResult as any).progress}%${subtaskList}\n\n仲想改咩？`, {
+        startTypingMessage(`✅ 搵到「${(searchResult as any).title}」\n📋 ${statusMeta2.label}  |  📅 ${(searchResult as any).due_date || '未設定'}  |  👤 ${(searchResult as any).assignees.join('/') || '未指派'}  |  📊 ${(searchResult as any).progress}%${subtaskList2}\n\n仲想改咩？`, {
           _action: 'task_actions',
           _data: { taskId: (searchResult as any).id, title: (searchResult as any).title }
         });
@@ -1289,8 +1283,9 @@ export function CantonAiCoachPage() {
       if (!resp.ok || upstreamAuthBroken) {
         if (searchResult) {
           const sr = searchResult as any;
+          const statusMetaFallback = getStatusMeta(sr.status);
           startTypingMessage(
-            `${sr.title}\n\n• Status：${sr.status}\n• Progress：${sr.progress ?? 0}%\n• 到期：${sr.due_date || '未設定'}\n• 負責：${sr.assignees?.join(', ') || '未指派'}\n\n想下一步做咩？`,
+            `✅ 搵到「${sr.title}」\n📋 ${statusMetaFallback.label}  |  📅 ${sr.due_date || '未設定'}  |  👤 ${sr.assignees?.join('/') || '未指派'}  |  📊 ${sr.progress ?? 0}%\n\n仲想改咩？`,
             { _action: 'task_actions', _data: { taskId: sr.id, title: sr.title } }
           );
           return;
