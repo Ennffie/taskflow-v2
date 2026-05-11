@@ -1537,7 +1537,6 @@ export function CantonAiCoachPage() {
                             setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
                             setAssigneePickerTaskId(null);
                           }} style={actionButtonStyle()}>加SubTask</button>
-                          <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'cancelled', is_finished: true }, 'Cancelled')} style={actionButtonStyle('danger')}>Cancel Task</button>
                         </div>
 
                         {pendingDeleteTaskId === taskId && (
