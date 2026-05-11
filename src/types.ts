@@ -1,5 +1,5 @@
 export type Role = 'admin' | 'member' | 'viewer';
-export type TaskStatus = 'todo' | 'planning' | 'in_progress' | 'internal_review' | 'round_1_wip' | 'round_1_review' | 'round_2_wip' | 'round_2_review' | 'round_3_wip' | 'round_3_review' | 'pending_mpfa_pc_nfc' | 'finished' | 'cancelled';
+export type TaskStatus = 'todo' | 'planning' | 'in_progress' | 'internal_review' | 'round_1_wip' | 'round_1_review' | 'round_2_wip' | 'round_2_review' | 'round_3_wip' | 'round_3_review' | 'pending_mpfa_pc_nfc' | 'finished' | 'cancelled' | 'archived';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'other';
 
@@ -62,6 +62,7 @@ export const STATUS_META: Record<TaskStatus, { label: string; color: string; bg:
   pending_mpfa_pc_nfc: { label: 'Pending for NFC', color: '#92400e', bg: '#fef3c7' },
   finished: { label: 'Finished', color: '#059669', bg: '#d1fae5' },
   cancelled: { label: 'Cancelled', color: '#b91c1c', bg: '#fee2e2' },
+  archived: { label: 'Archived', color: '#6b7280', bg: '#e5e7eb' },
 };
 
 // Fallback for legacy status values not in TaskStatus type
@@ -89,6 +90,7 @@ export const TASK_STATUS_OPTIONS: TaskStatus[] = [
   'pending_mpfa_pc_nfc',
   'finished',
   'cancelled',
+  'archived',
 ];
 
 export const FOCUS_META = { label: 'Focus', color: '#7c3aed', bg: '#ede9fe' };

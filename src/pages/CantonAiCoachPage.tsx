@@ -798,7 +798,7 @@ export function CantonAiCoachPage() {
     const todayDueIntent = /今日要交|今日到期|今日有咩做|今日做咩|due today|today due/i.test(userText);
     if (todayDueIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
       const today = new Date().toISOString().slice(0, 10);
-      const todayTasks = tasks.filter(t => !t.parent_id && t.due_date === today && !t.is_finished && t.status !== 'finished');
+      const todayTasks = tasks.filter(t => !t.parent_id && t.due_date === today && !t.is_finished && t.status !== 'finished' && t.status !== 'archived');
       
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
@@ -825,7 +825,7 @@ export function CantonAiCoachPage() {
     const overdueIntent = /overdue|過期|逾期|遲咗|有咩遲咗|有咩過期/i.test(userText);
     if (overdueIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
       const today = new Date().toISOString().slice(0, 10);
-      const overdueTasks = tasks.filter(t => !t.parent_id && t.due_date && t.due_date < today && !t.is_finished && t.status !== 'finished');
+      const overdueTasks = tasks.filter(t => !t.parent_id && t.due_date && t.due_date < today && !t.is_finished && t.status !== 'finished' && t.status !== 'archived');
       
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
@@ -859,7 +859,7 @@ export function CantonAiCoachPage() {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       
       const weekTasks = tasks.filter(t => {
-        if (t.parent_id || !t.due_date || t.is_finished || t.status === 'finished') return false;
+        if (t.parent_id || !t.due_date || t.is_finished || t.status === 'finished' || t.status === 'archived') return false;
         const due = new Date(t.due_date);
         return due >= startOfWeek && due <= endOfWeek;
       });
@@ -888,7 +888,7 @@ export function CantonAiCoachPage() {
     // ── Check for "high priority" intent ──
     const highPriorityIntent = /high priority|urgent|緊急|急|重要|priority/i.test(userText);
     if (highPriorityIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
-      const urgentTasks = tasks.filter(t => !t.parent_id && (t.priority === 'urgent' || t.priority === 'high') && !t.is_finished && t.status !== 'finished');
+      const urgentTasks = tasks.filter(t => !t.parent_id && (t.priority === 'urgent' || t.priority === 'high') && !t.is_finished && t.status !== 'finished' && t.status !== 'archived');
       
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
@@ -947,7 +947,7 @@ export function CantonAiCoachPage() {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowStr = tomorrow.toISOString().slice(0, 10);
-      const tomorrowTasks = tasks.filter(t => !t.parent_id && t.due_date === tomorrowStr && !t.is_finished && t.status !== 'finished');
+      const tomorrowTasks = tasks.filter(t => !t.parent_id && t.due_date === tomorrowStr && !t.is_finished && t.status !== 'finished' && t.status !== 'archived');
       
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
@@ -1054,7 +1054,7 @@ export function CantonAiCoachPage() {
       }).sort((a, b) => b.alias.length - a.alias.length);
       const matchedPerson = personAliases.find((item) => lower.includes(item.alias))?.name;
       if (matchedPerson && /(task|tasks|有咩做|有啲咩做|未做|手上|跟緊|負責|check)/.test(lower)) {
-        const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.assignees.some(a => a.name === matchedPerson));
+        const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && t.assignees.some(a => a.name === matchedPerson));
         const list = personTasks.map(t => ({
           id: t.id,
           title: t.title,
@@ -1089,7 +1089,7 @@ export function CantonAiCoachPage() {
       if (/(有咩未交|overdue|risk|風險|過期)/.test(lower)) {
         const today = new Date().toISOString().slice(0, 10);
         const overdueTasks = tasks
-          .filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'cancelled' && t.due_date && t.due_date < today)
+          .filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'cancelled' && t.status !== 'archived' && t.due_date && t.due_date < today)
           .sort((a, b) => (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99'))
           .map(t => ({
             id: t.id,
@@ -1110,7 +1110,7 @@ export function CantonAiCoachPage() {
         console.log('[MyTaskList] currentUserName:', currentUserName, 'currentUserId:', currentUserId);
         const myTasks = tasks.filter(t => {
           const isAssignee = t.assignees?.some(a => a.name === currentUserName);
-          const shouldInclude = !t.parent_id && !t.is_finished && t.status !== 'finished' && isAssignee;
+          const shouldInclude = !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && isAssignee;
           if (t.title.includes('CRCE') || t.title.includes('個Task俾我')) {
             console.log(`[MyTaskList] Task: ${t.title}, assignees: ${t.assignees?.map(a=>a.name).join(',')}, created_by: ${t.created_by}, isAssignee: ${isAssignee}, include: ${shouldInclude}`);
           }
@@ -1179,7 +1179,7 @@ export function CantonAiCoachPage() {
         const month = exactDateMatch[2] ? Number(exactDateMatch[1]) : now.getMonth() + 1;
         const day = exactDateMatch[2] ? Number(exactDateMatch[2]) : Number(exactDateMatch[1]);
         const targetDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const matchedTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'cancelled' && t.due_date === targetDate);
+        const matchedTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'cancelled' && t.status !== 'archived' && t.due_date === targetDate);
         const list = matchedTasks.map(t => ({
           id: t.id,
           title: t.title,
@@ -1509,6 +1509,7 @@ export function CantonAiCoachPage() {
                           ['Round 3 Review', 'round_3_review'],
                           ['Pending for NFC', 'pending_mpfa_pc_nfc'],
                           ['Finished', 'finished'],
+                          ['Archived', 'archived'],
                         ].filter(([, value]) => {
                           // Subtasks cannot be 'finished'
                           if (isSubtask && value === 'finished') return false;
@@ -1516,7 +1517,7 @@ export function CantonAiCoachPage() {
                           if (!isSubtask && hasSubtasks && value === 'finished') return false;
                           return true;
                         }).map(([label, value]) => (
-                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'finished', is_focus: value === 'finished' ? false : selectedTask?.is_focus, progress_percent: value === 'finished' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
+                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'finished' || value === 'archived', is_focus: value === 'finished' || value === 'archived' ? false : selectedTask?.is_focus, progress_percent: value === 'finished' || value === 'archived' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
                             {label}
                           </button>
                         ))}
