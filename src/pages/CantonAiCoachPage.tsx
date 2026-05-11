@@ -1752,79 +1752,87 @@ export function CantonAiCoachPage() {
               </button>
             ))}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-            <div style={{ position: 'relative' }}>
-              <textarea
-                data-testid="chat-input"
-                placeholder={messages[messages.length - 1]?.text.includes('想搵邊個') ? '輸入 task 名稱或關鍵字...' : '隨意問 task 相關問題…'}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    // Allow Enter for newline (Telegram style)
-                    // Only send if explicitly clicking send button
-                    e.stopPropagation();
-                  }
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <textarea
+                  data-testid="chat-input"
+                  placeholder={messages[messages.length - 1]?.text.includes('想搵邊個') ? '輸入 task 名稱或關鍵字...' : '隨意問 task 相關問題…'}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      // Allow Enter for newline (Telegram style)
+                      // Only send if explicitly clicking send button
+                      e.stopPropagation();
+                    }
+                  }}
+                  onInput={(e) => {
+                    // Auto-resize textarea based on content - min 3 rows
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    const lineHeight = 28;
+                    const minHeight = lineHeight * 3; // minimum 3 rows
+                    const newHeight = Math.max(target.scrollHeight, minHeight);
+                    target.style.height = newHeight + 'px';
+                  }}
+                  rows={3}
+                  disabled={isReplying}
+                  style={{ width: '100%', resize: 'none', minHeight: 84, maxHeight: 150, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '10px 15px', outline: 'none', fontSize: 16, lineHeight: 1.6, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
+                />
+                {/* Autocomplete dropdown for search mode */}
+                {messages[messages.length - 1]?.text.includes('想搵邊個') 
+                  && input.trim().length > 0 
+                  && !tasks.some(t => t.title === input)
+                  && (
+                  <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto', zIndex: 100, marginBottom: 4 }}>
+                    {tasks
+                      .filter(t => !t.parent_id && t.title.toLowerCase().includes(input.toLowerCase()) && t.title !== input)
+                      .slice(0, 5)
+                      .map(t => (
+                        <div
+                          key={t.id}
+                          onClick={() => { 
+                            setInput(t.title); 
+                            // Auto-send and show task detail
+                            setTimeout(() => {
+                              void send(t.title);
+                            }, 50);
+                          }}
+                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: 14 }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+                        >
+                          <div style={{ fontWeight: 700 }}>{t.title}</div>
+                          <div style={{ fontSize: 12, color: '#64748b' }}>{getStatusMeta(t.status).label} · {t.assignees.map(a => a.name.split(' ')[0]).join(', ') || '未指派'}</div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+              {/* GO button - Telegram style */}
+              <button 
+                data-testid="go-button"
+                onClick={() => { if (input.trim()) void send(); }} 
+                disabled={isReplying || !input.trim()} 
+                style={{ 
+                  flexShrink: 0,
+                  border: 'none', 
+                  borderRadius: 999, 
+                  background: input.trim() && !isReplying ? '#0088cc' : '#e2e8f0', 
+                  color: input.trim() && !isReplying ? '#fff' : '#94a3b8', 
+                  padding: '12px 20px', 
+                  fontWeight: 950, 
+                  fontSize: 16, 
+                  opacity: isReplying ? 0.5 : 1, 
+                  cursor: isReplying || !input.trim() ? 'default' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  alignSelf: 'flex-end',
+                  marginBottom: 2
                 }}
-                onInput={(e) => {
-                  // Auto-resize textarea based on content - min 3 rows
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = 'auto';
-                  const lineHeight = 28;
-                  const minHeight = lineHeight * 3; // minimum 3 rows
-                  const newHeight = Math.max(target.scrollHeight, minHeight);
-                  target.style.height = newHeight + 'px';
-                }}
-                rows={3}
-                disabled={isReplying}
-                style={{ width: '100%', resize: 'none', minHeight: 84, maxHeight: 150, overflowY: 'auto', border: '1px solid #dbeafe', borderRadius: 18, padding: '10px 15px', outline: 'none', fontSize: 16, lineHeight: 1.6, background: '#fff', fontFamily: 'inherit', WebkitAppearance: 'none' }}
-              />
-              {/* Autocomplete dropdown for search mode */}
-              {messages[messages.length - 1]?.text.includes('想搵邊個') 
-                && input.trim().length > 0 
-                && !tasks.some(t => t.title === input)
-                && (
-                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto', zIndex: 100, marginBottom: 4 }}>
-                  {tasks
-                    .filter(t => !t.parent_id && t.title.toLowerCase().includes(input.toLowerCase()) && t.title !== input)
-                    .slice(0, 5)
-                    .map(t => (
-                      <div
-                        key={t.id}
-                        onClick={() => { 
-                          setInput(t.title); 
-                          // Auto-send and show task detail
-                          setTimeout(() => {
-                            void send(t.title);
-                          }, 50);
-                        }}
-                        style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: 14 }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
-                      >
-                        <div style={{ fontWeight: 700 }}>{t.title}</div>
-                        <div style={{ fontSize: 12, color: '#64748b' }}>{getStatusMeta(t.status).label} · {t.assignees.map(a => a.name.split(' ')[0]).join(', ') || '未指派'}</div>
-                      </div>
-                    ))}
-                </div>
-              )}
+              >
+                {isReplying ? '諗緊…' : 'GO'}
+              </button>
             </div>
-            <button 
-              onClick={() => { setInput(input + '\n'); }}
-              disabled={isReplying}
-              style={{ border: 'none', borderRadius: 12, background: '#f1f5f9', color: '#475569', padding: '0 12px', fontWeight: 700, fontSize: 14, opacity: isReplying ? 0.5 : 1, cursor: isReplying ? 'default' : 'pointer' }}
-            >
-              ⏎ 轉行
-            </button>
-            <button 
-              data-testid="send-button"
-              onClick={() => { if (input.trim()) void send(); }} 
-              disabled={isReplying || !input.trim()} 
-              style={{ border: 'none', borderRadius: 18, background: '#0f172a', color: '#fff', padding: '0 18px', fontWeight: 950, fontSize: 16, opacity: isReplying || !input.trim() ? 0.5 : 1, cursor: isReplying || !input.trim() ? 'default' : 'pointer' }}
-            >
-              {isReplying ? '諗緊…' : 'Send'}
-            </button>
-          </div>
         </div>
       </footer>
     </div>
