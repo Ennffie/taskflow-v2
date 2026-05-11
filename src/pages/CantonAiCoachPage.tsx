@@ -36,13 +36,14 @@ export function CantonAiCoachPage() {
   const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' | 'progress_update' } | null>(null);
   const [dueDatePicker, setDueDatePicker] = useState<{ taskId: string; title: string; value: string } | null>(null);
   const [lockedCreateActions, setLockedCreateActions] = useState<Record<string, 'confirming' | 'cancelled'>>({});
-  const [expandedMoreTaskId, setExpandedMoreTaskId] = useState<string | null>(null);
-  const [statusPickerTaskId, setStatusPickerTaskId] = useState<string | null>(null);
+  // expandedMoreTaskId / statusPickerTaskId removed — now using openPanel accordion
   const [assigneePickerTaskId, setAssigneePickerTaskId] = useState<string | null>(null);
   const [subtaskComposerTaskId, setSubtaskComposerTaskId] = useState<string | null>(null);
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
   const [progressSlider, setProgressSlider] = useState<{ taskId: string; title: string; value: number } | null>(null);
+  // Track which inline panel is open per task (accordion behavior)
+  const [openPanel, setOpenPanel] = useState<{ taskId: string; panel: 'status' | 'more' | 'progress' | null }>({ taskId: '', panel: null });
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
   const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
@@ -131,23 +132,23 @@ export function CantonAiCoachPage() {
 
   // Auto-scroll to inline panels when they open
   useEffect(() => {
-    if (statusPickerTaskId) {
+    if (openPanel.panel === 'status') {
       window.setTimeout(() => statusPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     }
-  }, [statusPickerTaskId]);
+  }, [openPanel]);
   useEffect(() => {
     if (assigneePickerTaskId) {
       window.setTimeout(() => assigneePickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     }
   }, [assigneePickerTaskId]);
   useEffect(() => {
-    if (progressSlider) {
+    if (openPanel.panel === 'progress') {
       window.setTimeout(() => {
         const sliderEl = document.querySelector('[data-testid="progress-slider"]');
         sliderEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
     }
-  }, [progressSlider]);
+  }, [openPanel]);
 
   const getContext = (searchResult?: any) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -350,10 +351,11 @@ export function CantonAiCoachPage() {
   const getLatestTask = (taskId: string) => tasks.find(t => t.id === taskId);
 
   const resetInlineTaskPanels = () => {
-    setStatusPickerTaskId(null);
     setAssigneePickerTaskId(null);
     setSubtaskComposerTaskId(null);
     setPendingDeleteTaskId(null);
+    setProgressSlider(null);
+    setOpenPanel({ taskId: '', panel: null });
   };
 
   const clearInputAndPanels = () => {
@@ -1468,25 +1470,32 @@ export function CantonAiCoachPage() {
                       <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { is_focus: !(selectedTask?.is_focus ?? false) }, `${focusLabel}：${selectedTask?.is_focus ? 'No' : 'Yes'}`)} style={actionButtonStyle(selectedTask?.is_focus ? 'primary' : 'soft')}>{focusLabel}</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
-                        setStatusPickerTaskId(current => current === taskId ? null : taskId);
-                      }} style={actionButtonStyle()}>Status</button>
+                        setOpenPanel(current => current.taskId === taskId && current.panel === 'status' ? { taskId: '', panel: null } : { taskId, panel: 'status' });
+                      }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'status' ? 'primary' : undefined)}>Status</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
-                        setExpandedMoreTaskId(current => current === taskId ? null : taskId);
-                      }} style={actionButtonStyle()}>其他</button>
+                        setOpenPanel(current => current.taskId === taskId && current.panel === 'more' ? { taskId: '', panel: null } : { taskId, panel: 'more' });
+                      }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'more' ? 'primary' : undefined)}>其他</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
                         setPendingTaskAction(null);
-                        const task = getLatestTask(taskId);
-                        setProgressSlider({ taskId, title, value: task?.progress_percent ?? 0 });
-                      }} style={actionButtonStyle()}>改進度</button>
+                        const isOpening = !(openPanel.taskId === taskId && openPanel.panel === 'progress');
+                        if (isOpening) {
+                          const task = getLatestTask(taskId);
+                          setProgressSlider({ taskId, title, value: task?.progress_percent ?? 0 });
+                          setOpenPanel({ taskId, panel: 'progress' });
+                        } else {
+                          setProgressSlider(null);
+                          setOpenPanel({ taskId: '', panel: null });
+                        }
+                      }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'progress' ? 'primary' : undefined)}>改進度</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
                         setDueDatePicker({ taskId, title, value: '' });
                       }} style={actionButtonStyle()}>改Due date</button>
                     </div>
 
-                    {statusPickerTaskId === taskId && (
+                    {openPanel.taskId === taskId && openPanel.panel === 'status' && (
                       <div ref={statusPickerRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         {[
                           ['Todo', 'todo'],
@@ -1515,7 +1524,7 @@ export function CantonAiCoachPage() {
                       </div>
                     )}
 
-                    {expandedMoreTaskId === taskId && (
+                    {openPanel.taskId === taskId && openPanel.panel === 'more' && (
                       <div style={{ display: 'grid', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                           {!isSubtask && !hasSubtasks && <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true, is_focus: false }, '堅係Finished：100% Finished')} style={actionButtonStyle('primary')}>堅係Finished</button>}
@@ -1566,7 +1575,7 @@ export function CantonAiCoachPage() {
                       </div>
                     )}
 
-                    {progressSlider?.taskId === taskId && (
+                    {openPanel.taskId === taskId && openPanel.panel === 'progress' && (
                       <div data-testid="progress-slider" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 14, background: '#f0f9ff', borderRadius: 16, border: '1px solid #bae6fd' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontWeight: 800, fontSize: 16 }}>進度：{progressSlider?.value ?? 0}%</span>
