@@ -437,6 +437,30 @@ export async function fetchTasksForCantonAi(): Promise<TaskItem[]> {
 
     return tasks.map((t) => {
       const aggregate = computeParentProgress(t, tasks);
+      const taskSubtasks = tasks
+        .filter(st => st.parent_id === t.id)
+        .map(st => ({
+          id: st.id,
+          parent_id: st.parent_id,
+          is_focus: st.is_focus ?? false,
+          title: st.title,
+          description: st.description,
+          today_update: st.today_update ?? null,
+          next_day_focus: st.next_day_focus ?? null,
+          status: st.status,
+          priority: st.priority,
+          due_date: st.due_date,
+          created_by: st.created_by,
+          updated_by: st.updated_by,
+          created_at: st.created_at,
+          updated_at: st.updated_at,
+          progress_percent: st.progress_percent ?? 0,
+          round_number: st.round_number ?? 1,
+          is_finished: st.is_finished ?? false,
+          assignees: assigneeMap.get(st.id) ?? [],
+          tags: [],
+          log_count: 0,
+        })) as TaskItem[];
       return {
         id: t.id,
         parent_id: t.parent_id ?? null,
@@ -458,7 +482,8 @@ export async function fetchTasksForCantonAi(): Promise<TaskItem[]> {
         assignees: assigneeMap.get(t.id) ?? [],
         tags: [],
         log_count: 0,
-        subtask_count: tasks.filter(st => st.parent_id === t.id).length,
+        subtask_count: taskSubtasks.length,
+        subtasks: taskSubtasks,
       };
     }) as TaskItem[];
   });
