@@ -42,6 +42,9 @@ export function CantonAiCoachPage() {
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
   const [progressSlider, setProgressSlider] = useState<{ taskId: string; title: string; value: number } | null>(null);
+  // Subtask inline panel (separate from main task panels)
+  const [openSubtaskPanel, setOpenSubtaskPanel] = useState<{ taskId: string; subtaskId: string; panel: 'progress' | 'status' | null }>({ taskId: '', subtaskId: '', panel: null });
+  const [subtaskProgressSlider, setSubtaskProgressSlider] = useState<{ taskId: string; subtaskId: string; title: string; value: number } | null>(null);
   // Track which inline panel is open per task (accordion behavior)
   const [openPanel, setOpenPanel] = useState<{ taskId: string; panel: 'status' | 'more' | 'progress' | null }>({ taskId: '', panel: null });
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
@@ -353,6 +356,8 @@ export function CantonAiCoachPage() {
     setPendingDeleteTaskId(null);
     setProgressSlider(null);
     setOpenPanel({ taskId: '', panel: null });
+    setOpenSubtaskPanel({ taskId: '', subtaskId: '', panel: null });
+    setSubtaskProgressSlider(null);
   };
 
   const clearInputAndPanels = () => {
@@ -1602,6 +1607,127 @@ export function CantonAiCoachPage() {
                             }, `Progress：${nextProgress}%`);
                           }} style={{ flex: 1, ...actionButtonStyle('primary') }}>Confirm</button>
                           <button disabled={isReplying} onClick={() => setProgressSlider(null)} style={{ flex: 1, ...actionButtonStyle() }}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Subtasks with inline progress + status */}
+                    {hasSubtasks && selectedTask?.subtasks && selectedTask.subtasks.length > 0 && (
+                      <div style={{ marginTop: 10, padding: '12px 14px', background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 800, color: '#64748b', marginBottom: 10 }}>📁 Subtasks ({selectedTask.subtasks.length})</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {selectedTask.subtasks.map((sub) => {
+                            const isOpen = openSubtaskPanel.taskId === taskId && openSubtaskPanel.subtaskId === sub.id;
+                            const subStatusMeta = getStatusMeta(sub.status);
+                            return (
+                              <div key={sub.id} style={{ borderRadius: 12, overflow: 'hidden', border: isOpen ? '1px solid #cbd5e1' : '1px solid transparent' }}>
+                                <button
+                                  disabled={isReplying}
+                                  onClick={() => {
+                                    if (isOpen) {
+                                      setOpenSubtaskPanel({ taskId: '', subtaskId: '', panel: null });
+                                      setSubtaskProgressSlider(null);
+                                    } else {
+                                      setOpenSubtaskPanel({ taskId, subtaskId: sub.id, panel: 'progress' });
+                                      setSubtaskProgressSlider({ taskId, subtaskId: sub.id, title: sub.title, value: sub.progress_percent ?? 0 });
+                                      setOpenPanel({ taskId: '', panel: null });
+                                      setProgressSlider(null);
+                                    }
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '10px 12px',
+                                    background: isOpen ? '#f1f5f9' : '#fff',
+                                    border: 'none',
+                                    borderRadius: 12,
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                                    <span style={{ fontSize: '14px' }}>•</span>
+                                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.title}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                    <span style={{ fontSize: '12px', fontWeight: 700, color: subStatusMeta.color, background: subStatusMeta.bg, padding: '2px 8px', borderRadius: 999 }}>{subStatusMeta.label}</span>
+                                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>{sub.progress_percent ?? 0}%</span>
+                                  </div>
+                                </button>
+
+                                {isOpen && openSubtaskPanel.panel === 'progress' && (
+                                  <div style={{ padding: '12px 12px 14px', background: '#fff', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span style={{ fontWeight: 800, fontSize: 15 }}>📊 進度：{subtaskProgressSlider?.value ?? 0}%</span>
+                                      <span style={{ fontSize: 12, color: '#94a3b8' }}>{sub.title}</span>
+                                    </div>
+                                    <input
+                                      type="range"
+                                      min="0"
+                                      max="100"
+                                      step="5"
+                                      value={subtaskProgressSlider?.value ?? 0}
+                                      onChange={(e) => setSubtaskProgressSlider(prev => prev ? { ...prev, value: Number(e.target.value) } : null)}
+                                      disabled={isReplying}
+                                      style={{ width: '100%', accentColor: '#0f172a' }}
+                                    />
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                      <button
+                                        disabled={isReplying}
+                                        onClick={() => {
+                                          const nextProgress = subtaskProgressSlider?.value ?? 0;
+                                          setOpenSubtaskPanel({ taskId: '', subtaskId: '', panel: null });
+                                          setSubtaskProgressSlider(null);
+                                          void quickUpdateTask(sub.id, sub.title, { progress_percent: nextProgress }, `Subtask Progress：${nextProgress}%`);
+                                        }}
+                                        style={{ flex: 1, ...actionButtonStyle('primary') }}
+                                      >
+                                        Confirm
+                                      </button>
+                                      <button
+                                        disabled={isReplying}
+                                        onClick={() => {
+                                          setOpenSubtaskPanel({ taskId: '', subtaskId: '', panel: null });
+                                          setSubtaskProgressSlider(null);
+                                        }}
+                                        style={{ flex: 1, ...actionButtonStyle() }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                    {/* Status toggle for subtask */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                                      {(['todo', 'in_progress', 'finished'] as TaskStatus[]).map((st) => {
+                                        const meta = getStatusMeta(st);
+                                        const active = sub.status === st;
+                                        return (
+                                          <button
+                                            key={st}
+                                            disabled={isReplying}
+                                            onClick={() => void quickUpdateTask(sub.id, sub.title, { status: st, is_finished: st === 'finished' }, `Status：${meta.label}`)}
+                                            style={{
+                                              padding: '8px 6px',
+                                              borderRadius: 10,
+                                              border: active ? '2px solid ' + meta.color : '1px solid #e2e8f0',
+                                              background: active ? meta.bg : '#fff',
+                                              color: meta.color,
+                                              fontSize: '12px',
+                                              fontWeight: 700,
+                                              cursor: 'pointer',
+                                            }}
+                                          >
+                                            {meta.label}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
