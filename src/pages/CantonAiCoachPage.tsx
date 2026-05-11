@@ -1721,6 +1721,9 @@ export function CantonAiCoachPage() {
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
             {['退下', '搵 Task', '加Task', 'Focus', 'My Task'].map(preset => (
               <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
+                // Clear any pending task action so preset buttons always trigger their intended behavior
+                setPendingTaskAction(null);
+
                 if (preset === '退下') {
                   navigate('/canton-mode');
                   return;
