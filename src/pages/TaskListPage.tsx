@@ -105,7 +105,7 @@ export function TaskListPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
-  const [activeCompactCard, setActiveCompactCard] = useState<'Focus' | 'Overdue' | 'Other' | 'All'>('Focus');
+  const [activeCompactCard, setActiveCompactCard] = useState<'Focus' | 'Overdue' | 'Other' | 'All' | 'Archive'>('Focus');
   
   // Section expand/collapse state - default: Only Tomorrow expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -113,6 +113,7 @@ export function TaskListPage() {
     'Overdue': false,
     'Other': false,
     'Done': false,
+    'Archive': false,
   });
   const showAllSections = () => {
     setExpandedSections({
@@ -120,6 +121,7 @@ export function TaskListPage() {
       'Overdue': true,
       'Other': true,
       'Done': true,
+      'Archive': true,
     });
     setActiveCompactCard('All');
   };
@@ -146,12 +148,13 @@ export function TaskListPage() {
     setActiveCompactCard('All');
   };
 
-  const showSingleSection = (sectionName: 'Focus' | 'Overdue' | 'Other') => {
+  const showSingleSection = (sectionName: 'Focus' | 'Overdue' | 'Other' | 'Archive') => {
     setExpandedSections({
       'Focus': sectionName === 'Focus',
       'Overdue': sectionName === 'Overdue',
       'Other': sectionName === 'Other',
       'Done': false,
+      'Archive': sectionName === 'Archive',
     });
     setActiveCompactCard(sectionName);
   };
@@ -165,6 +168,7 @@ export function TaskListPage() {
       'Overdue': false,
       'Other': false,
       'Done': false,
+      'Archive': false,
     });
     setActiveCompactCard('Focus');
   };
@@ -207,15 +211,17 @@ export function TaskListPage() {
   const groupedTasks = useMemo(() => {
     const rootTasks = filtered.filter(t => !t.parent_id);
     const focusTasks = sortTasks(rootTasks.filter(t => t.is_focus), sortOption);
-    const overdueTasks = sortTasks(rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus), sortOption);
-    const otherTasks = sortTasks(rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus), sortOption);
+    const overdueTasks = sortTasks(rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
+    const otherTasks = sortTasks(rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
     const doneTasks = sortTasks(rootTasks.filter(t => t.status === 'finished'), sortOption);
+    const archiveTasks = sortTasks(rootTasks.filter(t => t.status === 'archived'), sortOption);
     
     const groups: Record<string, TaskItem[]> = {};
     if (focusTasks.length > 0) groups['Focus'] = focusTasks;
     if (overdueTasks.length > 0) groups['Overdue'] = overdueTasks;
     if (otherTasks.length > 0) groups['Other'] = otherTasks;
     if (doneTasks.length > 0) groups['Done'] = doneTasks;
+    if (archiveTasks.length > 0) groups['Archive'] = archiveTasks;
     
     return groups;
   }, [filtered, sortOption]);
@@ -231,9 +237,10 @@ export function TaskListPage() {
   // Stats for compact cards - use filtered tasks to match list
   const rootTasks = filtered.filter(t => !t.parent_id);
   const focusCount = rootTasks.filter(t => t.is_focus).length;
-  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus).length;
-  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && !t.is_focus).length;
+  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
+  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
   const allCount = rootTasks.length;
+  const archiveCount = rootTasks.filter(t => t.status === 'archived').length;
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -322,6 +329,15 @@ export function TaskListPage() {
             active={activeCompactCard === 'All'}
             onToggle={showAllSections}
           />
+          <CompactCard 
+            icon={<Inbox size={20} color="#6b7280" />}
+            label="Archive" 
+            count={archiveCount}
+            bgColor="#f3f4f6"
+            iconBgColor="#e5e7eb"
+            active={activeCompactCard === 'Archive'}
+            onToggle={() => showSingleSection('Archive')}
+          />
         </div>
 
         {/* Search & Filters */}
@@ -380,11 +396,15 @@ export function TaskListPage() {
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
               const isExpanded = expandedSections[groupName] ?? true;
               const isFocusSection = groupName === 'Focus';
+              const isArchiveSection = groupName === 'Archive';
               
               return (
                 <div key={groupName} style={isFocusSection ? { 
                   background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
                   borderLeft: '4px solid #7c3aed'
+                } : isArchiveSection ? {
+                  background: '#f9fafb',
+                  borderLeft: '4px solid #9ca3af'
                 } : {}}>
                   <div 
                     onClick={() => toggleSection(groupName)}
@@ -393,7 +413,7 @@ export function TaskListPage() {
                       alignItems: 'center', 
                       gap: '8px', 
                       padding: '12px 20px', 
-                      background: isFocusSection ? 'rgba(124, 58, 237, 0.08)' : '#f8fafc', 
+                      background: isFocusSection ? 'rgba(124, 58, 237, 0.08)' : isArchiveSection ? '#f3f4f6' : '#f8fafc', 
                       borderBottom: '1px solid #e2e8f0',
                       cursor: 'pointer',
                       userSelect: 'none'
@@ -403,7 +423,7 @@ export function TaskListPage() {
                     <span style={{ 
                       fontSize: '13px', 
                       fontWeight: 700, 
-                      color: isFocusSection ? '#6d28d9' : '#64748b', 
+                      color: isFocusSection ? '#6d28d9' : isArchiveSection ? '#6b7280' : '#64748b', 
                       textTransform: 'uppercase', 
                       letterSpacing: '0.5px' 
                     }}>
