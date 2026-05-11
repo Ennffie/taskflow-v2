@@ -1741,12 +1741,6 @@ export function CantonAiCoachPage() {
                   // Cancel search mode if active
                   setMessages(current => [...current, { role: 'user', text: preset }]);
                   startTypingMessage('照跟打就得：\n\n例如：\nCRCE-1234\nChange design\n8 May\nme\nWIP');
-                } else if (preset === 'Focus') {
-                  setMessages(current => [...current, { role: 'user', text: preset }]);
-                  void send(preset);
-                } else if (preset === 'My Task') {
-                  setMessages(current => [...current, { role: 'user', text: preset }]);
-                  void send(preset);
                 } else {
                   void send(preset);
                 }
