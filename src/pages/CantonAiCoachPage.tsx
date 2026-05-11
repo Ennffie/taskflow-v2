@@ -51,6 +51,7 @@ export function CantonAiCoachPage() {
   const statusPickerRef = useRef<HTMLDivElement | null>(null);
   const assigneePickerRef = useRef<HTMLDivElement | null>(null);
   const subtaskComposerRef = useRef<HTMLDivElement | null>(null);
+  const morePanelRef = useRef<HTMLDivElement | null>(null);
   // ── Guided creation flow ──
   type CreateMode = 'idle' | 'main' | 'subtask';
   const [createMode, setCreateMode] = useState<CreateMode>('idle');
@@ -134,6 +135,8 @@ export function CantonAiCoachPage() {
   useEffect(() => {
     if (openPanel.panel === 'status') {
       window.setTimeout(() => statusPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    } else if (openPanel.panel === 'more') {
+      window.setTimeout(() => morePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     }
   }, [openPanel]);
   useEffect(() => {
@@ -1520,7 +1523,7 @@ export function CantonAiCoachPage() {
                     )}
 
                     {openPanel.taskId === taskId && openPanel.panel === 'more' && (
-                      <div style={{ display: 'grid', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                      <div ref={morePanelRef} style={{ display: 'grid', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                           {!isSubtask && !hasSubtasks && <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true, is_focus: false }, '堅係Finished：100% Finished')} style={actionButtonStyle('primary')}>堅係Finished</button>}
                           <button disabled={isReplying} onClick={() => {
