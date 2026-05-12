@@ -17,6 +17,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
   const [status, setStatus] = useState<TaskStatus>(subtask.status);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(subtask.assignees.map(a => a.id));
   const [isSaving, setIsSaving] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const expandRef = useRef<HTMLDivElement>(null);
 
   const statusMeta = getStatusMeta(status);
@@ -64,6 +65,18 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
         ? prev.filter(id => id !== profileId)
         : [...prev, profileId]
     );
+  };
+
+  const getAvatarColor = (name: string, id?: string) => {
+    const normalized = `${id ?? ''}:${name}`.toLowerCase();
+    if (normalized.includes('enfield')) return '#6366F1';
+    const palette = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EF4444', '#14B8A6'];
+    let hash = 0;
+    for (let i = 0; i < normalized.length; i++) {
+      hash = ((hash << 5) - hash) + normalized.charCodeAt(i);
+      hash |= 0;
+    }
+    return palette[Math.abs(hash) % palette.length];
   };
 
   return (
@@ -180,38 +193,93 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
             </div>
           </div>
 
-          {/* Status picker */}
-          <div style={{ marginBottom: 12 }}>
+          {/* Status dropdown */}
+          <div style={{ marginBottom: 12, position: 'relative' }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
               Status
             </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {(['todo', 'planning', 'in_progress', 'internal_review', 'finished', 'cancelled'] as TaskStatus[]).map((s) => {
-                const meta = getStatusMeta(s);
-                const isSelected = status === s;
-                return (
-                  <button
-                    key={s}
-                    onClick={() => setStatus(s)}
-                    style={{
-                      padding: '5px 10px',
-                      borderRadius: 999,
-                      border: 'none',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      background: isSelected ? meta.color : meta.bg,
-                      color: isSelected ? '#fff' : meta.color,
-                    }}
-                  >
-                    {meta.label}
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: statusMeta.color,
+                background: statusMeta.bg,
+                padding: '3px 10px',
+                borderRadius: 999,
+              }}>
+                {statusMeta.label}
+              </span>
+              <span style={{ fontSize: 12, color: '#94a3b8' }}>▼</span>
+            </button>
+            {showStatusDropdown && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: 4,
+                background: '#fff',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                zIndex: 10,
+                maxHeight: 200,
+                overflowY: 'auto',
+              }}>
+                {(['todo', 'planning', 'in_progress', 'internal_review', 'finished', 'cancelled'] as TaskStatus[]).map((s) => {
+                  const meta = getStatusMeta(s);
+                  const isSelected = status === s;
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => { setStatus(s); setShowStatusDropdown(false); }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid #f1f5f9',
+                        background: isSelected ? meta.bg : '#fff',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: meta.color,
+                      }} />
+                      <span style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: isSelected ? meta.color : '#475569',
+                      }}>
+                        {meta.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Assignee picker */}
+          {/* Assignee picker - icons only */}
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
               負責人
@@ -219,39 +287,30 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {profiles.map((profile) => {
                 const isSelected = assigneeIds.includes(profile.id);
+                const avatarColor = getAvatarColor(profile.name, profile.id);
                 return (
                   <button
                     key={profile.id}
                     onClick={() => toggleAssignee(profile.id)}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '5px 10px',
-                      borderRadius: 999,
-                      border: isSelected ? '2px solid #7c3aed' : '1px solid #e2e8f0',
-                      background: isSelected ? '#f3e8ff' : '#fff',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: isSelected ? '#7c3aed' : '#475569',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <div style={{
-                      width: 16,
-                      height: 16,
+                      width: 32,
+                      height: 32,
                       borderRadius: '50%',
-                      background: '#6366f1',
+                      border: isSelected ? '2px solid ' + avatarColor : '2px solid transparent',
+                      background: avatarColor,
                       color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 8,
-                      fontWeight: 700,
-                    }}>
-                      {profile.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
-                    {profile.name.split(' ')[0]}
+                      opacity: isSelected ? 1 : 0.4,
+                      transition: 'opacity 0.2s',
+                    }}
+                    title={profile.name}
+                  >
+                    {profile.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                   </button>
                 );
               })}
