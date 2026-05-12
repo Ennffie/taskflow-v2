@@ -398,6 +398,7 @@ export async function fetchTasks(): Promise<TaskItem[]> {
       created_at: t.created_at,
       updated_at: t.updated_at,
       progress_percent: aggregate.progress_percent,
+      progress: t.progress ?? t.progress_percent ?? 0, // Independent progress for subtasks
       round_number: t.parent_id ? (t.round_number ?? 1) : aggregate.round_number,
       is_finished: aggregate.is_finished,
       assignees: assigneeMap.get(t.id) ?? [],
@@ -726,6 +727,63 @@ export async function updateTask(
 export async function fetchSubtasks(parentTaskId: string): Promise<TaskItem[]> {
   const allTasks = await fetchTasks();
   return allTasks.filter(task => task.parent_id === parentTaskId);
+}
+
+// Update subtask independently (does not affect parent task status)
+export async function updateSubtask(
+  subtaskId: string,
+  payload: {
+    title?: string;
+    status?: TaskStatus;
+    progress?: number;
+    due_date?: string | null;
+  }
+) {
+  const { data: before, error: fetchError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', subtaskId)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const { error } = await supabase.from('tasks').update(payload).eq('id', subtaskId);
+  if (error) throw error;
+
+  // Create auto event log for subtask changes
+  const events: string[] = [];
+  if (payload.title !== undefined && payload.title !== before.title) {
+    events.push(`Subtask renamed: ${before.title} → ${payload.title}`);
+  }
+  if (payload.status !== undefined && payload.status !== before.status) {
+    events.push(`Subtask status: ${before.status} → ${payload.status}`);
+  }
+  if (payload.progress !== undefined && payload.progress !== (before.progress ?? before.progress_percent ?? 0)) {
+    events.push(`Subtask progress: ${before.progress ?? before.progress_percent ?? 0}% → ${payload.progress}%`);
+  }
+
+  for (const event of events) {
+    await createTaskEventLog(subtaskId, event);
+  }
+
+  return { success: true };
+}
+
+// Update subtask assignees independently
+export async function updateSubtaskAssignees(subtaskId: string, assigneeIds: string[]) {
+  const { error: deleteError } = await supabase
+    .from('task_assignees')
+    .delete()
+    .eq('task_id', subtaskId);
+  if (deleteError) throw deleteError;
+
+  if (assigneeIds.length > 0) {
+    const { error: insertError } = await supabase
+      .from('task_assignees')
+      .insert(assigneeIds.map((id) => ({ task_id: subtaskId, user_id: id })));
+    if (insertError) throw insertError;
+  }
+
+  return { success: true };
 }
 
 export async function deleteTask(taskId: string) {

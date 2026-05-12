@@ -26,6 +26,7 @@ export interface TaskItem {
   created_at: string;
   updated_at: string;
   progress_percent?: number;
+  progress?: number; // Subtask independent progress (0-100)
   round_number?: number;
   is_finished?: boolean;
   assignees: Profile[];
