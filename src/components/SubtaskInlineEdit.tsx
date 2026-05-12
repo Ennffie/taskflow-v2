@@ -23,7 +23,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
   const expandRef = useRef<HTMLDivElement>(null);
 
   const statusMeta = getStatusMeta(status);
-  const progressPercent = subtask.progress ?? subtask.progress_percent ?? 0;
+  const progressPercent = isExpanded ? progress : (subtask.progress ?? subtask.progress_percent ?? 0);
 
   useEffect(() => {
     if (isExpanded && expandRef.current) {
