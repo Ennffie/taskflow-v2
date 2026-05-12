@@ -1473,8 +1473,9 @@ export function CantonAiCoachPage() {
                       }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'status' ? 'primary' : undefined)}>Status</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
-                        setOpenPanel(current => current.taskId === taskId && current.panel === 'more' ? { taskId: '', panel: null } : { taskId, panel: 'more' });
-                      }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'more' ? 'primary' : undefined)}>其他</button>
+                        setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
+                        setAssigneePickerTaskId(null);
+                      }} style={actionButtonStyle(subtaskComposerTaskId === taskId ? 'primary' : undefined)}>加 Subtask</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
                         setPendingTaskAction(null);
@@ -1490,8 +1491,8 @@ export function CantonAiCoachPage() {
                       }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'progress' ? 'primary' : undefined)}>改進度</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
-                        setDueDatePicker({ taskId, title, value: '' });
-                      }} style={actionButtonStyle()}>改Due date</button>
+                        setOpenPanel(current => current.taskId === taskId && current.panel === 'more' ? { taskId: '', panel: null } : { taskId, panel: 'more' });
+                      }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'more' ? 'primary' : undefined)}>其他</button>
                     </div>
 
                     {openPanel.taskId === taskId && openPanel.panel === 'status' && (
@@ -1532,11 +1533,11 @@ export function CantonAiCoachPage() {
                             setAssigneePickerTaskId(current => current === taskId ? null : taskId);
                             setSubtaskComposerTaskId(null);
                           }} style={actionButtonStyle()}>邊個做</button>
-                          <button disabled={isReplying} onClick={() => { setPendingDeleteTaskId(taskId); setAssigneePickerTaskId(null); setSubtaskComposerTaskId(null); }} style={actionButtonStyle('danger')}>刪除</button>
                           <button disabled={isReplying} onClick={() => {
-                            setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
-                            setAssigneePickerTaskId(null);
-                          }} style={actionButtonStyle()}>加SubTask</button>
+                            clearInputAndPanels();
+                            setDueDatePicker({ taskId, title, value: '' });
+                          }} style={actionButtonStyle()}>改Due date</button>
+                          <button disabled={isReplying} onClick={() => { setPendingDeleteTaskId(taskId); setAssigneePickerTaskId(null); setSubtaskComposerTaskId(null); }} style={actionButtonStyle('danger')}>刪除</button>
                         </div>
 
                         {pendingDeleteTaskId === taskId && (
