@@ -133,6 +133,7 @@ export function CantonAiCoachPage() {
   }, [isTyping, typingIndex, typingTarget, typedMessageMeta]);
 
   useEffect(() => {
+    // Keep chat anchored to bottom, especially on first-load welcome state
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
   }, [messages, isReplying, typingIndex]);
 
@@ -1433,7 +1434,7 @@ export function CantonAiCoachPage() {
       </header>
 
       <main style={{ overflowY: 'auto', padding: `14px 16px ${12 + keyboardInset + 120}px`, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: 'flex-end', width: '100%' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: messages.length <= 1 && !isTyping ? 'flex-end' : 'flex-end', minHeight: '100%', width: '100%' }}>
           {messages.map((message, index) => (
             <div key={index} style={{ 
               alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', 
