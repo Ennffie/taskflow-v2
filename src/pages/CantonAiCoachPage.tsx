@@ -1463,9 +1463,9 @@ export function CantonAiCoachPage() {
         </div>
       </header>
 
-      <main style={{ overflow: 'hidden', padding: '14px 16px 0', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+      <main style={{ overflow: 'hidden', padding: keyboardInset > 0 ? '6px 16px 0' : '14px 16px 0', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', justifyContent: 'flex-end', paddingBottom: 16, minHeight: 0, flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: keyboardInset > 0 ? 6 : 10, overflowY: 'auto', justifyContent: 'flex-end', paddingBottom: keyboardInset > 0 ? 6 : 16, minHeight: 0, flex: 1 }}>
           {visibleMessages.map((message, index) => (
             <div key={index} style={{ 
               alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', 
@@ -1870,7 +1870,7 @@ export function CantonAiCoachPage() {
         </div>
       )}
 
-      <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', paddingBottom: `${10 + keyboardInset}px`, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)', transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : 'translateY(0)', transition: 'transform 0.2s ease, padding-bottom 0.2s ease' }}>
+      <footer style={{ padding: keyboardInset > 0 ? '4px 16px calc(8px + env(safe-area-inset-bottom))' : '10px 16px calc(12px + env(safe-area-inset-bottom))', paddingBottom: `${(keyboardInset > 0 ? 6 : 10) + keyboardInset}px`, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)', transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : 'translateY(0)', transition: 'transform 0.2s ease, padding-bottom 0.2s ease' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
           {showIntroCard && (
             <div style={{
