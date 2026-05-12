@@ -164,7 +164,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
 
       {/* Expanded edit area */}
       {isExpanded && (
-        <div ref={expandRef} style={{ padding: '12px 10px 200px', borderTop: '1px solid #e2e8f0', background: '#fff' }}>
+        <div ref={expandRef} style={{ padding: '12px 10px', borderTop: '1px solid #e2e8f0', background: '#fff' }}>
           {/* Title input */}
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>

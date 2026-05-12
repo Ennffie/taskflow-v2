@@ -1472,6 +1472,7 @@ export function CantonAiCoachPage() {
                         setOpenPanel(current => current.taskId === taskId && current.panel === 'status' ? { taskId: '', panel: null } : { taskId, panel: 'status' });
                       }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'status' ? 'primary' : undefined)}>Status</button>
                       <button disabled={isReplying} onClick={() => {
+                        const willOpen = subtaskComposerTaskId !== taskId;
                         setInput('');
                         setPendingTaskAction(null);
                         setDueDatePicker(null);
@@ -1481,6 +1482,11 @@ export function CantonAiCoachPage() {
                         setProgressSlider(null);
                         setExpandedSubtaskId(null);
                         setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
+                        if (willOpen) {
+                          window.setTimeout(() => {
+                            subtaskComposerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 120);
+                        }
                       }} style={actionButtonStyle(subtaskComposerTaskId === taskId ? 'primary' : undefined)}>加 Subtask</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
@@ -1571,7 +1577,7 @@ export function CantonAiCoachPage() {
                     {subtaskComposerTaskId === taskId && (
                       <div ref={subtaskComposerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {['Wed','App','Kiosk'].map(pr => (
+                          {['Web','App','Kiosk'].map(pr => (
                             <button key={pr} disabled={isReplying} onClick={() => setSubtaskDrafts(current => ({ ...current, [taskId]: (current[taskId]||'') + (current[taskId] ? ' ' : '') + pr }))} style={{ ...actionButtonStyle('soft'), fontSize: 12, padding: '6px 10px' }}>+{pr}</button>
                           ))}
                         </div>
