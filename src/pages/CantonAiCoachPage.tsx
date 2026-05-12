@@ -137,21 +137,21 @@ export function CantonAiCoachPage() {
   // Auto-scroll to inline panels when they open
   useEffect(() => {
     if (openPanel.panel === 'status') {
-      window.setTimeout(() => statusPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      scrollElementToUpperMiddle(statusPickerRef.current, 100);
     } else if (openPanel.panel === 'more') {
-      window.setTimeout(() => morePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      scrollElementToUpperMiddle(morePanelRef.current, 100);
     }
   }, [openPanel]);
   useEffect(() => {
     if (assigneePickerTaskId) {
-      window.setTimeout(() => assigneePickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      scrollElementToUpperMiddle(assigneePickerRef.current, 100);
     }
   }, [assigneePickerTaskId]);
   useEffect(() => {
     if (openPanel.panel === 'progress') {
       window.setTimeout(() => {
         const sliderEl = document.querySelector('[data-testid="progress-slider"]');
-        sliderEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrollElementToUpperMiddle(sliderEl, 0);
       }, 100);
     }
   }, [openPanel]);
@@ -362,11 +362,21 @@ export function CantonAiCoachPage() {
     setDueDatePicker(null);
   };
 
+  const scrollElementToUpperMiddle = (el: Element | null, delay = 100) => {
+    window.setTimeout(() => {
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const absoluteTop = rect.top + window.scrollY;
+      const targetTop = Math.max(0, absoluteTop - (window.innerHeight * 0.22));
+      window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    }, delay);
+  };
+
   const scrollToInput = () => {
     window.setTimeout(() => {
       const inputEl = document.querySelector('textarea[data-testid="chat-input"]') as HTMLTextAreaElement;
       if (inputEl) {
-        inputEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        scrollElementToUpperMiddle(inputEl, 0);
         // iOS requires this pattern to show keyboard
         inputEl.readOnly = false;
         inputEl.disabled = false;
@@ -1483,9 +1493,7 @@ export function CantonAiCoachPage() {
                         setExpandedSubtaskId(null);
                         setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
                         if (willOpen) {
-                          window.setTimeout(() => {
-                            subtaskComposerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }, 120);
+                          scrollElementToUpperMiddle(subtaskComposerRef.current, 140);
                         }
                       }} style={actionButtonStyle(subtaskComposerTaskId === taskId ? 'primary' : undefined)}>加 Subtask</button>
                       <button disabled={isReplying} onClick={() => {
