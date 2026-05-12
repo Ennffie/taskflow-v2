@@ -1565,19 +1565,20 @@ export function CantonAiCoachPage() {
                             ))}
                           </div>
                         )}
-                        {subtaskComposerTaskId === taskId && (
-                          <div ref={subtaskComposerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              {['Wed','App','Kiosk'].map(pr => (
-                                <button key={pr} disabled={isReplying} onClick={() => setSubtaskDrafts(current => ({ ...current, [taskId]: (current[taskId]||'') + (current[taskId] ? ' ' : '') + pr }))} style={{ ...actionButtonStyle('soft'), fontSize: 12, padding: '6px 10px' }}>+{pr}</button>
-                              ))}
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-                              <input value={subtaskDrafts[taskId] || ''} onChange={(e) => setSubtaskDrafts(current => ({ ...current, [taskId]: e.target.value }))} placeholder="SubTask 名稱" disabled={isReplying} style={{ minWidth: 0, border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 12px', fontSize: 15, fontWeight: 700 }} />
-                              <button disabled={isReplying || !(subtaskDrafts[taskId] || '').trim()} onClick={() => void addSubtask(taskId, title)} style={actionButtonStyle('primary')}>Add</button>
-                            </div>
-                          </div>
-                        )}
+                      </div>
+                    )}
+
+                    {subtaskComposerTaskId === taskId && (
+                      <div ref={subtaskComposerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {['Wed','App','Kiosk'].map(pr => (
+                            <button key={pr} disabled={isReplying} onClick={() => setSubtaskDrafts(current => ({ ...current, [taskId]: (current[taskId]||'') + (current[taskId] ? ' ' : '') + pr }))} style={{ ...actionButtonStyle('soft'), fontSize: 12, padding: '6px 10px' }}>+{pr}</button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                          <input value={subtaskDrafts[taskId] || ''} onChange={(e) => setSubtaskDrafts(current => ({ ...current, [taskId]: e.target.value }))} placeholder="SubTask 名稱" disabled={isReplying} style={{ minWidth: 0, border: '1px solid #bae6fd', borderRadius: 14, padding: '11px 12px', fontSize: 15, fontWeight: 700 }} />
+                          <button disabled={isReplying || !(subtaskDrafts[taskId] || '').trim()} onClick={() => void addSubtask(taskId, title)} style={actionButtonStyle('primary')}>Add</button>
+                        </div>
                       </div>
                     )}
 
