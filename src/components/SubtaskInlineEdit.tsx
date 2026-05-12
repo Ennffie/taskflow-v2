@@ -235,9 +235,10 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
                 borderRadius: 8,
                 border: '1px solid #e2e8f0',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                zIndex: 10,
-                maxHeight: 200,
+                zIndex: 100,
+                maxHeight: 240,
                 overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
               }}>
                 {(['todo', 'planning', 'in_progress', 'internal_review', 'round_1_wip', 'round_1_review', 'round_2_wip', 'round_2_review', 'round_3_wip', 'round_3_review', 'pending_mpfa_pc_nfc', 'finished', 'cancelled', 'archived'] as TaskStatus[]).map((s) => {
                   const meta = getStatusMeta(s);
@@ -317,9 +318,12 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
             </div>
           </div>
 
-          {/* Save button */}
+          {/* OK button - save and collapse */}
           <button
-            onClick={handleSave}
+            onClick={async () => {
+              await handleSave();
+              onToggle(); // collapse after save
+            }}
             disabled={isSaving || isReplying}
             style={{
               width: '100%',
@@ -334,7 +338,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
               opacity: isSaving || isReplying ? 0.6 : 1,
             }}
           >
-            {isSaving ? '保存中...' : '保存'}
+            {isSaving ? '...' : 'OK'}
           </button>
         </div>
       )}
