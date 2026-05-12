@@ -33,7 +33,8 @@ export function CantonAiCoachPage() {
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [typedMessageMeta, setTypedMessageMeta] = useState<{ _action?: string; _data?: any } | null>(null);
-  const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
+  const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<{ id?: string; role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
   const [introText, setIntroText] = useState('');
   const [introTypingIndex, setIntroTypingIndex] = useState(0);
   const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' | 'progress_update' } | null>(null);
@@ -70,10 +71,13 @@ export function CantonAiCoachPage() {
   }>({ title: '', description: '', assignee: '', dueDate: '', dueLabel: '', parentTaskId: null });
 
   const startTypingMessage = (text: string, meta?: { _action?: string; _data?: any }) => {
+    const id = `typing_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     setTypedMessageMeta(meta ?? null);
+    setTypingMessageId(id);
     setTypingTarget(text);
     setTypingIndex(0);
     setIsTyping(true);
+    setMessages(current => [...current, { id, role: 'ai', text: '', ...(meta ?? {}) }]);
   };
 
   // Load bridge URL from Supabase on mount
@@ -120,22 +124,33 @@ export function CantonAiCoachPage() {
   }, []);
 
   useEffect(() => {
-    if (!isTyping || typingIndex >= typingTarget.length) {
-      // Typing finished - add message to messages array
-      if (isTyping && typingIndex >= typingTarget.length && typingTarget) {
-        setMessages(current => [...current, { role: 'ai', text: typingTarget, ...(typedMessageMeta ?? {}) }]);
-        setIsTyping(false);
-        setTypingTarget('');
-        setTypingIndex(0);
-        setTypedMessageMeta(null);
-      }
+    if (!isTyping || !typingMessageId) return;
+
+    if (typingIndex >= typingTarget.length) {
+      setMessages(current => current.map(message =>
+        message.id === typingMessageId
+          ? { ...message, text: typingTarget, ...(typedMessageMeta ?? {}) }
+          : message
+      ));
+      setIsTyping(false);
+      setTypingTarget('');
+      setTypingIndex(0);
+      setTypedMessageMeta(null);
+      setTypingMessageId(null);
       return;
     }
+
+    setMessages(current => current.map(message =>
+      message.id === typingMessageId
+        ? { ...message, text: typingTarget.slice(0, typingIndex) }
+        : message
+    ));
+
     const timer = setTimeout(() => {
       setTypingIndex(prev => prev + 1);
     }, 18);
     return () => clearTimeout(timer);
-  }, [isTyping, typingIndex, typingTarget, typedMessageMeta]);
+  }, [isTyping, typingIndex, typingTarget, typedMessageMeta, typingMessageId]);
 
   useEffect(() => {
     if (!introText || introTypingIndex >= introText.length) return;
@@ -1480,7 +1495,7 @@ export function CantonAiCoachPage() {
         <div style={{ maxWidth: 760, margin: '0 auto', width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: keyboardInset > 0 ? 6 : 10, overflowY: 'auto', justifyContent: 'flex-end', paddingBottom: keyboardInset > 0 ? 6 : 16, minHeight: 0, flex: 1 }}>
           {visibleMessages.map((message, index) => (
-            <div key={index} style={{ 
+            <div key={message.id ?? index} style={{ 
               alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', 
               maxWidth: '90%', 
               minWidth: message.role === 'user' ? undefined : 'min(90%, 300px)',
@@ -1496,6 +1511,17 @@ export function CantonAiCoachPage() {
               boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' 
             }}>
               {renderMessage(message.text, message.role)}
+              {isTyping && typingMessageId && message.id === typingMessageId && (
+                <span style={{ 
+                  display: 'inline-block', 
+                  width: 2, 
+                  height: '1em', 
+                  background: '#0369a1', 
+                  marginLeft: 2,
+                  animation: 'blink 1s step-end infinite',
+                  verticalAlign: 'text-bottom'
+                }} />
+              )}
               
               {/* Confirmation buttons for create task */}
               {message._action === 'confirm_create' && message._data && (() => {
@@ -1857,35 +1883,7 @@ export function CantonAiCoachPage() {
               })()}
             </div>
           ))}
-          {/* Welcome typing message */}
-          {isTyping && typingTarget && (
-            <div style={{ 
-              alignSelf: 'flex-start', 
-              maxWidth: '90%', 
-              whiteSpace: 'pre-wrap', 
-              padding: '16px 17px', 
-              borderRadius: '20px 20px 20px 4px', 
-              background: '#fff', 
-              color: '#0f172a', 
-              fontSize: 17, 
-              lineHeight: 1.48, 
-              fontWeight: 400, 
-              letterSpacing: '-0.01em', 
-              boxShadow: '0 8px 24px rgba(148,163,184,0.12)' 
-            }}>
-              {typingTarget.slice(0, typingIndex)}
-              <span style={{ 
-                display: 'inline-block', 
-                width: 2, 
-                height: '1em', 
-                background: '#0369a1', 
-                marginLeft: 2,
-                animation: 'blink 1s step-end infinite',
-                verticalAlign: 'text-bottom'
-              }} />
-              <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }`}</style>
-            </div>
-          )}
+          <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }`}</style>
           <div ref={chatEndRef} />
           </div>
         </div>
