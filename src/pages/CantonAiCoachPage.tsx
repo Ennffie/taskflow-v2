@@ -1472,9 +1472,15 @@ export function CantonAiCoachPage() {
                         setOpenPanel(current => current.taskId === taskId && current.panel === 'status' ? { taskId: '', panel: null } : { taskId, panel: 'status' });
                       }} style={actionButtonStyle(openPanel.taskId === taskId && openPanel.panel === 'status' ? 'primary' : undefined)}>Status</button>
                       <button disabled={isReplying} onClick={() => {
-                        clearInputAndPanels();
-                        setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
+                        setInput('');
+                        setPendingTaskAction(null);
+                        setDueDatePicker(null);
+                        setOpenPanel({ taskId: '', panel: null });
                         setAssigneePickerTaskId(null);
+                        setPendingDeleteTaskId(null);
+                        setProgressSlider(null);
+                        setExpandedSubtaskId(null);
+                        setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
                       }} style={actionButtonStyle(subtaskComposerTaskId === taskId ? 'primary' : undefined)}>加 Subtask</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
