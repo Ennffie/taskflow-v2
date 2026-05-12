@@ -239,7 +239,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
                 maxHeight: 200,
                 overflowY: 'auto',
               }}>
-                {(['todo', 'planning', 'in_progress', 'internal_review', 'finished', 'cancelled'] as TaskStatus[]).map((s) => {
+                {(['todo', 'planning', 'in_progress', 'internal_review', 'round_1_wip', 'round_1_review', 'round_2_wip', 'round_2_review', 'round_3_wip', 'round_3_review', 'pending_mpfa_pc_nfc', 'finished', 'cancelled', 'archived'] as TaskStatus[]).map((s) => {
                   const meta = getStatusMeta(s);
                   const isSelected = status === s;
                   return (
