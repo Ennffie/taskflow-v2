@@ -34,6 +34,8 @@ export function CantonAiCoachPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [typedMessageMeta, setTypedMessageMeta] = useState<{ _action?: string; _data?: any } | null>(null);
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
+  const [introText, setIntroText] = useState('');
+  const [introTypingIndex, setIntroTypingIndex] = useState(0);
   const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' | 'progress_update' } | null>(null);
   const [dueDatePicker, setDueDatePicker] = useState<{ taskId: string; title: string; value: string } | null>(null);
   const [lockedCreateActions, setLockedCreateActions] = useState<Record<string, 'confirming' | 'cancelled'>>({});
@@ -106,10 +108,11 @@ export function CantonAiCoachPage() {
       const name = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
       setCurrentUserId(data.user?.id ?? null);
       setCurrentUserName(name);
-      // Start welcome typewriter after getting user name
+      // Initial welcome should render directly as bottom intro card, not normal chat message
       setTimeout(() => {
         const welcome = `參見 ${name.split(' ')[0]} 大人~\n小人係Silly，有咩吩咐儘管開聲～`;
-        startTypingMessage(welcome);
+        setIntroText(welcome);
+        setIntroTypingIndex(0);
       }, 300);
     }).catch(console.error);
   }, []);
@@ -131,6 +134,14 @@ export function CantonAiCoachPage() {
     }, 18);
     return () => clearTimeout(timer);
   }, [isTyping, typingIndex, typingTarget, typedMessageMeta]);
+
+  useEffect(() => {
+    if (!introText || introTypingIndex >= introText.length) return;
+    const timer = setTimeout(() => {
+      setIntroTypingIndex(prev => prev + 1);
+    }, 18);
+    return () => clearTimeout(timer);
+  }, [introText, introTypingIndex]);
 
   useEffect(() => {
     // Keep chat anchored to bottom, especially on first-load welcome state
@@ -565,6 +576,7 @@ export function CantonAiCoachPage() {
     const userText = (text ?? input).trim();
     setDueDatePicker(null);
     if (!userText || isReplying) return;
+    setIntroText('');
 
     const cleanPendingActionText = (value: string, title: string, _kind: NonNullable<typeof pendingTaskAction>['kind']) => {
       const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1414,9 +1426,8 @@ export function CantonAiCoachPage() {
     }
   };
 
-  const introMessage = messages.length === 1 && messages[0]?.role === 'ai' ? messages[0] : null;
-  const showIntroCard = !!introMessage && !isTyping;
-  const visibleMessages = showIntroCard ? [] : messages;
+  const showIntroCard = !!introText && messages.length === 0;
+  const visibleMessages = messages;
 
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
@@ -1845,7 +1856,7 @@ export function CantonAiCoachPage() {
 
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', paddingBottom: `${10 + keyboardInset}px`, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)', transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : 'translateY(0)', transition: 'transform 0.2s ease, padding-bottom 0.2s ease' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
-          {showIntroCard && introMessage && (
+          {showIntroCard && (
             <div style={{
               alignSelf: 'flex-start',
               maxWidth: '90%',
@@ -1861,7 +1872,10 @@ export function CantonAiCoachPage() {
               letterSpacing: '-0.01em',
               boxShadow: '0 8px 24px rgba(148,163,184,0.12)'
             }}>
-              {renderMessage(introMessage.text, 'ai')}
+              {renderMessage(introText.slice(0, introTypingIndex), 'ai')}
+              {introTypingIndex < introText.length && (
+                <span style={{ display: 'inline-block', width: 2, height: '1em', background: '#0369a1', marginLeft: 2, animation: 'blink 1s step-end infinite', verticalAlign: 'text-bottom' }} />
+              )}
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
@@ -1887,6 +1901,7 @@ export function CantonAiCoachPage() {
                     return;
                   }
                   // Add user message first, then AI response
+                  setIntroText('');
                   setMessages(current => [...current, { role: 'user', text: '搵Task' }]);
                   startTypingMessage('小人遵命，斗膽一問，大人想搵邊個Task呢？');
                   setInput('');
@@ -1899,9 +1914,11 @@ export function CantonAiCoachPage() {
 
                 if (preset === '加Task') {
                   // Cancel search mode if active
+                  setIntroText('');
                   setMessages(current => [...current, { role: 'user', text: preset }]);
                   startTypingMessage('照跟打就得：\n\n例如：\nCRCE-1234\nChange design\n8 May\nme\nWIP');
                 } else {
+                  setIntroText('');
                   void send(preset);
                 }
               }} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: preset === '加Task' ? '#0f172a' : (preset === '退下' ? '#fff1f2' : '#fff'), color: preset === '加Task' ? '#fff' : (preset === '退下' ? '#be123c' : '#0369a1'), borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>
