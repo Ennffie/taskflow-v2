@@ -367,7 +367,7 @@ export function CantonAiCoachPage() {
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const absoluteTop = rect.top + window.scrollY;
-      const targetTop = Math.max(0, absoluteTop - (window.innerHeight * 0.22));
+      const targetTop = Math.max(0, absoluteTop - (window.innerHeight * 0.14));
       window.scrollTo({ top: targetTop, behavior: 'smooth' });
     }, delay);
   };
