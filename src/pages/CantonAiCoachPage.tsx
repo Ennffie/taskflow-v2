@@ -1443,6 +1443,7 @@ export function CantonAiCoachPage() {
 
   const showIntroCard = !!introText && messages.length === 0;
   const visibleMessages = messages;
+  const mainBottomPadding = showIntroCard ? (keyboardInset > 0 ? keyboardInset + 24 : 16) : (12 + keyboardInset + 120);
 
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
@@ -1463,7 +1464,7 @@ export function CantonAiCoachPage() {
         </div>
       </header>
 
-      <main style={{ overflowY: 'auto', padding: `14px 16px ${12 + keyboardInset + 120}px`, display: 'flex', flexDirection: 'column' }}>
+      <main style={{ overflowY: 'auto', padding: `14px 16px ${mainBottomPadding}px`, display: 'flex', flexDirection: 'column' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: '100%', width: '100%' }}>
           <div style={{ flex: 1, minHeight: 0 }} />
           {visibleMessages.map((message, index) => (
