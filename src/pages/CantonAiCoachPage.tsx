@@ -536,13 +536,28 @@ export function CantonAiCoachPage() {
     }
   };
 
-  const actionButtonStyle = (variant: 'primary' | 'soft' | 'danger' = 'soft') => ({
-    background: variant === 'primary' ? '#0f172a' : variant === 'danger' ? '#fff1f2' : '#f0f9ff',
-    color: variant === 'primary' ? '#fff' : variant === 'danger' ? '#be123c' : '#0369a1',
-    border: variant === 'danger' ? '1px solid #fecdd3' : '1px solid #bae6fd',
+  const actionButtonStyle = (variant: 'primary' | 'soft' | 'danger' | 'focus' | 'panel' = 'soft') => ({
+    background:
+      variant === 'primary' ? '#0f172a' :
+      variant === 'danger' ? '#fff1f2' :
+      variant === 'focus' ? '#7c3aed' :
+      variant === 'panel' ? '#ffffff' :
+      '#f0f9ff',
+    color:
+      variant === 'primary' ? '#fff' :
+      variant === 'danger' ? '#be123c' :
+      variant === 'focus' ? '#ffffff' :
+      variant === 'panel' ? '#475569' :
+      '#0369a1',
+    border:
+      variant === 'danger' ? '1px solid #fecdd3' :
+      variant === 'focus' ? '1px solid #8b5cf6' :
+      variant === 'panel' ? '1px solid #e2e8f0' :
+      '1px solid #bae6fd',
+    boxShadow: variant === 'focus' ? '0 8px 18px rgba(124,58,237,0.28)' : 'none',
     borderRadius: 14,
-    padding: '11px 10px',
-    fontSize: 14,
+    padding: variant === 'panel' ? '10px 10px' : '11px 10px',
+    fontSize: variant === 'panel' ? 13 : 14,
     fontWeight: 900,
     cursor: isReplying ? 'default' : 'pointer',
     opacity: isReplying ? 0.58 : 1,
@@ -1547,7 +1562,7 @@ export function CantonAiCoachPage() {
                         setInput(`${title} blocker：\n`);
                         scrollToInput();
                       }} style={actionButtonStyle()}>Blocker</button>
-                      <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { is_focus: !(selectedTask?.is_focus ?? false) }, `${focusLabel}：${selectedTask?.is_focus ? 'No' : 'Yes'}`)} style={actionButtonStyle(selectedTask?.is_focus ? 'primary' : 'soft')}>{focusLabel}</button>
+                      <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { is_focus: !(selectedTask?.is_focus ?? false) }, `${focusLabel}：${selectedTask?.is_focus ? 'No' : 'Yes'}`)} style={actionButtonStyle(selectedTask?.is_focus ? 'focus' : 'soft')}>{focusLabel}</button>
                       <button disabled={isReplying} onClick={() => {
                         clearInputAndPanels();
                         setOpenPanel(current => current.taskId === taskId && current.panel === 'status' ? { taskId: '', panel: null } : { taskId, panel: 'status' });
@@ -1609,7 +1624,7 @@ export function CantonAiCoachPage() {
                           if (!isSubtask && hasSubtasks && value === 'finished') return false;
                           return true;
                         }).map(([label, value]) => (
-                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'finished' || value === 'archived', is_focus: value === 'finished' || value === 'archived' ? false : selectedTask?.is_focus, progress_percent: value === 'finished' || value === 'archived' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'primary' : 'soft')}>
+                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'finished' || value === 'archived', is_focus: value === 'finished' || value === 'archived' ? false : selectedTask?.is_focus, progress_percent: value === 'finished' || value === 'archived' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'focus' : 'panel')}>
                             {label}
                           </button>
                         ))}
@@ -1619,15 +1634,15 @@ export function CantonAiCoachPage() {
                     {openPanel.taskId === taskId && openPanel.panel === 'more' && (
                       <div ref={morePanelRef} style={{ display: 'grid', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                          {!isSubtask && !hasSubtasks && <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true, is_focus: false }, '堅係Finished：100% Finished')} style={actionButtonStyle('primary')}>堅係Finished</button>}
+                          {!isSubtask && !hasSubtasks && <button disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: 'finished', progress_percent: 100, is_finished: true, is_focus: false }, '堅係Finished：100% Finished')} style={actionButtonStyle('focus')}>堅係Finished</button>}
                           <button disabled={isReplying} onClick={() => {
                             setAssigneePickerTaskId(current => current === taskId ? null : taskId);
                             setSubtaskComposerTaskId(null);
-                          }} style={actionButtonStyle()}>邊個做</button>
+                          }} style={actionButtonStyle('panel')}>邊個做</button>
                           <button disabled={isReplying} onClick={() => {
                             clearInputAndPanels();
                             setDueDatePicker({ taskId, title, value: '' });
-                          }} style={actionButtonStyle()}>改Due date</button>
+                          }} style={actionButtonStyle('panel')}>改Due date</button>
                           <button disabled={isReplying} onClick={() => { setPendingDeleteTaskId(taskId); setAssigneePickerTaskId(null); setSubtaskComposerTaskId(null); }} style={actionButtonStyle('danger')}>刪除</button>
                         </div>
 
