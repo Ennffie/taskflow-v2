@@ -145,10 +145,17 @@ export function CantonAiCoachPage() {
     return () => clearTimeout(timer);
   }, [introText, introTypingIndex]);
 
+  // Smooth scroll to bottom during typing instead of jumping after finish
   useEffect(() => {
-    // Keep chat anchored to bottom, especially on first-load welcome state
+    if (isTyping) {
+      const rafId = requestAnimationFrame(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      });
+      return () => cancelAnimationFrame(rafId);
+    }
+    // After typing finishes, gentle scroll for new messages
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
-  }, [messages, isReplying, typingIndex]);
+  }, [messages, isReplying, typingIndex, isTyping]);
 
   useEffect(() => {
     const vv = window.visualViewport;
