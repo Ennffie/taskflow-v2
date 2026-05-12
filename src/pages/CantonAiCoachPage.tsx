@@ -372,6 +372,17 @@ export function CantonAiCoachPage() {
     }, delay);
   };
 
+  const immediateFocusInput = () => {
+    const inputEl = document.querySelector('textarea[data-testid="chat-input"]') as HTMLTextAreaElement;
+    if (!inputEl) return;
+    inputEl.readOnly = false;
+    inputEl.disabled = false;
+    inputEl.focus();
+    const len = inputEl.value.length;
+    inputEl.setSelectionRange(len, len);
+    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
   const scrollToInput = () => {
     window.setTimeout(() => {
       const inputEl = document.querySelector('textarea[data-testid="chat-input"]') as HTMLTextAreaElement;
@@ -1797,6 +1808,8 @@ export function CantonAiCoachPage() {
                 }
 
                 if (preset === '搵 Task') {
+                  // Try to focus immediately within the user tap event so iPhone keyboard opens
+                  immediateFocusInput();
                   // Check if already in search mode (last message was the search prompt)
                   const lastMsg = messages[messages.length - 1];
                   if (lastMsg?.role === 'ai' && lastMsg.text.includes('想搵邊個 task')) {
@@ -1808,6 +1821,7 @@ export function CantonAiCoachPage() {
                   setMessages(current => [...current, { role: 'user', text: '搵Task' }]);
                   startTypingMessage('小人遵命，斗膽一問，大人想搵邊個Task呢？');
                   setInput('');
+                  window.setTimeout(() => immediateFocusInput(), 0);
                   scrollToInput();
                   return;
                 }
