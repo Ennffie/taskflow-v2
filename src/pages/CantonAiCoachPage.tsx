@@ -50,6 +50,7 @@ export function CantonAiCoachPage() {
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
+  const keyboardAdjustRafRef = useRef<number | null>(null);
   const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
   // Refs for scrolling to inline panels
   const statusPickerRef = useRef<HTMLDivElement | null>(null);
@@ -140,8 +141,13 @@ export function CantonAiCoachPage() {
     if (!vv) return;
 
     const updateInset = () => {
-      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setKeyboardInset(inset);
+      if (keyboardAdjustRafRef.current) {
+        cancelAnimationFrame(keyboardAdjustRafRef.current);
+      }
+      keyboardAdjustRafRef.current = requestAnimationFrame(() => {
+        const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        setKeyboardInset(prev => Math.abs(prev - inset) < 4 ? prev : inset);
+      });
     };
 
     updateInset();
@@ -150,6 +156,9 @@ export function CantonAiCoachPage() {
     window.addEventListener('resize', updateInset);
 
     return () => {
+      if (keyboardAdjustRafRef.current) {
+        cancelAnimationFrame(keyboardAdjustRafRef.current);
+      }
       vv.removeEventListener('resize', updateInset);
       vv.removeEventListener('scroll', updateInset);
       window.removeEventListener('resize', updateInset);
@@ -159,21 +168,21 @@ export function CantonAiCoachPage() {
   // Auto-scroll to inline panels when they open
   useEffect(() => {
     if (openPanel.panel === 'status') {
-      scrollElementToUpperMiddle(statusPickerRef.current, 100);
+      ensureElementVisibleAboveKeyboard(statusPickerRef.current, 100);
     } else if (openPanel.panel === 'more') {
-      scrollElementToUpperMiddle(morePanelRef.current, 100);
+      ensureElementVisibleAboveKeyboard(morePanelRef.current, 100);
     }
   }, [openPanel]);
   useEffect(() => {
     if (assigneePickerTaskId) {
-      scrollElementToUpperMiddle(assigneePickerRef.current, 100);
+      ensureElementVisibleAboveKeyboard(assigneePickerRef.current, 100);
     }
   }, [assigneePickerTaskId]);
   useEffect(() => {
     if (openPanel.panel === 'progress') {
       window.setTimeout(() => {
         const sliderEl = document.querySelector('[data-testid="progress-slider"]');
-        scrollElementToUpperMiddle(sliderEl, 0);
+        ensureElementVisibleAboveKeyboard(sliderEl, 0);
       }, 100);
     }
   }, [openPanel]);
@@ -384,13 +393,25 @@ export function CantonAiCoachPage() {
     setDueDatePicker(null);
   };
 
-  const scrollElementToUpperMiddle = (el: Element | null, delay = 100) => {
+  const ensureElementVisibleAboveKeyboard = (el: Element | null, delay = 80) => {
     window.setTimeout(() => {
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const absoluteTop = rect.top + window.scrollY;
-      const targetTop = Math.max(0, absoluteTop - (window.innerHeight * 0.14));
-      window.scrollTo({ top: targetTop, behavior: 'smooth' });
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const safeTop = 72;
+      const safeBottom = viewportHeight - 24;
+
+      // Already comfortably visible: do nothing to avoid jumpiness
+      if (rect.top >= safeTop && rect.bottom <= safeBottom) return;
+
+      let targetTop = window.scrollY;
+      if (rect.top < safeTop) {
+        targetTop = window.scrollY + rect.top - safeTop;
+      } else if (rect.bottom > safeBottom) {
+        targetTop = window.scrollY + (rect.bottom - safeBottom);
+      }
+
+      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
     }, delay);
   };
 
@@ -409,7 +430,7 @@ export function CantonAiCoachPage() {
     window.setTimeout(() => {
       const inputEl = document.querySelector('textarea[data-testid="chat-input"]') as HTMLTextAreaElement;
       if (inputEl) {
-        scrollElementToUpperMiddle(inputEl, 0);
+        ensureElementVisibleAboveKeyboard(inputEl, 0);
         // iOS requires this pattern to show keyboard
         inputEl.readOnly = false;
         inputEl.disabled = false;
@@ -1526,7 +1547,7 @@ export function CantonAiCoachPage() {
                         setExpandedSubtaskId(null);
                         setSubtaskComposerTaskId(current => current === taskId ? null : taskId);
                         if (willOpen) {
-                          scrollElementToUpperMiddle(subtaskComposerRef.current, 140);
+                          ensureElementVisibleAboveKeyboard(subtaskComposerRef.current, 140);
                         }
                       }} style={actionButtonStyle(subtaskComposerTaskId === taskId ? 'primary' : undefined)}>加 Subtask</button>
                       <button disabled={isReplying} onClick={() => {
@@ -1836,6 +1857,7 @@ export function CantonAiCoachPage() {
                   const lastMsg = messages[messages.length - 1];
                   if (lastMsg?.role === 'ai' && lastMsg.text.includes('想搵邊個 task')) {
                     // Already in search mode, just focus input
+                    immediateFocusInput();
                     scrollToInput();
                     return;
                   }
@@ -1843,8 +1865,10 @@ export function CantonAiCoachPage() {
                   setMessages(current => [...current, { role: 'user', text: '搵Task' }]);
                   startTypingMessage('小人遵命，斗膽一問，大人想搵邊個Task呢？');
                   setInput('');
-                  window.setTimeout(() => immediateFocusInput(), 0);
-                  scrollToInput();
+                  window.setTimeout(() => {
+                    immediateFocusInput();
+                    scrollToInput();
+                  }, 0);
                   return;
                 }
 
