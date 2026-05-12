@@ -1631,6 +1631,19 @@ export function CantonAiCoachPage() {
                                 const fresh = getLatestTask(taskId);
                                 if (fresh) updateTaskActionBubble(fresh);
                               }}
+                              onDelete={async (subtaskId) => {
+                                setIsReplying(true);
+                                try {
+                                  await deleteTask(subtaskId);
+                                  await loadTasks();
+                                  const fresh = getLatestTask(taskId);
+                                  if (fresh) updateTaskActionBubble(fresh);
+                                } catch (e: any) {
+                                  startTypingMessage(`❌ 刪除失敗：${e?.message || 'Unknown error'}`);
+                                } finally {
+                                  setIsReplying(false);
+                                }
+                              }}
                               isReplying={isReplying}
                             />
                           ))}

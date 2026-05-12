@@ -9,9 +9,10 @@ interface SubtaskInlineEditProps {
   onToggle: () => void;
   onUpdate: () => void;
   isReplying: boolean;
+  onDelete?: (subtaskId: string) => void;
 }
 
-export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onUpdate, isReplying }: SubtaskInlineEditProps) {
+export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onUpdate, isReplying, onDelete }: SubtaskInlineEditProps) {
   const [title, setTitle] = useState(subtask.title);
   const [progress, setProgress] = useState(subtask.progress ?? subtask.progress_percent ?? 0);
   const [status, setStatus] = useState<TaskStatus>(subtask.status);
@@ -30,6 +31,18 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
       }, 100);
     }
   }, [isExpanded]);
+
+  const handleDelete = async () => {
+    if (isSaving || isReplying || !onDelete) return;
+    setIsSaving(true);
+    try {
+      await onDelete(subtask.id);
+    } catch (e) {
+      console.error('Failed to delete subtask:', e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     if (isSaving || isReplying) return;
@@ -240,13 +253,21 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
                 overflowY: 'auto',
                 WebkitOverflowScrolling: 'touch',
               }}>
-                {(['todo', 'planning', 'in_progress', 'internal_review', 'round_1_wip', 'round_1_review', 'round_2_wip', 'round_2_review', 'round_3_wip', 'round_3_review', 'pending_mpfa_pc_nfc', 'finished', 'cancelled', 'archived'] as TaskStatus[]).map((s) => {
+                {(['todo', 'planning', 'in_progress', 'internal_review', 'round_1_wip', 'round_1_review', 'round_2_wip', 'round_2_review', 'round_3_wip', 'round_3_review', 'pending_mpfa_pc_nfc', 'finished', 'cancelled'] as TaskStatus[]).map((s) => {
                   const meta = getStatusMeta(s);
                   const isSelected = status === s;
                   return (
                     <button
                       key={s}
-                      onClick={() => { setStatus(s); setShowStatusDropdown(false); }}
+                      onClick={() => {
+                        if (s === 'cancelled') {
+                          // Delete subtask when cancelled
+                          setShowStatusDropdown(false);
+                          handleDelete();
+                          return;
+                        }
+                        setStatus(s); setShowStatusDropdown(false);
+                      }}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
