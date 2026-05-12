@@ -1523,8 +1523,8 @@ export function CantonAiCoachPage() {
                 }} />
               )}
               
-              {/* Confirmation buttons for create task */}
-              {message._action === 'confirm_create' && message._data && (() => {
+              {/* Confirmation/buttons/panels should appear only after typing is done for that message */}
+              {(!isTyping || message.id !== typingMessageId) && message._action === 'confirm_create' && message._data && (() => {
                 const actionKey = getCreateActionKey(message._data);
                 const lockState = lockedCreateActions[actionKey];
                 const isLocked = Boolean(lockState) || isReplying;
@@ -1570,7 +1570,7 @@ export function CantonAiCoachPage() {
                 );
               })()}
 
-              {message._action === 'task_actions' && message._data && (() => {
+              {(!isTyping || message.id !== typingMessageId) && message._action === 'task_actions' && message._data && (() => {
                 const taskId = message._data.taskId;
                 const title = message._data.title;
                 const selectedTask = getLatestTask(taskId);
@@ -1836,7 +1836,7 @@ export function CantonAiCoachPage() {
                 );
               })()}
 
-              {message._action === 'task_not_found' && message._data && (
+              {(!isTyping || message.id !== typingMessageId) && message._action === 'task_not_found' && message._data && (
                 <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
                   <button onClick={() => { setInput(`${message._data.code} | `); }} style={{ flex: 1, background: '#0f172a', color: '#fff', border: 'none', borderRadius: 14, padding: '11px 10px', fontSize: 14, fontWeight: 900 }}>
                     加新Task
@@ -1847,7 +1847,7 @@ export function CantonAiCoachPage() {
                 </div>
               )}
 
-              {message._action === 'task_list' && message._data?.tasks && (() => {
+              {(!isTyping || message.id !== typingMessageId) && message._action === 'task_list' && message._data?.tasks && (() => {
                 const messageKey = `${index}-${message.text}`;
                 const visibleCount = taskListVisibleCounts[messageKey] ?? 10;
                 const visibleTasks = message._data.tasks.slice(0, visibleCount);
