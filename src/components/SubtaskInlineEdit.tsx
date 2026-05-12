@@ -19,6 +19,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
   const [assigneeIds, setAssigneeIds] = useState<string[]>(subtask.assignees.map(a => a.id));
   const [isSaving, setIsSaving] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
   const expandRef = useRef<HTMLDivElement>(null);
 
   const statusMeta = getStatusMeta(status);
@@ -260,13 +261,9 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
                     <button
                       key={s}
                       onClick={() => {
-                        if (s === 'cancelled') {
-                          // Delete subtask when cancelled
-                          setShowStatusDropdown(false);
-                          handleDelete();
-                          return;
-                        }
-                        setStatus(s); setShowStatusDropdown(false);
+                        setStatus(s);
+                        setPendingDelete(s === 'cancelled');
+                        setShowStatusDropdown(false);
                       }}
                       style={{
                         width: '100%',
@@ -339,9 +336,14 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
             </div>
           </div>
 
-          {/* OK button - save and collapse */}
+          {/* Main action button */}
           <button
             onClick={async () => {
+              if (pendingDelete) {
+                await handleDelete();
+                onToggle();
+                return;
+              }
               await handleSave();
               onToggle(); // collapse after save
             }}
@@ -351,7 +353,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
               padding: '10px',
               borderRadius: 10,
               border: 'none',
-              background: '#0f172a',
+              background: pendingDelete ? '#dc2626' : '#0f172a',
               color: '#fff',
               fontSize: 14,
               fontWeight: 900,
@@ -359,7 +361,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
               opacity: isSaving || isReplying ? 0.6 : 1,
             }}
           >
-            {isSaving ? '...' : 'OK'}
+            {isSaving ? '...' : pendingDelete ? 'Delete' : 'OK'}
           </button>
         </div>
       )}
