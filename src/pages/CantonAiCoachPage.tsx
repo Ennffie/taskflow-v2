@@ -51,8 +51,10 @@ export function CantonAiCoachPage() {
   const [expandedSubtaskId, setExpandedSubtaskId] = useState<string | null>(null);
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const [composerHeight, setComposerHeight] = useState(190);
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
   const keyboardAdjustRafRef = useRef<number | null>(null);
+  const footerRef = useRef<HTMLElement | null>(null);
   const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
   // Refs for scrolling to inline panels
   const statusPickerRef = useRef<HTMLDivElement | null>(null);
@@ -159,6 +161,10 @@ export function CantonAiCoachPage() {
       keyboardAdjustRafRef.current = requestAnimationFrame(() => {
         const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
         setKeyboardInset(prev => Math.abs(prev - inset) < 4 ? prev : inset);
+        if (footerRef.current) {
+          const nextHeight = footerRef.current.getBoundingClientRect().height;
+          setComposerHeight(prev => Math.abs(prev - nextHeight) < 4 ? prev : nextHeight);
+        }
       });
     };
 
@@ -1463,7 +1469,7 @@ export function CantonAiCoachPage() {
         </div>
       </header>
 
-      <main style={{ overflow: 'hidden', padding: keyboardInset > 0 ? '6px 16px 0' : '14px 16px 0', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+      <main style={{ overflow: 'hidden', padding: keyboardInset > 0 ? '6px 16px 0' : '14px 16px 0', paddingBottom: `${composerHeight + keyboardInset + 8}px`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: keyboardInset > 0 ? 6 : 10, overflowY: 'auto', justifyContent: 'flex-end', paddingBottom: keyboardInset > 0 ? 6 : 16, minHeight: 0, flex: 1 }}>
           {visibleMessages.map((message, index) => (
@@ -1870,7 +1876,7 @@ export function CantonAiCoachPage() {
         </div>
       )}
 
-      <footer style={{ padding: keyboardInset > 0 ? '4px 16px calc(8px + env(safe-area-inset-bottom))' : '10px 16px calc(12px + env(safe-area-inset-bottom))', paddingBottom: `${(keyboardInset > 0 ? 6 : 10) + keyboardInset}px`, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)', transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : 'translateY(0)', transition: 'transform 0.2s ease, padding-bottom 0.2s ease' }}>
+      <footer ref={footerRef as any} style={{ position: 'fixed', left: 0, right: 0, bottom: keyboardInset, zIndex: 30, padding: keyboardInset > 0 ? '4px 16px calc(8px + env(safe-area-inset-bottom))' : '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)', transition: 'bottom 0.2s ease' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
           {showIntroCard && (
             <div style={{
