@@ -1443,7 +1443,6 @@ export function CantonAiCoachPage() {
 
   const showIntroCard = !!introText && messages.length === 0;
   const visibleMessages = messages;
-  const mainBottomPadding = showIntroCard ? (keyboardInset > 0 ? keyboardInset + 24 : 16) : (12 + keyboardInset + 120);
 
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
@@ -1464,9 +1463,9 @@ export function CantonAiCoachPage() {
         </div>
       </header>
 
-      <main style={{ overflowY: 'auto', padding: `14px 16px ${mainBottomPadding}px`, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: '100%', width: '100%' }}>
-          <div style={{ flex: 1, minHeight: 0 }} />
+      <main style={{ overflow: 'hidden', padding: '14px 16px 0', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', width: '100%', maxHeight: keyboardInset > 0 ? `calc(50vh - ${Math.min(keyboardInset, 120)}px)` : '50vh', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', paddingBottom: 16, minHeight: 0 }}>
           {visibleMessages.map((message, index) => (
             <div key={index} style={{ 
               alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', 
@@ -1840,6 +1839,7 @@ export function CantonAiCoachPage() {
             </div>
           )}
           <div ref={chatEndRef} />
+          </div>
         </div>
       </main>
 
