@@ -1414,6 +1414,10 @@ export function CantonAiCoachPage() {
     }
   };
 
+  const introMessage = messages.length === 1 && messages[0]?.role === 'ai' ? messages[0] : null;
+  const showIntroCard = !!introMessage && !isTyping;
+  const visibleMessages = showIntroCard ? [] : messages;
+
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
       <header style={{ padding: '14px 16px 10px', background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(226,232,240,0.9)' }}>
@@ -1436,7 +1440,7 @@ export function CantonAiCoachPage() {
       <main style={{ overflowY: 'auto', padding: `14px 16px ${12 + keyboardInset + 120}px`, display: 'flex', flexDirection: 'column' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: '100%', width: '100%' }}>
           <div style={{ flex: 1, minHeight: 0 }} />
-          {messages.map((message, index) => (
+          {visibleMessages.map((message, index) => (
             <div key={index} style={{ 
               alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', 
               maxWidth: '90%', 
@@ -1840,7 +1844,26 @@ export function CantonAiCoachPage() {
       )}
 
       <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', paddingBottom: `${10 + keyboardInset}px`, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)', transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : 'translateY(0)', transition: 'transform 0.2s ease, padding-bottom 0.2s ease' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
+          {showIntroCard && introMessage && (
+            <div style={{
+              alignSelf: 'flex-start',
+              maxWidth: '90%',
+              minWidth: 'min(90%, 300px)',
+              whiteSpace: 'pre-wrap',
+              padding: '16px 17px',
+              borderRadius: '20px 20px 20px 4px',
+              background: '#fff',
+              color: '#0f172a',
+              fontSize: 17,
+              lineHeight: 1.48,
+              fontWeight: 400,
+              letterSpacing: '-0.01em',
+              boxShadow: '0 8px 24px rgba(148,163,184,0.12)'
+            }}>
+              {renderMessage(introMessage.text, 'ai')}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
             {['退下', '搵 Task', '加Task', 'Focus', 'My Task'].map(preset => (
               <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
