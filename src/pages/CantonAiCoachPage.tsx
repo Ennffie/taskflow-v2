@@ -48,6 +48,7 @@ export function CantonAiCoachPage() {
   // Track expanded subtask (only one at a time)
   const [expandedSubtaskId, setExpandedSubtaskId] = useState<string | null>(null);
   const [taskListVisibleCounts, setTaskListVisibleCounts] = useState<Record<string, number>>({});
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
   const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
   // Refs for scrolling to inline panels
@@ -133,6 +134,27 @@ export function CantonAiCoachPage() {
   useEffect(() => {
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
   }, [messages, isReplying, typingIndex]);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const updateInset = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardInset(inset);
+    };
+
+    updateInset();
+    vv.addEventListener('resize', updateInset);
+    vv.addEventListener('scroll', updateInset);
+    window.addEventListener('resize', updateInset);
+
+    return () => {
+      vv.removeEventListener('resize', updateInset);
+      vv.removeEventListener('scroll', updateInset);
+      window.removeEventListener('resize', updateInset);
+    };
+  }, []);
 
   // Auto-scroll to inline panels when they open
   useEffect(() => {
@@ -1389,7 +1411,7 @@ export function CantonAiCoachPage() {
         </div>
       </header>
 
-      <main style={{ overflowY: 'auto', padding: '14px 16px 12px', display: 'flex', flexDirection: 'column' }}>
+      <main style={{ overflowY: 'auto', padding: `14px 16px ${12 + keyboardInset + 120}px`, display: 'flex', flexDirection: 'column' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: 'flex-end', width: '100%' }}>
           {messages.map((message, index) => (
             <div key={index} style={{ 
@@ -1794,7 +1816,7 @@ export function CantonAiCoachPage() {
         </div>
       )}
 
-      <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)' }}>
+      <footer style={{ padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', paddingBottom: `${10 + keyboardInset}px`, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(18px)', borderTop: '1px solid rgba(226,232,240,0.9)', transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : 'translateY(0)', transition: 'transform 0.2s ease, padding-bottom 0.2s ease' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
             {['退下', '搵 Task', '加Task', 'Focus', 'My Task'].map(preset => (
