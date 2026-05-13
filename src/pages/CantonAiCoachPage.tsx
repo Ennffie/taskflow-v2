@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasksForCantonAi, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
@@ -34,6 +35,7 @@ export function CantonAiCoachPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [typedMessageMeta, setTypedMessageMeta] = useState<{ _action?: string; _data?: any } | null>(null);
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
+  const [revealedTaskListCounts, setRevealedTaskListCounts] = useState<Record<string, number>>({});
   const [messages, setMessages] = useState<{ id?: string; role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
   const [introText, setIntroText] = useState('');
   const [introTypingIndex, setIntroTypingIndex] = useState(0);
@@ -77,6 +79,7 @@ export function CantonAiCoachPage() {
     setTypingTarget(text);
     setTypingIndex(0);
     setIsTyping(true);
+    setRevealedTaskListCounts(current => ({ ...current, [id]: 0 }));
     setMessages(current => [...current, { id, role: 'ai', text: '', ...(meta ?? {}) }]);
   };
 
@@ -150,6 +153,17 @@ export function CantonAiCoachPage() {
       setTypingIndex(prev => prev + 1);
     }, 18);
     return () => clearTimeout(timer);
+  }, [isTyping, typingIndex, typingTarget, typedMessageMeta, typingMessageId]);
+
+  useEffect(() => {
+    if (!isTyping || !typingMessageId || typedMessageMeta?._action !== 'task_list' || !typedMessageMeta?._data?.tasks?.length) return;
+
+    const lines = typingTarget.slice(0, typingIndex).split('\n').filter(line => line.trim());
+    const bodyLineCount = lines.filter(line => !/^\s*\d+\./.test(line.trim())).length;
+    const shouldReveal = Math.max(0, bodyLineCount - 1);
+    const nextCount = Math.min(typedMessageMeta._data.tasks.length, shouldReveal);
+
+    setRevealedTaskListCounts(current => current[typingMessageId] === nextCount ? current : ({ ...current, [typingMessageId]: nextCount }));
   }, [isTyping, typingIndex, typingTarget, typedMessageMeta, typingMessageId]);
 
   useEffect(() => {
@@ -1847,11 +1861,26 @@ export function CantonAiCoachPage() {
                 </div>
               )}
 
-              {(!isTyping || message.id !== typingMessageId) && message._action === 'task_list' && message._data?.tasks && (() => {
+              {message._action === 'task_list' && message._data?.tasks && (() => {
                 const messageKey = `${index}-${message.text}`;
-                const visibleCount = taskListVisibleCounts[messageKey] ?? 10;
+                const manualVisibleCount = taskListVisibleCounts[messageKey] ?? 10;
+                const revealedDuringTyping = message.id ? (revealedTaskListCounts[message.id] ?? 0) : 0;
+                const isThisTypingMessage = isTyping && message.id === typingMessageId;
+                const visibleCount = isThisTypingMessage ? Math.min(message._data.tasks.length, Math.max(0, revealedDuringTyping)) : manualVisibleCount;
                 const visibleTasks = message._data.tasks.slice(0, visibleCount);
-                const hasMore = message._data.tasks.length > visibleCount;
+                const hasMore = !isThisTypingMessage && message._data.tasks.length > visibleCount;
+                const animatedItemStyle: CSSProperties = {
+                  textAlign: 'left',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  color: '#0369a1',
+                  fontSize: 16,
+                  fontWeight: 800,
+                  lineHeight: 1.45,
+                  animation: 'taskListRiseIn 320ms cubic-bezier(0.22, 1, 0.36, 1)',
+                  transformOrigin: '50% 100%'
+                };
                 return (
                   <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {visibleTasks.map((task: any) => (
@@ -1863,7 +1892,7 @@ export function CantonAiCoachPage() {
                         } else {
                           startTypingMessage('呢個 task 資料剛剛 refresh 咗，請再撳一次 task list。');
                         }
-                      }} style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
+                      }} style={isThisTypingMessage ? animatedItemStyle : { textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
                         <span style={{ textDecoration: 'underline', fontSize: 19, fontWeight: 400 }}>{task.title}</span>
                         <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
                           {task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}
@@ -1883,7 +1912,8 @@ export function CantonAiCoachPage() {
               })()}
             </div>
           ))}
-          <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }`}</style>
+          <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+          @keyframes taskListRiseIn { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: translateY(0); } }`}</style>
           <div ref={chatEndRef} />
           </div>
         </div>
