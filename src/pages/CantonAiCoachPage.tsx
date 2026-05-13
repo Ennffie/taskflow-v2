@@ -207,14 +207,8 @@ export function CantonAiCoachPage() {
     const latestMessage = messages[messages.length - 1];
     const isLatestReportLog = latestMessage?._action === 'report_log_list';
 
-    if (isLatestReportLog && reportAnchorRef.current) {
-      const timer = window.setTimeout(() => {
-        const rect = reportAnchorRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const top = rect.top + window.scrollY - 64;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-      }, isTyping ? 90 : 120);
-      return () => window.clearTimeout(timer);
+    if (isLatestReportLog) {
+      return;
     }
 
     if (isTyping) {
