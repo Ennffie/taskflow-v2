@@ -43,6 +43,7 @@ export function CantonAiCoachPage() {
   const [introText, setIntroText] = useState('');
   const [introTypingIndex, setIntroTypingIndex] = useState(0);
   const [pendingTaskAction, setPendingTaskAction] = useState<{ taskId: string; title: string; kind: 'today' | 'tomorrow' | 'blocker' | 'progress_update' } | null>(null);
+  const [reportEditorState, setReportEditorState] = useState<{ taskId: string; title: string; field: 'today' | 'tomorrow' | 'blocker'; text: string } | null>(null);
   const [dueDatePicker, setDueDatePicker] = useState<{ taskId: string; title: string; value: string } | null>(null);
   const [lockedCreateActions, setLockedCreateActions] = useState<Record<string, 'confirming' | 'cancelled'>>({});
   // expandedMoreTaskId / statusPickerTaskId removed — now using openPanel accordion
@@ -331,14 +332,20 @@ export function CantonAiCoachPage() {
     }
   }, [openPanel]);
 
+  const getBlockerText = (task: TaskItem, logs: LogEntry[]) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayLogs = logs.filter(log => log.task_id === task.id && log.date === today);
+    const blockerLog = todayLogs.find(log => /blocker/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
+    const blockerFromDescription = task.description?.match(/Blocker:\s*([\s\S]*)/i)?.[1]?.trim() || '';
+    return blockerLog || blockerFromDescription;
+  };
+
   const summarizeReportText = (task: TaskItem, logs: LogEntry[]) => {
     const today = new Date().toISOString().slice(0, 10);
     const todayLogs = logs.filter(log => log.task_id === task.id && log.date === today);
     const todayDone = task.today_update?.trim() || todayLogs.find(log => /what i have done|today/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
     const tomorrow = task.next_day_focus?.trim() || todayLogs.find(log => /next day focus|tomorrow/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
-    const blockerLog = todayLogs.find(log => /blocker/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
-    const blockerFromDescription = task.description?.match(/Blocker:\s*([\s\S]*)/i)?.[1]?.trim() || '';
-    const blocker = blockerLog || blockerFromDescription;
+    const blocker = getBlockerText(task, logs);
 
     const sentences: string[] = [];
     if (todayDone) sentences.push(`Completed ${todayDone.replace(/[。！!]+$/,'')}.`);
@@ -379,6 +386,20 @@ export function CantonAiCoachPage() {
       _action: 'report_log_list',
       _data: { withLogsToday, withoutLogsToday }
     });
+  };
+
+  const openReportFieldEditor = (taskId: string, field: 'today' | 'tomorrow' | 'blocker') => {
+    const task = tasks.find(item => item.id === taskId);
+    if (!task) return;
+    const nextText = field === 'today'
+      ? (task.today_update?.trim() || '')
+      : field === 'tomorrow'
+        ? (task.next_day_focus?.trim() || '')
+        : (getBlockerText(task, myLogs) || '');
+    setPendingTaskAction({ taskId, title: task.title, kind: field });
+    setReportEditorState({ taskId, title: task.title, field, text: nextText });
+    setInput(nextText);
+    scrollToInput();
   };
 
   const getContext = (searchResult?: any) => {
@@ -584,6 +605,7 @@ export function CantonAiCoachPage() {
   const clearInputAndPanels = () => {
     setInput('');
     setPendingTaskAction(null);
+    setReportEditorState(null);
     resetInlineTaskPanels();
     setDueDatePicker(null);
   };
@@ -867,14 +889,20 @@ export function CantonAiCoachPage() {
           } else if (pendingTaskAction.kind === 'progress_update') {
             await createTaskEventLog(pendingTask.id, `[Progress Update]\n${actionText}`);
           }
-          await loadTasks();
+          const freshTasks = await loadTasks();
           const actionKind = pendingTaskAction.kind;
+          const refreshedTask = freshTasks?.find(t => t.id === pendingTask.id) || tasks.find(t => t.id === pendingTask.id) || pendingTask;
           setPendingTaskAction(null);
+          setReportEditorState(null);
           const actionLabel = actionKind === 'today' ? 'What I have done' : actionKind === 'tomorrow' ? 'Next Day Focus' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update';
           startTypingMessage(`✅ 小人稟報恩公，已更新「${pendingTask.title}」\n\n• ${actionLabel}：${actionText}\n\n仲想改其他嘢嗎？`, {
             _action: 'task_actions',
             _data: { taskId: pendingTask.id, title: pendingTask.title }
           });
+          if (actionKind === 'today' || actionKind === 'tomorrow' || actionKind === 'blocker') {
+            setReportEditorState({ taskId: refreshedTask.id, title: refreshedTask.title, field: actionKind, text: actionText });
+            setInput(actionText);
+          }
         } catch (e: any) {
           startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
         } finally {
@@ -2144,9 +2172,9 @@ export function CantonAiCoachPage() {
                           </div>
                           <div style={{ fontSize: 14, lineHeight: 1.55, color: '#334155' }}>{task.summary || 'No report summary yet.'}</div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                            <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'today' }); setInput(`${task.title} 今日做咗：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>今日做咗乜</button>
-                            <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'tomorrow' }); setInput(`${task.title} 明天focus：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>明日會做乜</button>
-                            <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'blocker' }); setInput(`${task.title} blocker：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>Blocker</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'today')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : 'panel')}>今日做咗乜</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'tomorrow')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'tomorrow' ? 'focus' : 'panel')}>明日會做乜</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'blocker')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'blocker' ? 'focus' : 'panel')}>Blocker</button>
                           </div>
                         </div>
                       ))}
@@ -2168,9 +2196,9 @@ export function CantonAiCoachPage() {
                               </div>
                               <div style={{ color: '#94a3b8', fontSize: 13 }}>No report yet today.</div>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                                <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'today' }); setInput(`${task.title} 今日做咗：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>今日做咗乜</button>
-                                <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'tomorrow' }); setInput(`${task.title} 明天focus：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>明日會做乜</button>
-                                <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'blocker' }); setInput(`${task.title} blocker：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>Blocker</button>
+                                <button onClick={() => openReportFieldEditor(task.id, 'today')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : 'panel')}>今日做咗乜</button>
+                                <button onClick={() => openReportFieldEditor(task.id, 'tomorrow')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'tomorrow' ? 'focus' : 'panel')}>明日會做乜</button>
+                                <button onClick={() => openReportFieldEditor(task.id, 'blocker')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'blocker' ? 'focus' : 'panel')}>Blocker</button>
                               </div>
                             </div>
                           ))}
@@ -2383,9 +2411,17 @@ export function CantonAiCoachPage() {
           </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <div style={{ position: 'relative', flex: 1 }}>
+                {reportEditorState && (
+                  <div style={{ marginBottom: 8, padding: '10px 12px', borderRadius: 16, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'grid', gap: 4 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#0f766e' }}>{reportEditorState.title}</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
+                      {reportEditorState.field === 'today' ? '今日做咗乜？' : reportEditorState.field === 'tomorrow' ? '明日會做乜？' : 'Blocker'}
+                    </div>
+                  </div>
+                )}
                 <textarea
                   data-testid="chat-input"
-                  placeholder={messages[messages.length - 1]?.text.includes('想搵邊個') ? '輸入 task 名稱或關鍵字...' : '隨意問 task 相關問題…'}
+                  placeholder={reportEditorState ? '可直接修改呢段 report 內容…' : (messages[messages.length - 1]?.text.includes('想搵邊個') ? '輸入 task 名稱或關鍵字...' : '隨意問 task 相關問題…')}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
