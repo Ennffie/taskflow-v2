@@ -290,6 +290,39 @@ export function CantonAiCoachPage() {
     return sentences.slice(0, 2).join(' ');
   };
 
+  const openReportLogMode = () => {
+    setActiveQuickAction('report-log');
+    const today = new Date().toISOString().slice(0, 10);
+    const myMainTasks = tasks.filter(t => {
+      const isAssignee = t.assignees?.some(a => a.name === currentUserName);
+      return !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && isAssignee;
+    });
+    const withLogsToday = myMainTasks
+      .filter(task => myLogs.some(log => log.task_id === task.id && log.date === today) || task.today_update?.trim() || task.next_day_focus?.trim() || /blocker:/i.test(task.description || ''))
+      .map(task => ({
+        id: task.id,
+        title: task.title,
+        due_date: task.due_date,
+        status: task.status,
+        assignees: task.assignees.map(a => a.name),
+        summary: summarizeReportText(task, myLogs),
+      }));
+    const withoutLogsToday = myMainTasks
+      .filter(task => !withLogsToday.some(item => item.id === task.id))
+      .map(task => ({
+        id: task.id,
+        title: task.title,
+        due_date: task.due_date,
+        status: task.status,
+        assignees: task.assignees.map(a => a.name),
+        summary: '',
+      }));
+    startTypingMessage(`小人稟報恩公，今日可 review 嘅 report task 有 ${withLogsToday.length} 個。下面已經幫你分好有 log 同未有 log 嘅 task。`, {
+      _action: 'report_log_list',
+      _data: { withLogsToday, withoutLogsToday }
+    });
+  };
+
   const getContext = (searchResult?: any) => {
     const today = new Date().toISOString().slice(0, 10);
     // Include ALL tasks (not just first 20) for accurate search
@@ -1394,36 +1427,7 @@ export function CantonAiCoachPage() {
       }
 
       if (/report\s*log|reportlog|report/.test(lower)) {
-        setActiveQuickAction('report-log');
-        const today = new Date().toISOString().slice(0, 10);
-        const myMainTasks = tasks.filter(t => {
-          const isAssignee = t.assignees?.some(a => a.name === currentUserName);
-          return !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && isAssignee;
-        });
-        const withLogsToday = myMainTasks
-          .filter(task => myLogs.some(log => log.task_id === task.id && log.date === today) || task.today_update?.trim() || task.next_day_focus?.trim() || /blocker:/i.test(task.description || ''))
-          .map(task => ({
-            id: task.id,
-            title: task.title,
-            due_date: task.due_date,
-            status: task.status,
-            assignees: task.assignees.map(a => a.name),
-            summary: summarizeReportText(task, myLogs),
-          }));
-        const withoutLogsToday = myMainTasks
-          .filter(task => !withLogsToday.some(item => item.id === task.id))
-          .map(task => ({
-            id: task.id,
-            title: task.title,
-            due_date: task.due_date,
-            status: task.status,
-            assignees: task.assignees.map(a => a.name),
-            summary: '',
-          }));
-        startTypingMessage(`小人稟報恩公，今日可 review 嘅 report task 有 ${withLogsToday.length} 個。下面已經幫你分好有 log 同未有 log 嘅 task。`, {
-          _action: 'report_log_list',
-          _data: { withLogsToday, withoutLogsToday }
-        });
+        openReportLogMode();
         setIsReplying(false);
         return;
       }
@@ -2282,6 +2286,13 @@ export function CantonAiCoachPage() {
                   setIntroText('');
                   setMessages(current => [...current, { role: 'user', text: preset }]);
                   startTypingMessage('小人遵命～\n\n想加咩 task？先俾我 task name。');
+                  return;
+                }
+
+                if (preset === 'Report Log') {
+                  setIntroText('');
+                  setMessages(current => [...current, { role: 'user', text: preset }]);
+                  openReportLogMode();
                   return;
                 }
 
