@@ -207,14 +207,19 @@ export function CantonAiCoachPage() {
     const latestMessage = messages[messages.length - 1];
     const isLatestReportLog = latestMessage?._action === 'report_log_list';
 
+    if (isLatestReportLog && reportAnchorRef.current) {
+      const timer = window.setTimeout(() => {
+        const rect = reportAnchorRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const top = rect.top + window.scrollY - 64;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      }, isTyping ? 90 : 120);
+      return () => window.clearTimeout(timer);
+    }
+
     if (isTyping) {
       const rafId = requestAnimationFrame(() => {
-        if (isLatestReportLog && reportAnchorRef.current) {
-          const top = reportAnchorRef.current.getBoundingClientRect().top + window.scrollY - 108;
-          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-        } else {
-          chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-        }
+        chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
       });
       return () => cancelAnimationFrame(rafId);
     }
@@ -222,13 +227,6 @@ export function CantonAiCoachPage() {
       const timer = window.setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }, 60);
-      return () => window.clearTimeout(timer);
-    }
-    if (isLatestReportLog && reportAnchorRef.current) {
-      const timer = window.setTimeout(() => {
-        const top = reportAnchorRef.current!.getBoundingClientRect().top + window.scrollY - 108;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-      }, 70);
       return () => window.clearTimeout(timer);
     }
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
