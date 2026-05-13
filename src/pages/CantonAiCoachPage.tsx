@@ -1559,6 +1559,7 @@ export function CantonAiCoachPage() {
 
   const showIntroCard = !!introText && messages.length === 0;
   const visibleMessages = messages;
+  const isDesktopViewport = typeof window !== 'undefined' ? window.innerWidth >= 768 : false;
 
   return (
     <div style={{ minHeight: '100vh', height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)', overflow: 'hidden' }}>
@@ -1579,9 +1580,9 @@ export function CantonAiCoachPage() {
         </div>
       </header>
 
-      <main style={{ overflow: 'hidden', padding: keyboardInset > 0 ? '6px 16px 0' : '14px 16px 0', paddingBottom: `${composerHeight + keyboardInset + 8}px`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: keyboardInset > 0 ? 6 : 10, overflowY: 'auto', justifyContent: 'flex-end', paddingBottom: keyboardInset > 0 ? 6 : 16, minHeight: 0, flex: 1 }}>
+      <main style={{ overflow: 'hidden', padding: keyboardInset > 0 ? '6px 16px 0' : '14px 16px 0', paddingBottom: `${composerHeight + keyboardInset + 8}px`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', minHeight: 0 }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: keyboardInset > 0 ? 6 : 10, overflowY: 'auto', justifyContent: isDesktopViewport ? 'flex-start' : 'flex-end', paddingBottom: keyboardInset > 0 ? 6 : 16, minHeight: 0, flex: 1, overscrollBehavior: 'contain' }}>
           {visibleMessages.map((message, index) => (
             <div key={message.id ?? index} style={{ 
               alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', 
