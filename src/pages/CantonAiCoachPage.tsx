@@ -2174,7 +2174,7 @@ export function CantonAiCoachPage() {
                 return (
                   <div ref={reportAnchorRef} style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%' }}>
                     <div style={{ display: 'grid', gap: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0f5f73' }}>Ready for report</div>
+                      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0D8A9C' }}>Ready for report</div>
                       {withLogsToday.length === 0 ? (
                         <div style={{ padding: '12px 14px', borderRadius: 16, background: '#f8fafc', color: '#64748b', fontSize: 14 }}>今日暫時未有 report log。</div>
                       ) : visibleWithLogs.map((task: any) => (
