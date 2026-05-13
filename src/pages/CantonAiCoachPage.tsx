@@ -38,6 +38,7 @@ export function CantonAiCoachPage() {
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const [revealedTaskListCounts, setRevealedTaskListCounts] = useState<Record<string, number>>({});
   const [streamingTaskListMessageId, setStreamingTaskListMessageId] = useState<string | null>(null);
+  const [streamingReportMessageId, setStreamingReportMessageId] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ id?: string; role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
   const [introText, setIntroText] = useState('');
   const [introTypingIndex, setIntroTypingIndex] = useState(0);
@@ -53,6 +54,7 @@ export function CantonAiCoachPage() {
   const [editingTaskFromChat, setEditingTaskFromChat] = useState<TaskItem | null>(null);
   const [myLogs, setMyLogs] = useState<LogEntry[]>([]);
   const [collapsedNoReportSection, setCollapsedNoReportSection] = useState(true);
+  const [revealedReportCounts, setRevealedReportCounts] = useState<Record<string, { withLogs: number; withoutLogs: number }>>({});
   // Track which inline panel is open per task (accordion behavior)
   const [openPanel, setOpenPanel] = useState<{ taskId: string; panel: 'status' | 'more' | 'progress' | null }>({ taskId: '', panel: null });
   // Track expanded subtask (only one at a time)
@@ -89,6 +91,7 @@ export function CantonAiCoachPage() {
     setTypingIndex(0);
     setIsTyping(true);
     setRevealedTaskListCounts(current => ({ ...current, [id]: 0 }));
+    setRevealedReportCounts(current => ({ ...current, [id]: { withLogs: 0, withoutLogs: 0 } }));
     setMessages(current => [...current, { id, role: 'ai', text: '', ...(meta ?? {}) }]);
   };
 
@@ -149,6 +152,9 @@ export function CantonAiCoachPage() {
       if (typedMessageMeta?._action === 'task_list' && typingMessageId) {
         setStreamingTaskListMessageId(typingMessageId);
       }
+      if (typedMessageMeta?._action === 'report_log_list' && typingMessageId) {
+        setStreamingReportMessageId(typingMessageId);
+      }
       setTypingTarget('');
       setTypingIndex(0);
       setTypedMessageMeta(null);
@@ -195,6 +201,45 @@ export function CantonAiCoachPage() {
   }, [streamingTaskListMessageId, messages, revealedTaskListCounts]);
 
   useEffect(() => {
+    if (!streamingReportMessageId) return;
+
+    const message = messages.find(item => item.id === streamingReportMessageId);
+    const withLogsToday = message?._data?.withLogsToday || [];
+    const withoutLogsToday = message?._data?.withoutLogsToday || [];
+    const counts = revealedReportCounts[streamingReportMessageId] ?? { withLogs: 0, withoutLogs: 0 };
+
+    if (counts.withLogs < withLogsToday.length) {
+      const timer = window.setTimeout(() => {
+        setRevealedReportCounts(current => ({
+          ...current,
+          [streamingReportMessageId]: {
+            withLogs: Math.min(withLogsToday.length, (current[streamingReportMessageId]?.withLogs ?? 0) + 1),
+            withoutLogs: current[streamingReportMessageId]?.withoutLogs ?? 0,
+          },
+        }));
+      }, counts.withLogs === 0 ? 120 : 180);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (!collapsedNoReportSection && counts.withoutLogs < withoutLogsToday.length) {
+      const timer = window.setTimeout(() => {
+        setRevealedReportCounts(current => ({
+          ...current,
+          [streamingReportMessageId]: {
+            withLogs: current[streamingReportMessageId]?.withLogs ?? withLogsToday.length,
+            withoutLogs: Math.min(withoutLogsToday.length, (current[streamingReportMessageId]?.withoutLogs ?? 0) + 1),
+          },
+        }));
+      }, 180);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (counts.withLogs >= withLogsToday.length && (collapsedNoReportSection || counts.withoutLogs >= withoutLogsToday.length)) {
+      setStreamingReportMessageId(null);
+    }
+  }, [streamingReportMessageId, messages, revealedReportCounts, collapsedNoReportSection]);
+
+  useEffect(() => {
     if (!introText || introTypingIndex >= introText.length) return;
     const timer = setTimeout(() => {
       setIntroTypingIndex(prev => prev + 1);
@@ -208,7 +253,12 @@ export function CantonAiCoachPage() {
     const isLatestReportLog = latestMessage?._action === 'report_log_list';
 
     if (isLatestReportLog) {
-      return;
+      const timer = window.setTimeout(() => {
+        if (!reportAnchorRef.current) return;
+        const top = reportAnchorRef.current.getBoundingClientRect().top + window.scrollY - 16;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      }, 60);
+      return () => window.clearTimeout(timer);
     }
 
     if (isTyping) {
@@ -2071,14 +2121,23 @@ export function CantonAiCoachPage() {
               {message._action === 'report_log_list' && message._data && (() => {
                 const withLogsToday = message._data.withLogsToday || [];
                 const withoutLogsToday = message._data.withoutLogsToday || [];
+                const counts = message.id
+                  ? (revealedReportCounts[message.id] ?? { withLogs: withLogsToday.length, withoutLogs: withoutLogsToday.length })
+                  : { withLogs: withLogsToday.length, withoutLogs: withoutLogsToday.length };
+                const visibleWithLogs = withLogsToday.slice(0, counts.withLogs);
+                const visibleWithoutLogs = withoutLogsToday.slice(0, collapsedNoReportSection ? 0 : counts.withoutLogs);
+                const animatedItemStyle: CSSProperties = {
+                  animation: 'taskListRiseIn 320ms cubic-bezier(0.22, 1, 0.36, 1)',
+                  transformOrigin: '50% 100%'
+                };
                 return (
-                  <div ref={reportAnchorRef} style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%', animation: 'reportRiseIn 420ms cubic-bezier(0.42, 0, 0.58, 1)' }}>
+                  <div ref={reportAnchorRef} style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%' }}>
                     <div style={{ display: 'grid', gap: 10 }}>
                       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0f766e' }}>Ready for report</div>
                       {withLogsToday.length === 0 ? (
                         <div style={{ padding: '12px 14px', borderRadius: 16, background: '#f8fafc', color: '#64748b', fontSize: 14 }}>今日暫時未有 report log。</div>
-                      ) : withLogsToday.map((task: any) => (
-                        <div key={task.id} style={{ padding: '14px 14px 12px', borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'grid', gap: 10 }}>
+                      ) : visibleWithLogs.map((task: any) => (
+                        <div key={task.id} style={{ ...animatedItemStyle, padding: '14px 14px 12px', borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'grid', gap: 10 }}>
                           <div>
                             <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>{task.title}</div>
                             <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</div>
@@ -2101,8 +2160,8 @@ export function CantonAiCoachPage() {
                       </button>
                       {!collapsedNoReportSection && (
                         <div style={{ display: 'grid', gap: 10 }}>
-                          {withoutLogsToday.map((task: any) => (
-                            <div key={task.id} style={{ padding: '14px 14px 12px', borderRadius: 18, background: '#ffffff', border: '1px solid #e2e8f0', display: 'grid', gap: 10 }}>
+                          {visibleWithoutLogs.map((task: any) => (
+                            <div key={task.id} style={{ ...animatedItemStyle, padding: '14px 14px 12px', borderRadius: 18, background: '#ffffff', border: '1px solid #e2e8f0', display: 'grid', gap: 10 }}>
                               <div>
                                 <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>{task.title}</div>
                                 <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</div>
