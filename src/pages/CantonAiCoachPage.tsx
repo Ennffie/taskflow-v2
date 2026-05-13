@@ -2166,7 +2166,7 @@ export function CantonAiCoachPage() {
                   ? (revealedReportCounts[message.id] ?? { withLogs: withLogsToday.length, withoutLogs: withoutLogsToday.length })
                   : { withLogs: withLogsToday.length, withoutLogs: withoutLogsToday.length };
                 const visibleWithLogs = withLogsToday.slice(0, counts.withLogs);
-                const visibleWithoutLogs = withoutLogsToday.slice(0, collapsedNoReportSection ? 0 : counts.withoutLogs);
+                const visibleWithoutLogs = withoutLogsToday.slice(0, collapsedNoReportSection ? 0 : (counts.withoutLogs || withoutLogsToday.length));
                 const animatedItemStyle: CSSProperties = {
                   animation: 'taskListRiseIn 320ms cubic-bezier(0.22, 1, 0.36, 1)',
                   transformOrigin: '50% 100%'
