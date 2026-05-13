@@ -63,6 +63,7 @@ export function CantonAiCoachPage() {
   const [lastLifeReply, setLastLifeReply] = useState<string>('');
   const keyboardAdjustRafRef = useRef<number | null>(null);
   const footerRef = useRef<HTMLElement | null>(null);
+  const createModeRef = useRef<CreateMode>('idle');
   const [lastReplyType, setLastReplyType] = useState<'life' | 'task' | null>(null);
   // Refs for scrolling to inline panels
   const statusPickerRef = useRef<HTMLDivElement | null>(null);
@@ -72,7 +73,7 @@ export function CantonAiCoachPage() {
   // ── Guided creation flow ──
   type CreateMode = 'idle' | 'main' | 'subtask';
   type QuickAction = 'search' | 'add' | 'focus' | 'my-task' | 'report-log' | null;
-  const [createMode, setCreateMode] = useState<CreateMode>('idle');
+  const [, setCreateMode] = useState<CreateMode>('idle');
   const [activeQuickAction, setActiveQuickAction] = useState<QuickAction>(null);
   const [guidedStep, setGuidedStep] = useState(0); // main: 0:title 1:desc | subtask: -1 parent 0:title 1:desc 2:assignee 3:due 4:confirm
   const [guidedDraft, setGuidedDraft] = useState<{
@@ -497,6 +498,7 @@ export function CantonAiCoachPage() {
   };
 
   const resetGuidedCreateFlow = () => {
+    createModeRef.current = 'idle';
     setCreateMode('idle');
     setGuidedStep(0);
     setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
@@ -793,13 +795,14 @@ export function CantonAiCoachPage() {
     }
     
     // ── Guided Creation Flow State Machine ──
-    if (createMode !== 'idle') {
-      setActiveQuickAction(createMode === 'subtask' || createMode === 'main' ? 'add' : null);
+    if (createModeRef.current !== 'idle') {
+      const activeCreateMode = createModeRef.current;
+      setActiveQuickAction(activeCreateMode === 'subtask' || activeCreateMode === 'main' ? 'add' : null);
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       const userVal = userText.trim();
 
-      if (createMode === 'main') {
+      if (activeCreateMode === 'main') {
         if (guidedStep === 0) {
           if (!userVal) { startTypingMessage('小人斗膽一問，唔該先俾個 Task 名稱～'); return; }
           setGuidedDraft(d => ({ ...d, title: userVal }));
@@ -825,6 +828,7 @@ export function CantonAiCoachPage() {
             const freshTasks = await fetchTasksForCantonAi();
             if (freshTasks) setTasks(freshTasks);
             const createdTask = freshTasks?.find(t => t.id === created.id) || null;
+            createModeRef.current = 'idle';
             setCreateMode('idle');
             setGuidedStep(0);
             setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
@@ -844,7 +848,7 @@ export function CantonAiCoachPage() {
         }
       }
 
-      if (createMode === 'subtask') {
+      if (activeCreateMode === 'subtask') {
         if (guidedStep === -1) {
           const mainTasks = tasks.filter(t => !t.parent_id);
           let parentId: string | null = null;
@@ -943,6 +947,7 @@ export function CantonAiCoachPage() {
         return;
       }
       setActiveQuickAction('add');
+      createModeRef.current = 'subtask';
       setCreateMode('subtask');
       setGuidedStep(-1); // -1 = pick parent task
       setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
@@ -954,6 +959,7 @@ export function CantonAiCoachPage() {
     // ── Main Task creation via AI (quick help, not guided) ──
     if (explicitCreateIntent) {
       setActiveQuickAction('add');
+      createModeRef.current = 'main';
       setCreateMode('main');
       setGuidedStep(0);
       setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
@@ -2269,6 +2275,7 @@ export function CantonAiCoachPage() {
 
                 if (preset === '加Task') {
                   setActiveQuickAction('add');
+                  createModeRef.current = 'main';
                   setCreateMode('main');
                   setGuidedStep(0);
                   setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
