@@ -36,6 +36,7 @@ export function CantonAiCoachPage() {
   const [typedMessageMeta, setTypedMessageMeta] = useState<{ _action?: string; _data?: any } | null>(null);
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const [revealedTaskListCounts, setRevealedTaskListCounts] = useState<Record<string, number>>({});
+  const [streamingTaskListMessageId, setStreamingTaskListMessageId] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ id?: string; role: 'ai' | 'user'; text: string; _action?: string; _data?: any }[]>([]);
   const [introText, setIntroText] = useState('');
   const [introTypingIndex, setIntroTypingIndex] = useState(0);
@@ -136,6 +137,9 @@ export function CantonAiCoachPage() {
           : message
       ));
       setIsTyping(false);
+      if (typedMessageMeta?._action === 'task_list' && typingMessageId) {
+        setStreamingTaskListMessageId(typingMessageId);
+      }
       setTypingTarget('');
       setTypingIndex(0);
       setTypedMessageMeta(null);
@@ -156,15 +160,30 @@ export function CantonAiCoachPage() {
   }, [isTyping, typingIndex, typingTarget, typedMessageMeta, typingMessageId]);
 
   useEffect(() => {
-    if (!isTyping || !typingMessageId || typedMessageMeta?._action !== 'task_list' || !typedMessageMeta?._data?.tasks?.length) return;
+    if (!streamingTaskListMessageId) return;
 
-    const lines = typingTarget.slice(0, typingIndex).split('\n').filter(line => line.trim());
-    const bodyLineCount = lines.filter(line => !/^\s*\d+\./.test(line.trim())).length;
-    const shouldReveal = Math.max(0, bodyLineCount - 1);
-    const nextCount = Math.min(typedMessageMeta._data.tasks.length, shouldReveal);
+    const message = messages.find(item => item.id === streamingTaskListMessageId);
+    const tasksToReveal = message?._data?.tasks;
+    if (!tasksToReveal?.length) {
+      setStreamingTaskListMessageId(null);
+      return;
+    }
 
-    setRevealedTaskListCounts(current => current[typingMessageId] === nextCount ? current : ({ ...current, [typingMessageId]: nextCount }));
-  }, [isTyping, typingIndex, typingTarget, typedMessageMeta, typingMessageId]);
+    const currentCount = revealedTaskListCounts[streamingTaskListMessageId] ?? 0;
+    if (currentCount >= tasksToReveal.length) {
+      setStreamingTaskListMessageId(null);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setRevealedTaskListCounts(current => ({
+        ...current,
+        [streamingTaskListMessageId]: Math.min(tasksToReveal.length, (current[streamingTaskListMessageId] ?? 0) + 1),
+      }));
+    }, currentCount === 0 ? 120 : 180);
+
+    return () => window.clearTimeout(timer);
+  }, [streamingTaskListMessageId, messages, revealedTaskListCounts]);
 
   useEffect(() => {
     if (!introText || introTypingIndex >= introText.length) return;
@@ -174,7 +193,7 @@ export function CantonAiCoachPage() {
     return () => clearTimeout(timer);
   }, [introText, introTypingIndex]);
 
-  // Smooth scroll to bottom during typing instead of jumping after finish
+  // Smooth scroll with special handling for task list streaming
   useEffect(() => {
     if (isTyping) {
       const rafId = requestAnimationFrame(() => {
@@ -182,9 +201,14 @@ export function CantonAiCoachPage() {
       });
       return () => cancelAnimationFrame(rafId);
     }
-    // After typing finishes, gentle scroll for new messages
+    if (streamingTaskListMessageId) {
+      const timer = window.setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 60);
+      return () => window.clearTimeout(timer);
+    }
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
-  }, [messages, isReplying, typingIndex, isTyping]);
+  }, [messages, isReplying, typingIndex, isTyping, streamingTaskListMessageId]);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -1863,12 +1887,14 @@ export function CantonAiCoachPage() {
 
               {message._action === 'task_list' && message._data?.tasks && (() => {
                 const messageKey = `${index}-${message.text}`;
-                const manualVisibleCount = taskListVisibleCounts[messageKey] ?? 10;
-                const revealedDuringTyping = message.id ? (revealedTaskListCounts[message.id] ?? 0) : 0;
                 const isThisTypingMessage = isTyping && message.id === typingMessageId;
-                const visibleCount = isThisTypingMessage ? Math.min(message._data.tasks.length, Math.max(0, revealedDuringTyping)) : manualVisibleCount;
+                if (isThisTypingMessage) return null;
+                const isStreamingThisList = !!message.id && message.id === streamingTaskListMessageId;
+                const manualVisibleCount = taskListVisibleCounts[messageKey] ?? 10;
+                const streamedVisibleCount = message.id ? (revealedTaskListCounts[message.id] ?? 0) : 0;
+                const visibleCount = isStreamingThisList ? streamedVisibleCount : manualVisibleCount;
                 const visibleTasks = message._data.tasks.slice(0, visibleCount);
-                const hasMore = !isThisTypingMessage && message._data.tasks.length > visibleCount;
+                const hasMore = !isStreamingThisList && message._data.tasks.length > visibleCount;
                 const animatedItemStyle: CSSProperties = {
                   textAlign: 'left',
                   background: 'transparent',
@@ -1892,7 +1918,7 @@ export function CantonAiCoachPage() {
                         } else {
                           startTypingMessage('呢個 task 資料剛剛 refresh 咗，請再撳一次 task list。');
                         }
-                      }} style={isThisTypingMessage ? animatedItemStyle : { textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
+                      }} style={isStreamingThisList ? animatedItemStyle : { textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
                         <span style={{ textDecoration: 'underline', fontSize: 19, fontWeight: 400 }}>{task.title}</span>
                         <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
                           {task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}
