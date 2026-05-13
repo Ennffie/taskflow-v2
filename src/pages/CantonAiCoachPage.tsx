@@ -861,14 +861,20 @@ export function CantonAiCoachPage() {
     if (pendingTaskAction) {
       const pendingTask = tasks.find(t => t.id === pendingTaskAction.taskId);
       if (pendingTask) {
-        setMessages(current => [...current, { role: 'user', text: userText }]);
+        const isReportEditing = !!reportEditorState && reportEditorState.taskId === pendingTask.id && reportEditorState.field === pendingTaskAction.kind;
+        if (!isReportEditing) {
+          setMessages(current => [...current, { role: 'user', text: userText }]);
+        }
         setInput('');
         setIsReplying(true);
         try {
           const actionText = cleanPendingActionText(userText, pendingTaskAction.title, pendingTaskAction.kind);
           if (!actionText) {
-            // No actual input provided, just the prefix
             setIsReplying(false);
+            if (isReportEditing) {
+              setInput(reportEditorState?.text || '');
+              return;
+            }
             setPendingTaskAction(null);
             startTypingMessage(`小人斗膽稟報，冇收到新資料，還請恩公輸入內容後再 send～`, {
               _action: 'task_actions',
@@ -883,7 +889,7 @@ export function CantonAiCoachPage() {
             await updateTask(pendingTask.id, { next_day_focus: actionText, is_focus: true });
             await createTaskEventLog(pendingTask.id, `[Next Day Focus]\n${actionText}`);
           } else if (pendingTaskAction.kind === 'blocker') {
-            const merged = [pendingTask.description, `Blocker: ${actionText}`].filter(Boolean).join('\n\n');
+            const merged = [pendingTask.description?.replace(/\n\n?Blocker:[\s\S]*$/i, ''), `Blocker: ${actionText}`].filter(Boolean).join('\n\n');
             await updateTask(pendingTask.id, { description: merged });
             await createTaskEventLog(pendingTask.id, `[Blocker]\n${actionText}`);
           } else if (pendingTaskAction.kind === 'progress_update') {
@@ -892,19 +898,26 @@ export function CantonAiCoachPage() {
           const freshTasks = await loadTasks();
           const actionKind = pendingTaskAction.kind;
           const refreshedTask = freshTasks?.find(t => t.id === pendingTask.id) || tasks.find(t => t.id === pendingTask.id) || pendingTask;
-          setPendingTaskAction(null);
-          setReportEditorState(null);
-          const actionLabel = actionKind === 'today' ? 'What I have done' : actionKind === 'tomorrow' ? 'Next Day Focus' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update';
-          startTypingMessage(`✅ 小人稟報恩公，已更新「${pendingTask.title}」\n\n• ${actionLabel}：${actionText}\n\n仲想改其他嘢嗎？`, {
-            _action: 'task_actions',
-            _data: { taskId: pendingTask.id, title: pendingTask.title }
-          });
-          if (actionKind === 'today' || actionKind === 'tomorrow' || actionKind === 'blocker') {
+
+          if (isReportEditing && (actionKind === 'today' || actionKind === 'tomorrow' || actionKind === 'blocker')) {
             setReportEditorState({ taskId: refreshedTask.id, title: refreshedTask.title, field: actionKind, text: actionText });
             setInput(actionText);
+            setPendingTaskAction({ taskId: refreshedTask.id, title: refreshedTask.title, kind: actionKind });
+          } else {
+            setPendingTaskAction(null);
+            setReportEditorState(null);
+            const actionLabel = actionKind === 'today' ? 'What I have done' : actionKind === 'tomorrow' ? 'Next Day Focus' : actionKind === 'blocker' ? 'Blocker' : 'Progress Update';
+            startTypingMessage(`✅ 小人稟報恩公，已更新「${pendingTask.title}」\n\n• ${actionLabel}：${actionText}\n\n仲想改其他嘢嗎？`, {
+              _action: 'task_actions',
+              _data: { taskId: pendingTask.id, title: pendingTask.title }
+            });
           }
         } catch (e: any) {
-          startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+          if (isReportEditing) {
+            startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+          } else {
+            startTypingMessage(`❌ 更新失敗：${e?.message || 'Unknown error'}`);
+          }
         } finally {
           setIsReplying(false);
         }
