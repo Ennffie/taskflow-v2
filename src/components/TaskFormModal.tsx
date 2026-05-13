@@ -355,22 +355,28 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ModalFrame({ title, onClose, isFinished, isFocus, onToggleFinish, onToggleFocus, focusSaving = false, children }: { title: string; onClose: () => void; isFinished?: boolean; isFocus?: boolean; onToggleFinish?: () => void; onToggleFocus?: () => void; focusSaving?: boolean; children: React.ReactNode }) {
+  const isMobileViewport = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: '24px', zIndex: 300 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '85vh', overflow: 'auto', background: '#fff', borderRadius: '28px', padding: '28px', boxShadow: '0 28px 80px rgba(15,23,42,0.22)', zIndex: 301, marginBottom: '80px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: '#111827' }}>{title}</div>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', padding: isMobileViewport ? '12px' : '24px', zIndex: 300 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '85vh', overflow: 'auto', background: '#fff', borderRadius: '28px', padding: isMobileViewport ? '18px' : '28px', boxShadow: '0 28px 80px rgba(15,23,42,0.22)', zIndex: 301, marginBottom: isMobileViewport ? '12px' : '80px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: isMobileViewport ? '18px' : '24px', lineHeight: 1.15, fontWeight: 800, color: '#111827', wordBreak: 'keep-all', overflowWrap: 'break-word' }}>{title}</div>
+            </div>
+            <button onClick={onClose} style={{ border: 'none', background: '#f3f4f6', width: '42px', height: '42px', borderRadius: '14px', cursor: 'pointer', flexShrink: 0 }}><X size={18} /></button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {/* Finish Toggle */}
             <button
               onClick={(e) => { e.stopPropagation(); onToggleFinish?.(); }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '8px',
-                padding: '8px 14px',
+                padding: isMobileViewport ? '8px 12px' : '8px 14px',
+                minHeight: '42px',
                 borderRadius: '20px',
                 border: isFinished ? '2px solid #059669' : '2px solid #e5e7eb',
                 background: isFinished ? '#d1fae5' : '#fff',
@@ -391,8 +397,10 @@ function ModalFrame({ title, onClose, isFinished, isFocus, onToggleFinish, onTog
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '8px',
-                padding: '8px 14px',
+                padding: isMobileViewport ? '8px 12px' : '8px 14px',
+                minHeight: '42px',
                 borderRadius: '20px',
                 border: isFocus ? '2px solid #7c3aed' : '2px solid #e5e7eb',
                 background: isFocus ? '#ede9fe' : '#fff',
@@ -407,7 +415,6 @@ function ModalFrame({ title, onClose, isFinished, isFocus, onToggleFinish, onTog
               <span style={{ fontSize: '16px' }}>🎯</span>
               {focusSaving ? 'Saving' : 'Focus'}
             </button>
-            <button onClick={onClose} style={{ border: 'none', background: '#f3f4f6', width: '42px', height: '42px', borderRadius: '14px', cursor: 'pointer' }}><X size={18} /></button>
           </div>
         </div>
         {children}
