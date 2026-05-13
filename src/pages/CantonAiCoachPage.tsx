@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createTask, fetchProfiles, fetchTasksForCantonAi, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog } from '../lib/api';
+import { createTask, fetchProfiles, fetchTasksForCantonAi, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog, fetchMyLogs } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { VersionBadge } from '../components/VersionBadge';
 import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
 import { tryBuildDeterministicSummary } from '../lib/cantonSummary';
 import { buildDecisionContext } from '../lib/cantonDecisionContext';
 import { getStatusMeta } from '../types';
-import type { Profile, TaskItem, TaskStatus } from '../types';
+import type { LogEntry, Profile, TaskItem, TaskStatus } from '../types';
 import { SubtaskInlineEdit } from '../components/SubtaskInlineEdit';
 import { TaskFormModal } from '../components/TaskFormModal';
 
@@ -51,6 +51,8 @@ export function CantonAiCoachPage() {
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
   const [progressSlider, setProgressSlider] = useState<{ taskId: string; title: string; value: number } | null>(null);
   const [editingTaskFromChat, setEditingTaskFromChat] = useState<TaskItem | null>(null);
+  const [myLogs, setMyLogs] = useState<LogEntry[]>([]);
+  const [collapsedNoReportSection, setCollapsedNoReportSection] = useState(true);
   // Track which inline panel is open per task (accordion behavior)
   const [openPanel, setOpenPanel] = useState<{ taskId: string; panel: 'status' | 'more' | 'progress' | null }>({ taskId: '', panel: null });
   // Track expanded subtask (only one at a time)
@@ -69,7 +71,7 @@ export function CantonAiCoachPage() {
   const morePanelRef = useRef<HTMLDivElement | null>(null);
   // ── Guided creation flow ──
   type CreateMode = 'idle' | 'main' | 'subtask';
-  type QuickAction = 'search' | 'add' | 'focus' | 'my-task' | null;
+  type QuickAction = 'search' | 'add' | 'focus' | 'my-task' | 'report-log' | null;
   const [createMode, setCreateMode] = useState<CreateMode>('idle');
   const [activeQuickAction, setActiveQuickAction] = useState<QuickAction>(null);
   const [guidedStep, setGuidedStep] = useState(0); // main: 0:title 1:desc | subtask: -1 parent 0:title 1:desc 2:assignee 3:due 4:confirm
@@ -111,6 +113,7 @@ export function CantonAiCoachPage() {
 
   useEffect(() => {
     void loadTasks();
+    fetchMyLogs().then(setMyLogs).catch(console.error);
     fetchProfiles().then((fetchedProfiles) => {
       console.log('[CantonAI] Profiles loaded:', fetchedProfiles.map(p => ({name: p.name, id: p.id})));
       console.log('[CantonAI] Total profiles:', fetchedProfiles.length);
@@ -268,6 +271,23 @@ export function CantonAiCoachPage() {
       }, 100);
     }
   }, [openPanel]);
+
+  const summarizeReportText = (task: TaskItem, logs: LogEntry[]) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayLogs = logs.filter(log => log.task_id === task.id && log.date === today);
+    const todayDone = task.today_update?.trim() || todayLogs.find(log => /what i have done|today/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
+    const tomorrow = task.next_day_focus?.trim() || todayLogs.find(log => /next day focus|tomorrow/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
+    const blockerLog = todayLogs.find(log => /blocker/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
+    const blockerFromDescription = task.description?.match(/Blocker:\s*([\s\S]*)/i)?.[1]?.trim() || '';
+    const blocker = blockerLog || blockerFromDescription;
+
+    const sentences: string[] = [];
+    if (todayDone) sentences.push(`Completed ${todayDone.replace(/[。！!]+$/,'')}.`);
+    if (tomorrow) sentences.push(`Next, ${tomorrow.replace(/^[A-Z]/, (m) => m.toLowerCase()).replace(/[。！!]+$/,'')}.`);
+    if (blocker) sentences.push(`Blocked by ${blocker.replace(/^[A-Z]/, (m) => m.toLowerCase()).replace(/[。！!]+$/,'')}.`);
+
+    return sentences.slice(0, 2).join(' ');
+  };
 
   const getContext = (searchResult?: any) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -485,7 +505,9 @@ export function CantonAiCoachPage() {
           ? 'focus'
           : preset === 'My Task'
             ? 'my-task'
-            : null;
+            : preset === 'Report Log'
+              ? 'report-log'
+              : null;
     const isActive = key !== null && activeQuickAction === key;
     if (preset === '退下') {
       return {
@@ -1359,6 +1381,41 @@ export function CantonAiCoachPage() {
         return;
       }
 
+      if (/report\s*log|reportlog|report/.test(lower)) {
+        setActiveQuickAction('report-log');
+        const today = new Date().toISOString().slice(0, 10);
+        const myMainTasks = tasks.filter(t => {
+          const isAssignee = t.assignees?.some(a => a.name === currentUserName);
+          return !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && isAssignee;
+        });
+        const withLogsToday = myMainTasks
+          .filter(task => myLogs.some(log => log.task_id === task.id && log.date === today) || task.today_update?.trim() || task.next_day_focus?.trim() || /blocker:/i.test(task.description || ''))
+          .map(task => ({
+            id: task.id,
+            title: task.title,
+            due_date: task.due_date,
+            status: task.status,
+            assignees: task.assignees.map(a => a.name),
+            summary: summarizeReportText(task, myLogs),
+          }));
+        const withoutLogsToday = myMainTasks
+          .filter(task => !withLogsToday.some(item => item.id === task.id))
+          .map(task => ({
+            id: task.id,
+            title: task.title,
+            due_date: task.due_date,
+            status: task.status,
+            assignees: task.assignees.map(a => a.name),
+            summary: '',
+          }));
+        startTypingMessage(`小人稟報恩公，今日可 review 嘅 report task 有 ${withLogsToday.length} 個。下面已經幫你分好有 log 同未有 log 嘅 task。`, {
+          _action: 'report_log_list',
+          _data: { withLogsToday, withoutLogsToday }
+        });
+        setIsReplying(false);
+        return;
+      }
+
       if (/my\s*task|task\s*list|我.?task/.test(lower)) {
         setActiveQuickAction('my-task');
         console.log('[MyTaskList] currentUserName:', currentUserName, 'currentUserId:', currentUserId);
@@ -1987,6 +2044,60 @@ export function CantonAiCoachPage() {
                 </div>
               )}
 
+              {message._action === 'report_log_list' && message._data && (() => {
+                const withLogsToday = message._data.withLogsToday || [];
+                const withoutLogsToday = message._data.withoutLogsToday || [];
+                return (
+                  <div style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%' }}>
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0f766e' }}>Ready for report</div>
+                      {withLogsToday.length === 0 ? (
+                        <div style={{ padding: '12px 14px', borderRadius: 16, background: '#f8fafc', color: '#64748b', fontSize: 14 }}>今日暫時未有 report log。</div>
+                      ) : withLogsToday.map((task: any) => (
+                        <div key={task.id} style={{ padding: '14px 14px 12px', borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'grid', gap: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>{task.title}</div>
+                            <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</div>
+                          </div>
+                          <div style={{ fontSize: 14, lineHeight: 1.55, color: '#334155' }}>{task.summary || 'No report summary yet.'}</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                            <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'today' }); setInput(`${task.title} 今日做咗：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>今日做咗乜</button>
+                            <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'tomorrow' }); setInput(`${task.title} 明天focus：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>明日會做乜</button>
+                            <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'blocker' }); setInput(`${task.title} blocker：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>Blocker</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      <div style={{ height: 1, background: '#e2e8f0', margin: '2px 0' }} />
+                      <button onClick={() => setCollapsedNoReportSection(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', background: 'transparent', padding: 0, color: '#475569', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+                        <span>No report yet · {withoutLogsToday.length} tasks</span>
+                        <span>{collapsedNoReportSection ? '＋' : '－'}</span>
+                      </button>
+                      {!collapsedNoReportSection && (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          {withoutLogsToday.map((task: any) => (
+                            <div key={task.id} style={{ padding: '14px 14px 12px', borderRadius: 18, background: '#ffffff', border: '1px solid #e2e8f0', display: 'grid', gap: 10 }}>
+                              <div>
+                                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>{task.title}</div>
+                                <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</div>
+                              </div>
+                              <div style={{ color: '#94a3b8', fontSize: 13 }}>No report yet today.</div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'today' }); setInput(`${task.title} 今日做咗：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>今日做咗乜</button>
+                                <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'tomorrow' }); setInput(`${task.title} 明天focus：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>明日會做乜</button>
+                                <button onClick={() => { setPendingTaskAction({ taskId: task.id, title: task.title, kind: 'blocker' }); setInput(`${task.title} blocker：\n`); scrollToInput(); }} style={actionButtonStyle('panel')}>Blocker</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {message._action === 'task_list' && message._data?.tasks && (() => {
                 const messageKey = `${index}-${message.text}`;
                 const isThisTypingMessage = isTyping && message.id === typingMessageId;
@@ -2116,7 +2227,7 @@ export function CantonAiCoachPage() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {['退下', '搵 Task', '加Task', 'Focus', 'My Task'].map(preset => (
+            {['退下', '搵 Task', '加Task', 'Focus', 'My Task', 'Report Log'].map(preset => (
               <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
                 setPendingTaskAction(null);
 
@@ -2161,6 +2272,8 @@ export function CantonAiCoachPage() {
                   setActiveQuickAction('focus');
                 } else if (preset === 'My Task') {
                   setActiveQuickAction('my-task');
+                } else if (preset === 'Report Log') {
+                  setActiveQuickAction('report-log');
                 } else {
                   setActiveQuickAction(null);
                 }
