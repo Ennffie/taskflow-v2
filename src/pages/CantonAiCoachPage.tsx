@@ -496,6 +496,12 @@ export function CantonAiCoachPage() {
     setDueDatePicker(null);
   };
 
+  const resetGuidedCreateFlow = () => {
+    setCreateMode('idle');
+    setGuidedStep(0);
+    setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
+  };
+
   const getQuickActionButtonStyle = (preset: string): CSSProperties => {
     const key = preset === '搵 Task'
       ? 'search'
@@ -2230,6 +2236,10 @@ export function CantonAiCoachPage() {
             {['退下', '搵 Task', '加Task', 'Focus', 'My Task', 'Report Log'].map(preset => (
               <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
                 setPendingTaskAction(null);
+
+                if (preset !== '加Task') {
+                  resetGuidedCreateFlow();
+                }
 
                 if (preset === '退下') {
                   setActiveQuickAction(null);
