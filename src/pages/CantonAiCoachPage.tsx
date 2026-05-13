@@ -70,6 +70,7 @@ export function CantonAiCoachPage() {
   const assigneePickerRef = useRef<HTMLDivElement | null>(null);
   const subtaskComposerRef = useRef<HTMLDivElement | null>(null);
   const morePanelRef = useRef<HTMLDivElement | null>(null);
+  const reportAnchorRef = useRef<HTMLDivElement | null>(null);
   // ── Guided creation flow ──
   type CreateMode = 'idle' | 'main' | 'subtask';
   type QuickAction = 'search' | 'add' | 'focus' | 'my-task' | 'report-log' | null;
@@ -201,11 +202,19 @@ export function CantonAiCoachPage() {
     return () => clearTimeout(timer);
   }, [introText, introTypingIndex]);
 
-  // Smooth scroll with special handling for task list streaming
+  // Smooth scroll with special handling for task list/report streaming
   useEffect(() => {
+    const latestMessage = messages[messages.length - 1];
+    const isLatestReportLog = latestMessage?._action === 'report_log_list';
+
     if (isTyping) {
       const rafId = requestAnimationFrame(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+        if (isLatestReportLog && reportAnchorRef.current) {
+          const top = reportAnchorRef.current.getBoundingClientRect().top + window.scrollY - 108;
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        } else {
+          chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+        }
       });
       return () => cancelAnimationFrame(rafId);
     }
@@ -213,6 +222,13 @@ export function CantonAiCoachPage() {
       const timer = window.setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }, 60);
+      return () => window.clearTimeout(timer);
+    }
+    if (isLatestReportLog && reportAnchorRef.current) {
+      const timer = window.setTimeout(() => {
+        const top = reportAnchorRef.current!.getBoundingClientRect().top + window.scrollY - 108;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      }, 70);
       return () => window.clearTimeout(timer);
     }
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 40);
@@ -2064,7 +2080,7 @@ export function CantonAiCoachPage() {
                 const withLogsToday = message._data.withLogsToday || [];
                 const withoutLogsToday = message._data.withoutLogsToday || [];
                 return (
-                  <div style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%' }}>
+                  <div ref={reportAnchorRef} style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%', animation: 'reportRiseIn 420ms cubic-bezier(0.42, 0, 0.58, 1)' }}>
                     <div style={{ display: 'grid', gap: 10 }}>
                       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0f766e' }}>Ready for report</div>
                       {withLogsToday.length === 0 ? (
@@ -2168,7 +2184,8 @@ export function CantonAiCoachPage() {
             </div>
           ))}
           <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-          @keyframes taskListRiseIn { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: translateY(0); } }`}</style>
+          @keyframes taskListRiseIn { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: translateY(0); } }
+          @keyframes reportRiseIn { 0% { opacity: 0; transform: translateY(24px); } 100% { opacity: 1; transform: translateY(0); } }`}</style>
           <div ref={chatEndRef} />
           </div>
         </div>
