@@ -67,7 +67,9 @@ export function CantonAiCoachPage() {
   const morePanelRef = useRef<HTMLDivElement | null>(null);
   // ── Guided creation flow ──
   type CreateMode = 'idle' | 'main' | 'subtask';
+  type QuickAction = 'search' | 'add' | 'focus' | 'my-task' | null;
   const [createMode, setCreateMode] = useState<CreateMode>('idle');
+  const [activeQuickAction, setActiveQuickAction] = useState<QuickAction>(null);
   const [guidedStep, setGuidedStep] = useState(0); // 0:title 1:desc 2:assignee 3:due 4:confirm
   const [guidedDraft, setGuidedDraft] = useState<{
     title: string; description: string; assignee: string; dueDate: string; dueLabel: string; parentTaskId: string | null;
@@ -431,6 +433,7 @@ export function CantonAiCoachPage() {
   };
 
   const showTaskActions = (task: Pick<TaskItem, 'id' | 'title' | 'status' | 'due_date' | 'progress_percent' | 'assignees' | 'subtasks'>) => {
+    setActiveQuickAction(null);
     const statusMeta = getStatusMeta(task.status);
     // Subtasks are now shown as inline editable section, not text list
     startTypingMessage(
@@ -469,6 +472,42 @@ export function CantonAiCoachPage() {
     setPendingTaskAction(null);
     resetInlineTaskPanels();
     setDueDatePicker(null);
+  };
+
+  const getQuickActionButtonStyle = (preset: string): CSSProperties => {
+    const key = preset === '搵 Task'
+      ? 'search'
+      : preset === '加Task'
+        ? 'add'
+        : preset === 'Focus'
+          ? 'focus'
+          : preset === 'My Task'
+            ? 'my-task'
+            : null;
+    const isActive = key !== null && activeQuickAction === key;
+    if (preset === '退下') {
+      return {
+        flexShrink: 0,
+        border: '1px solid #fecdd3',
+        background: '#fff1f2',
+        color: '#be123c',
+        borderRadius: 999,
+        padding: '8px 11px',
+        fontSize: 13,
+        fontWeight: 850,
+      };
+    }
+    return {
+      flexShrink: 0,
+      border: `1px solid ${isActive ? '#7dd3fc' : '#dbeafe'}`,
+      background: isActive ? '#e0f2fe' : '#fff',
+      color: isActive ? '#075985' : '#0369a1',
+      borderRadius: 999,
+      padding: '8px 11px',
+      fontSize: 13,
+      fontWeight: 850,
+      boxShadow: isActive ? '0 0 0 2px rgba(14,165,233,0.12) inset' : 'none'
+    };
   };
 
   const ensureElementVisibleAboveKeyboard = (el: Element | null, delay = 80) => {
@@ -725,6 +764,7 @@ export function CantonAiCoachPage() {
     
     // ── Guided Creation Flow State Machine ──
     if (createMode !== 'idle') {
+      setActiveQuickAction(createMode === 'subtask' || createMode === 'main' ? 'add' : null);
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       const userVal = userText.trim();
@@ -822,9 +862,11 @@ export function CantonAiCoachPage() {
       setInput('');
       const myMainTasks = tasks.filter(t => !t.parent_id).slice(0, 8);
       if (myMainTasks.length === 0) {
+        setActiveQuickAction(null);
         startTypingMessage(`小人謹遵台命，恩公而家冇 Main Task，不如先加個 Main Task？恩公可以打「我要加Task」開始。`);
         return;
       }
+      setActiveQuickAction('add');
       setCreateMode('subtask');
       setGuidedStep(-1); // -1 = pick parent task
       setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
@@ -835,6 +877,7 @@ export function CantonAiCoachPage() {
 
     // ── Main Task creation via AI (quick help, not guided) ──
     if (explicitCreateIntent) {
+      setActiveQuickAction('add');
       setInput('');
       startTypingMessage('加 Task 快速格式：\n\n```\nCRCE-1234 | Description | 8 May | Claire | WIP\n```\n\n或分開每行打：\n```\nCRCE-1234\nChange design\n8 May\nClaire\n```\n\n（| 分隔，Status 可留空 = Todo）');
       return;
@@ -1229,6 +1272,7 @@ export function CantonAiCoachPage() {
       }
 
       if (/(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(lower)) {
+        setActiveQuickAction('focus');
         const focusTasks = tasks.filter((t) => !t.parent_id && t.is_focus === true).map((t) => ({
           id: t.id,
           title: t.title,
@@ -1265,6 +1309,7 @@ export function CantonAiCoachPage() {
       }
 
       if (/my\s*task|task\s*list|我.?task/.test(lower)) {
+        setActiveQuickAction('my-task');
         console.log('[MyTaskList] currentUserName:', currentUserName, 'currentUserId:', currentUserId);
         const myTasks = tasks.filter(t => {
           const isAssignee = t.assignees?.some(a => a.name === currentUserName);
@@ -1290,6 +1335,7 @@ export function CantonAiCoachPage() {
       }
 
       if (/(今日focus|focus task|focus tasks|今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)/.test(lower)) {
+        setActiveQuickAction('focus');
         const focusTasks = tasks
           .filter((t) => !t.parent_id && t.is_focus === true)
           .sort((a, b) => (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99'));
@@ -1319,6 +1365,7 @@ export function CantonAiCoachPage() {
 
       const deterministicReply = tryBuildDeterministicSummary(userText, tasks, currentUserName, currentUserId);
       if (deterministicReply) {
+        setActiveQuickAction(null);
         startTypingMessage(deterministicReply);
         setIsReplying(false);
         return;
@@ -1370,6 +1417,7 @@ export function CantonAiCoachPage() {
           idx = (idx + 1) % lifeReplies.length;
         }
         const reply = lifeReplies[idx];
+        setActiveQuickAction(null);
         setLastLifeReply(reply);
         setLastReplyType('life');
         startTypingMessage(reply);
@@ -1391,6 +1439,7 @@ export function CantonAiCoachPage() {
           idx = (idx + 1) % followUpReplies.length;
         }
         const reply = followUpReplies[idx];
+        setActiveQuickAction(null);
         setLastLifeReply(reply);
         setLastReplyType('life');
         startTypingMessage(reply);
@@ -1399,6 +1448,7 @@ export function CantonAiCoachPage() {
       }
 
       try {
+        setActiveQuickAction(null);
         const reply = await generateLocalChatReply(
           bridgeUrl,
           FIXED_LOCAL_MODEL,
@@ -1999,26 +2049,23 @@ export function CantonAiCoachPage() {
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
             {['退下', '搵 Task', '加Task', 'Focus', 'My Task'].map(preset => (
               <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
-                // Clear any pending task action so preset buttons always trigger their intended behavior
                 setPendingTaskAction(null);
 
                 if (preset === '退下') {
+                  setActiveQuickAction(null);
                   navigate('/canton-mode');
                   return;
                 }
 
                 if (preset === '搵 Task') {
-                  // Try to focus immediately within the user tap event so iPhone keyboard opens
+                  setActiveQuickAction('search');
                   immediateFocusInput();
-                  // Check if already in search mode (last message was the search prompt)
                   const lastMsg = messages[messages.length - 1];
-                  if (lastMsg?.role === 'ai' && lastMsg.text.includes('想搵邊個 task')) {
-                    // Already in search mode, just focus input
+                  if (lastMsg?.role === 'ai' && lastMsg.text.includes('想搵邊個Task')) {
                     immediateFocusInput();
                     scrollToInput();
                     return;
                   }
-                  // Add user message first, then AI response
                   setIntroText('');
                   setMessages(current => [...current, { role: 'user', text: '搵Task' }]);
                   startTypingMessage('小人遵命，斗膽一問，大人想搵邊個Task呢？');
@@ -2031,15 +2078,24 @@ export function CantonAiCoachPage() {
                 }
 
                 if (preset === '加Task') {
-                  // Cancel search mode if active
+                  setActiveQuickAction('add');
                   setIntroText('');
                   setMessages(current => [...current, { role: 'user', text: preset }]);
                   startTypingMessage('照跟打就得：\n\n例如：\nCRCE-1234\nChange design\n8 May\nme\nWIP');
-                } else {
-                  setIntroText('');
-                  void send(preset);
+                  return;
                 }
-              }} style={{ flexShrink: 0, border: '1px solid #dbeafe', background: preset === '加Task' ? '#0f172a' : (preset === '退下' ? '#fff1f2' : '#fff'), color: preset === '加Task' ? '#fff' : (preset === '退下' ? '#be123c' : '#0369a1'), borderRadius: 999, padding: '8px 11px', fontSize: 13, fontWeight: 850 }}>
+
+                if (preset === 'Focus') {
+                  setActiveQuickAction('focus');
+                } else if (preset === 'My Task') {
+                  setActiveQuickAction('my-task');
+                } else {
+                  setActiveQuickAction(null);
+                }
+
+                setIntroText('');
+                void send(preset);
+              }} style={getQuickActionButtonStyle(preset)}>
                 {preset}
               </button>
             ))}
