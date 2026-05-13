@@ -362,7 +362,7 @@ function ModalFrame({ title, onClose, isFinished, isFocus, onToggleFinish, onTog
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: isMobileViewport ? '18px' : '24px', lineHeight: 1.15, fontWeight: 800, color: '#111827', wordBreak: 'keep-all', overflowWrap: 'break-word' }}>{title}</div>
+              <div style={{ fontSize: isMobileViewport ? '18px' : '24px', lineHeight: 1.15, fontWeight: 800, color: '#0D8A9C', wordBreak: 'keep-all', overflowWrap: 'break-word' }}>{title}</div>
             </div>
             <button onClick={onClose} style={{ border: 'none', background: '#f3f4f6', width: '42px', height: '42px', borderRadius: '14px', cursor: 'pointer', flexShrink: 0 }}><X size={18} /></button>
           </div>
