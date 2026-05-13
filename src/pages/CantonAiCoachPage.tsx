@@ -11,6 +11,7 @@ import { buildDecisionContext } from '../lib/cantonDecisionContext';
 import { getStatusMeta } from '../types';
 import type { Profile, TaskItem, TaskStatus } from '../types';
 import { SubtaskInlineEdit } from '../components/SubtaskInlineEdit';
+import { TaskFormModal } from '../components/TaskFormModal';
 
 // Fallback bridge URL if Supabase config is not available
 const FALLBACK_BRIDGE_URL = 'https://ai.ans67.xyz';
@@ -49,6 +50,7 @@ export function CantonAiCoachPage() {
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string>>({});
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(null);
   const [progressSlider, setProgressSlider] = useState<{ taskId: string; title: string; value: number } | null>(null);
+  const [editingTaskFromChat, setEditingTaskFromChat] = useState<TaskItem | null>(null);
   // Track which inline panel is open per task (accordion behavior)
   const [openPanel, setOpenPanel] = useState<{ taskId: string; panel: 'status' | 'more' | 'progress' | null }>({ taskId: '', panel: null });
   // Track expanded subtask (only one at a time)
@@ -70,7 +72,7 @@ export function CantonAiCoachPage() {
   type QuickAction = 'search' | 'add' | 'focus' | 'my-task' | null;
   const [createMode, setCreateMode] = useState<CreateMode>('idle');
   const [activeQuickAction, setActiveQuickAction] = useState<QuickAction>(null);
-  const [guidedStep, setGuidedStep] = useState(0); // 0:title 1:desc 2:assignee 3:due 4:confirm
+  const [guidedStep, setGuidedStep] = useState(0); // main: 0:title 1:desc | subtask: -1 parent 0:title 1:desc 2:assignee 3:due 4:confirm
   const [guidedDraft, setGuidedDraft] = useState<{
     title: string; description: string; assignee: string; dueDate: string; dueLabel: string; parentTaskId: string | null;
   }>({ title: '', description: '', assignee: '', dueDate: '', dueLabel: '', parentTaskId: null });
@@ -768,6 +770,52 @@ export function CantonAiCoachPage() {
       setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       const userVal = userText.trim();
+
+      if (createMode === 'main') {
+        if (guidedStep === 0) {
+          if (!userVal) { startTypingMessage('小人斗膽一問，唔該先俾個 Task 名稱～'); return; }
+          setGuidedDraft(d => ({ ...d, title: userVal }));
+          setGuidedStep(1);
+          startTypingMessage(`小人收到！「${userVal}」\n\nDescription 寫啲咩？（選填，直接 Enter 可留空）`);
+          return;
+        }
+
+        if (guidedStep === 1) {
+          const draft = { ...guidedDraft, title: guidedDraft.title || userVal, description: userVal };
+          setIsReplying(true);
+          try {
+            const created = await createTask({
+              title: draft.title,
+              description: draft.description,
+              status: 'todo',
+              priority: 'medium',
+              due_date: undefined,
+              assignee_ids: currentUserId ? [currentUserId] : [],
+              tags: [],
+            });
+            await loadTasks();
+            const freshTasks = await fetchTasksForCantonAi();
+            if (freshTasks) setTasks(freshTasks);
+            const createdTask = freshTasks?.find(t => t.id === created.id) || null;
+            setCreateMode('idle');
+            setGuidedStep(0);
+            setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
+            setActiveQuickAction(null);
+            if (createdTask) {
+              showTaskActions(createdTask);
+              setEditingTaskFromChat(createdTask);
+            } else {
+              startTypingMessage(`✅ 已建立「${draft.title}」`);
+            }
+          } catch (e: any) {
+            startTypingMessage(`❌ 小人該死，建立失敗：${e?.message || 'Unknown error'}`);
+          } finally {
+            setIsReplying(false);
+          }
+          return;
+        }
+      }
+
       if (createMode === 'subtask') {
         if (guidedStep === -1) {
           const mainTasks = tasks.filter(t => !t.parent_id);
@@ -878,8 +926,11 @@ export function CantonAiCoachPage() {
     // ── Main Task creation via AI (quick help, not guided) ──
     if (explicitCreateIntent) {
       setActiveQuickAction('add');
+      setCreateMode('main');
+      setGuidedStep(0);
+      setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
       setInput('');
-      startTypingMessage('加 Task 快速格式：\n\n```\nCRCE-1234 | Description | 8 May | Claire | WIP\n```\n\n或分開每行打：\n```\nCRCE-1234\nChange design\n8 May\nClaire\n```\n\n（| 分隔，Status 可留空 = Todo）');
+      startTypingMessage('好呀～先俾我 task name。');
       return;
     }
 
@@ -1996,6 +2047,23 @@ export function CantonAiCoachPage() {
         </div>
       </main>
 
+      {editingTaskFromChat && (
+        <TaskFormModal
+          mode="edit"
+          variant="canton"
+          initialTask={editingTaskFromChat}
+          onClose={() => setEditingTaskFromChat(null)}
+          onCreated={async () => {
+            const fresh = await loadTasks();
+            if (fresh) {
+              const updated = fresh.find(task => task.id === editingTaskFromChat.id) || null;
+              setEditingTaskFromChat(updated);
+              if (updated) updateTaskActionBubble(updated);
+            }
+          }}
+        />
+      )}
+
       {dueDatePicker && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setDueDatePicker(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', minHeight: '46vh', background: 'linear-gradient(180deg, #fffafc 0%, #ffffff 18%)', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: '10px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -12px 40px rgba(15,23,42,0.2)', borderTop: '1px solid rgba(251,207,232,0.8)' }}>
@@ -2080,9 +2148,12 @@ export function CantonAiCoachPage() {
 
                 if (preset === '加Task') {
                   setActiveQuickAction('add');
+                  setCreateMode('main');
+                  setGuidedStep(0);
+                  setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
                   setIntroText('');
                   setMessages(current => [...current, { role: 'user', text: preset }]);
-                  startTypingMessage('照跟打就得：\n\n例如：\nCRCE-1234\nChange design\n8 May\nme\nWIP');
+                  startTypingMessage('小人遵命～\n\n想加咩 task？先俾我 task name。');
                   return;
                 }
 
