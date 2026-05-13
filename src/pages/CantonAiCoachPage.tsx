@@ -2195,7 +2195,7 @@ export function CantonAiCoachPage() {
 
                     <div style={{ display: 'grid', gap: 10 }}>
                       <div style={{ height: 1, background: '#e2e8f0', margin: '2px 0' }} />
-                      <button onClick={() => setCollapsedNoReportSection(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', background: 'transparent', padding: 0, color: '#334155', fontSize: 14, fontWeight: 900, cursor: 'pointer' }}>
+                      <button onClick={() => setCollapsedNoReportSection(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', background: 'transparent', padding: 0, color: '#0D8A9C', fontSize: 14, fontWeight: 900, cursor: 'pointer' }}>
                         <span>No report yet · {withoutLogsToday.length} tasks</span>
                         <span>{collapsedNoReportSection ? '＋' : '－'}</span>
                       </button>
