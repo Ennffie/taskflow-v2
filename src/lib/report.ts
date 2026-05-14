@@ -91,7 +91,7 @@ function formatProgress(task: TaskItem): string {
 export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate: string, selectedUser: string, options?: { mainTasksOnly?: boolean }): TrackerRow[] {
   const nextFocusDate = addDays(reportDate, 1);
   const rootTasks = tasks.filter((task) => !task.parent_id);
-  const todayMyLogs = buildDailyMyLogMap(logs, tasks, reportDate, /^\[What I have done\]/i, /^\[What I have done\]\s*/i);
+  const todayMyLogs = buildDailyMyLogMap(logs, tasks, reportDate);
   const nextDayMyLogs = buildDailyMyLogMap(logs, tasks, nextFocusDate, /^\[Next Day Focus\]/i, /^\[Next Day Focus\]\s*/i);
   const blockerLogs = buildFieldLogMap(logs, tasks, reportDate, /^\[Blocker\]/i, /^\[Blocker\]\s*/i);
 
