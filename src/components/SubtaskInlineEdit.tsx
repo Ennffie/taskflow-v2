@@ -193,12 +193,13 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
               進度: {progress}%
             </label>
             <input
+              className="progress-range"
               type="range"
               min={0}
               max={100}
               value={progress}
               onChange={(e) => setProgress(Number(e.target.value))}
-              style={{ width: '100%', accentColor: '#7c3aed' }}
+              style={{ width: '100%' }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#94a3b8', marginTop: 2 }}>
               <span>0%</span>

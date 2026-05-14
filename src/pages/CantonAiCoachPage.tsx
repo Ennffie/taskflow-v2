@@ -2108,6 +2108,7 @@ export function CantonAiCoachPage() {
                           <span style={{ fontSize: 13, color: '#64748b' }}>{title}</span>
                         </div>
                         <input
+                          className="progress-range"
                           type="range"
                           min="0"
                           max="100"
@@ -2115,7 +2116,7 @@ export function CantonAiCoachPage() {
                           value={progressSlider?.value ?? 0}
                           onChange={(e) => setProgressSlider(prev => prev ? { ...prev, value: Number(e.target.value) } : null)}
                           disabled={isReplying}
-                          style={{ width: '100%', accentColor: '#0f172a' }}
+                          style={{ width: '100%' }}
                         />
                         <div style={{ display: 'flex', gap: 10 }}>
                           <button disabled={isReplying} onClick={() => {

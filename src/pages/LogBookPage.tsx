@@ -397,6 +397,7 @@ export function LogBookPage() {
                 canEditTask ? (
                   <div style={{ display: 'grid', gap: '8px' }}>
                     <input
+                      className="progress-range"
                       type="range"
                       min={0}
                       max={100}
@@ -406,7 +407,7 @@ export function LogBookPage() {
                       onChange={(e) => setDraftTaskProgress(Number(e.target.value))}
                       onMouseUp={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
                       onTouchEnd={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
-                      style={{ width: '100%', height: '52px', accentColor: '#6d28d9', cursor: 'pointer' }}
+                      style={{ width: '100%' }}
                     />
                     <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Sub-task progress can be edited here.</div>
                   </div>
@@ -416,6 +417,7 @@ export function LogBookPage() {
               ) : canManuallyEditMainTaskProgress ? (
                 <div style={{ display: 'grid', gap: '8px' }}>
                   <input
+                    className="progress-range"
                     type="range"
                     min={0}
                     max={100}
@@ -425,7 +427,7 @@ export function LogBookPage() {
                     onChange={(e) => setDraftTaskProgress(Number(e.target.value))}
                     onMouseUp={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
                     onTouchEnd={() => void saveTaskProgress(draftTaskProgress, draftTaskProgress >= 100)}
-                    style={{ width: '100%', height: '52px', accentColor: '#6d28d9', cursor: 'pointer' }}
+                    style={{ width: '100%' }}
                   />
                   <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>No sub-task yet — drag to update main task progress directly.</div>
                 </div>
@@ -494,6 +496,7 @@ export function LogBookPage() {
                                     </span>
                                   </div>
                                   <input
+                                    className="progress-range"
                                     type="range"
                                     min={0}
                                     max={100}
@@ -503,7 +506,7 @@ export function LogBookPage() {
                                     onChange={(e) => setDraftSubtaskProgress((prev) => ({ ...prev, [subtask.id]: Number(e.target.value) }))}
                                     onMouseUp={() => void saveSubtaskProgress(subtask, draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)))}
                                     onTouchEnd={() => void saveSubtaskProgress(subtask, draftSubtaskProgress[subtask.id] ?? (subtask.is_finished ? 100 : (subtask.progress_percent ?? 0)))}
-                                    style={{ width: '100%', height: '52px', accentColor: '#6d28d9', cursor: 'pointer' }}
+                                    style={{ width: '100%' }}
                                   />
                                   <div style={{ fontSize: '11px', color: progressStatus === 'saving' ? '#6d28d9' : progressStatus === 'saved' ? '#047857' : '#64748b', fontWeight: progressStatus === 'idle' ? 600 : 700 }}>{progressStatus === 'saving' ? 'Saving...' : progressStatus === 'saved' ? 'Saved' : (subtask.is_finished ? 'Finished' : 'Drag to update progress')}</div>
                                 </div>
