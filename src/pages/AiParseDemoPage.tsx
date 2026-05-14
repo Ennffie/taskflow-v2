@@ -69,7 +69,10 @@ export function AiParseDemoPage() {
           </div>
 
           <div style={{ ...card, padding: 24 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#334155', marginBottom: 14 }}>Task draft preview</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#334155' }}>Task draft preview</div>
+              <div style={{ padding: '6px 10px', borderRadius: 999, background: '#dcfce7', color: '#166534', fontSize: 11, fontWeight: 900, letterSpacing: '.02em' }}>READY DEBUG ON</div>
+            </div>
             {result ? (
               <div style={{ display: 'grid', gap: 12 }}>
                 <DraftRow label="Task" value={result.title} />
