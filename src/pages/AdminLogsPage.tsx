@@ -210,7 +210,7 @@ export function AdminLogsPage() {
     setSelectedDate(getReportDate());
   };
 
-  const trackerRows = useMemo(() => buildTrackerRows(tasks, logs, selectedDate, selectedUser), [tasks, logs, selectedDate, selectedUser]);
+  const trackerRows = useMemo(() => buildTrackerRows(tasks, logs, selectedDate, selectedUser, { mainTasksOnly: true }), [tasks, logs, selectedDate, selectedUser]);
 
   const exportToXlsx = async () => {
     await exportWorkbook(trackerRows, selectedDate);

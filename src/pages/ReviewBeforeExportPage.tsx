@@ -45,7 +45,7 @@ export function ReviewBeforeExportPage() {
       .finally(() => setLoading(false));
   }, [isAdmin]);
 
-  const rows = useMemo(() => buildTrackerRows(tasks, logs, reportDate, 'all'), [tasks, logs, reportDate]);
+  const rows = useMemo(() => buildTrackerRows(tasks, logs, reportDate, 'all', { mainTasksOnly: true }), [tasks, logs, reportDate]);
   const warnings = useMemo(() => buildReviewWarnings(rows), [rows]);
   const issueRowsWithReasons = useMemo(() => {
     const getReasons = (row: (typeof rows)[number]) => {

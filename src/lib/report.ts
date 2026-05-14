@@ -87,7 +87,7 @@ function formatProgress(task: TaskItem): string {
   return `${task.is_finished ? 100 : task.progress_percent ?? 0}%`;
 }
 
-export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate: string, selectedUser: string): TrackerRow[] {
+export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate: string, selectedUser: string, options?: { mainTasksOnly?: boolean }): TrackerRow[] {
   const nextFocusDate = addDays(reportDate, 1);
   const rootTasks = tasks.filter((task) => !task.parent_id);
   const todayMyLogs = buildDailyMyLogMap(logs, tasks, reportDate);
@@ -106,7 +106,27 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
     const next = nextDayMyLogs.get(mainTask.id)?.trim() || ((mainTask.is_focus && (!mainTask.is_finished || tasksWithUpdateToday.has(mainTask.id))) ? 'Continues tomorrow' : '');
     const blocker = blockerLogs.get(mainTask.id)?.trim() || (reportDate === new Date().toISOString().slice(0, 10) ? getDescriptionBlocker(mainTask) : '');
 
-    if (!today && !next && !blocker) return [];
+    if (!today && !next) return [];
+
+    if (options?.mainTasksOnly) {
+      if (!matchesSelectedUser(mainTask, selectedUser)) return [];
+      return [{
+        mainTaskId: mainTask.id,
+        subtaskId: null,
+        member: mainTask.assignees.map((item) => item.name).join(', ') || 'Unassigned',
+        mainTask: mainTask.title,
+        subtask: '',
+        status: getStatusMeta(mainTask.status).label,
+        progress: formatProgress(mainTask),
+        dueDate: mainTask.due_date?.trim() || 'TBC',
+        todayUpdate: today,
+        nextDayFocus: next,
+        blocker,
+        mainTaskStatus: getStatusMeta(mainTask.status).label,
+        mainTaskProgress: formatProgress(mainTask),
+        mainTaskDueDate: mainTask.due_date?.trim() || 'TBC',
+      }];
+    }
 
     if (subtasks.length > 0 && relevantSubtasks.length === 0 && selectedUser !== 'all') {
       return [];

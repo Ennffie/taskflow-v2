@@ -375,7 +375,11 @@ export function CantonAiCoachPage() {
       return !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && isAssignee;
     });
     const withLogsToday = myMainTasks
-      .filter(task => myLogs.some(log => log.task_id === task.id && log.date === targetDate) || (isTodayDate(targetDate) && (task.today_update?.trim() || task.next_day_focus?.trim() || /blocker:/i.test(task.description || ''))))
+      .filter(task => {
+        const hasToday = ((isTodayDate(targetDate) ? task.today_update?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /what i have done|today/i.test(log.event)));
+        const hasTomorrow = ((isTodayDate(targetDate) ? task.next_day_focus?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /next day focus|tomorrow/i.test(log.event)));
+        return !!(hasToday || hasTomorrow);
+      })
       .map(task => {
         const todayDone = (isTodayDate(targetDate) ? task.today_update?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /what i have done|today/i.test(log.event));
         const tomorrow = (isTodayDate(targetDate) ? task.next_day_focus?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /next day focus|tomorrow/i.test(log.event));
