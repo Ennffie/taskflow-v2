@@ -40,7 +40,7 @@ export function TrackerByMemberPage() {
   }, [isAdmin]);
 
   const grouped = useMemo(() => {
-    const rows = buildTrackerRows(tasks, logs, selectedDate, selectedUser);
+    const rows = buildTrackerRows(tasks, logs, selectedDate, selectedUser, { mainTasksOnly: true });
     return rows.reduce<Record<string, typeof rows>>((acc, row) => {
       const key = row.member || 'Unassigned';
       acc[key] = acc[key] ?? [];

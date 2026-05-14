@@ -39,7 +39,7 @@ export function TrackerByTaskPage() {
   }, [isAdmin]);
 
   const grouped = useMemo(() => {
-    const rows = buildTrackerRows(tasks, logs, selectedDate, 'all');
+    const rows = buildTrackerRows(tasks, logs, selectedDate, 'all', { mainTasksOnly: true });
     return rows.reduce<Record<string, typeof rows>>((acc, row) => {
       acc[row.mainTask] = acc[row.mainTask] ?? [];
       acc[row.mainTask].push(row);
