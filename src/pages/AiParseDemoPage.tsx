@@ -97,12 +97,15 @@ function DraftRow({ label, value }: { label: string; value: string }) {
   const hasValue = Boolean(value && value.trim() && value.trim() !== '—');
 
   return (
-    <div style={{ padding: '14px 16px', borderRadius: 18, border: '1px solid #ede9fe', background: '#fff' }}>
+    <div style={{ padding: '14px 16px', borderRadius: 18, border: hasValue ? '1px solid #86efac' : '1px solid #ede9fe', background: hasValue ? '#f0fdf4' : '#fff' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: '#94a3b8' }}>{label}</div>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: hasValue ? '#166534' : '#94a3b8' }}>{label}</div>
         {hasValue && (
-          <div style={{ minWidth: 18, width: 18, height: 18, borderRadius: 999, background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(16,185,129,0.22)', flexShrink: 0 }}>
-            <Check size={12} strokeWidth={3.2} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#16a34a', fontSize: 11, fontWeight: 900, flexShrink: 0 }}>
+            <div style={{ minWidth: 18, width: 18, height: 18, borderRadius: 999, background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(16,185,129,0.22)' }}>
+              <Check size={12} strokeWidth={3.2} />
+            </div>
+            <span>√ Ready</span>
           </div>
         )}
       </div>
