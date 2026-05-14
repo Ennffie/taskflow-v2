@@ -94,10 +94,17 @@ export function AiParseDemoPage() {
 }
 
 function DraftRow({ label, value }: { label: string; value: string }) {
+  const hasValue = Boolean(value && value.trim() && value.trim() !== '—');
+
   return (
-    <div style={{ padding: '14px 16px', borderRadius: 18, border: '1px solid #ede9fe', background: '#fff' }}>
+    <div style={{ position: 'relative', padding: '14px 16px', borderRadius: 18, border: '1px solid #ede9fe', background: '#fff' }}>
+      {hasValue && (
+        <div style={{ position: 'absolute', top: 12, right: 14, fontSize: 12, fontWeight: 900, color: '#10b981' }}>
+          √
+        </div>
+      )}
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 15, lineHeight: 1.45, color: '#0f172a', fontWeight: 700 }}>{value}</div>
+      <div style={{ fontSize: 15, lineHeight: 1.45, color: '#0f172a', fontWeight: 700, paddingRight: hasValue ? 18 : 0 }}>{value}</div>
     </div>
   );
 }
