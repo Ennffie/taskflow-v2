@@ -364,14 +364,22 @@ export function CantonAiCoachPage() {
     });
     const withLogsToday = myMainTasks
       .filter(task => myLogs.some(log => log.task_id === task.id && log.date === today) || task.today_update?.trim() || task.next_day_focus?.trim() || /blocker:/i.test(task.description || ''))
-      .map(task => ({
-        id: task.id,
-        title: task.title,
-        due_date: task.due_date,
-        status: task.status,
-        assignees: task.assignees.map(a => a.name),
-        summary: summarizeReportText(task, myLogs),
-      }));
+      .map(task => {
+        const todayDone = task.today_update?.trim() || myLogs.some(log => log.task_id === task.id && log.date === today && /what i have done|today/i.test(log.event));
+        const tomorrow = task.next_day_focus?.trim() || myLogs.some(log => log.task_id === task.id && log.date === today && /next day focus|tomorrow/i.test(log.event));
+        const blocker = getBlockerText(task, myLogs)?.trim();
+        return {
+          id: task.id,
+          title: task.title,
+          due_date: task.due_date,
+          status: task.status,
+          assignees: task.assignees.map(a => a.name),
+          summary: summarizeReportText(task, myLogs),
+          hasToday: !!todayDone,
+          hasTomorrow: !!tomorrow,
+          hasBlocker: !!blocker,
+        };
+      });
     const withoutLogsToday = myMainTasks
       .filter(task => !withLogsToday.some(item => item.id === task.id))
       .map(task => ({
@@ -2190,13 +2198,18 @@ export function CantonAiCoachPage() {
                         <div key={task.id} style={{ ...animatedItemStyle, padding: '14px 14px 12px', borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'grid', gap: 10 }}>
                           <div>
                             <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>{task.title}</div>
-                            <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</div>
+                            <div style={{ color: '#64748b', fontSize: 12, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</span>
+                              {task.hasToday && <span style={{ color: '#059669', fontWeight: 700 }}>✓ 今日</span>}
+                              {task.hasTomorrow && <span style={{ color: '#059669', fontWeight: 700 }}>✓ 明日</span>}
+                              {task.hasBlocker && <span style={{ color: '#059669', fontWeight: 700 }}>✓ Blocker</span>}
+                            </div>
                           </div>
                           <div style={{ fontSize: 14, lineHeight: 1.55, color: '#334155' }}>{task.summary || 'No report summary yet.'}</div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                            <button onClick={() => openReportFieldEditor(task.id, 'today')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : 'panel')}>今日做咗乜</button>
-                            <button onClick={() => openReportFieldEditor(task.id, 'tomorrow')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'tomorrow' ? 'focus' : 'panel')}>明日會做乜</button>
-                            <button onClick={() => openReportFieldEditor(task.id, 'blocker')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'blocker' ? 'focus' : 'panel')}>Blocker</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'today')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : 'panel')}>{task.hasToday ? '✓ 今日做咗乜' : '今日做咗乜'}</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'tomorrow')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'tomorrow' ? 'focus' : 'panel')}>{task.hasTomorrow ? '✓ 明日會做乜' : '明日會做乜'}</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'blocker')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'blocker' ? 'focus' : 'panel')}>{task.hasBlocker ? '✓ Blocker' : 'Blocker'}</button>
                           </div>
                         </div>
                       ))}
