@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasksForCantonAi, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog, fetchMyLogs } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -54,6 +54,7 @@ export function CantonAiCoachPage() {
   const [progressSlider, setProgressSlider] = useState<{ taskId: string; title: string; value: number } | null>(null);
   const [editingTaskFromChat, setEditingTaskFromChat] = useState<TaskItem | null>(null);
   const [myLogs, setMyLogs] = useState<LogEntry[]>([]);
+  const [reportLogDate, setReportLogDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [collapsedNoReportSection, setCollapsedNoReportSection] = useState(true);
   const [revealedReportCounts, setRevealedReportCounts] = useState<Record<string, { withLogs: number; withoutLogs: number }>>({});
   // Track which inline panel is open per task (accordion behavior)
@@ -330,20 +331,33 @@ export function CantonAiCoachPage() {
     }
   }, [openPanel]);
 
-  const getBlockerText = (task: TaskItem, logs: LogEntry[]) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const todayLogs = logs.filter(log => log.task_id === task.id && log.date === today);
-    const blockerLog = todayLogs.find(log => /blocker/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
-    const blockerFromDescription = task.description?.match(/Blocker:\s*([\s\S]*)/i)?.[1]?.trim() || '';
+  const isTodayDate = (date: string) => date === new Date().toISOString().slice(0, 10);
+
+  const formatReportDateLabel = (date: string) => {
+    const d = new Date(`${date}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return date;
+    const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+    return `${date} · ${weekday}`;
+  };
+
+  const shiftReportDate = (date: string, deltaDays: number) => {
+    const next = new Date(`${date}T12:00:00`);
+    next.setDate(next.getDate() + deltaDays);
+    return next.toISOString().slice(0, 10);
+  };
+
+  const getBlockerText = (task: TaskItem, logs: LogEntry[], reportDate: string = reportLogDate) => {
+    const dateLogs = logs.filter(log => log.task_id === task.id && log.date === reportDate);
+    const blockerLog = dateLogs.find(log => /blocker/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
+    const blockerFromDescription = isTodayDate(reportDate) ? (task.description?.match(/Blocker:\s*([\s\S]*)/i)?.[1]?.trim() || '') : '';
     return blockerLog || blockerFromDescription;
   };
 
-  const summarizeReportText = (task: TaskItem, logs: LogEntry[]) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const todayLogs = logs.filter(log => log.task_id === task.id && log.date === today);
-    const todayDone = task.today_update?.trim() || todayLogs.find(log => /what i have done|today/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
-    const tomorrow = task.next_day_focus?.trim() || todayLogs.find(log => /next day focus|tomorrow/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
-    const blocker = getBlockerText(task, logs);
+  const summarizeReportText = (task: TaskItem, logs: LogEntry[], reportDate: string = reportLogDate) => {
+    const dateLogs = logs.filter(log => log.task_id === task.id && log.date === reportDate);
+    const todayDone = (isTodayDate(reportDate) ? task.today_update?.trim() : '') || dateLogs.find(log => /what i have done|today/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
+    const tomorrow = (isTodayDate(reportDate) ? task.next_day_focus?.trim() : '') || dateLogs.find(log => /next day focus|tomorrow/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '';
+    const blocker = getBlockerText(task, logs, reportDate);
 
     const sentences: string[] = [];
     if (todayDone) sentences.push(`Completed ${todayDone.replace(/[。！!]+$/,'')}.`);
@@ -353,26 +367,26 @@ export function CantonAiCoachPage() {
     return sentences.slice(0, 2).join(' ');
   };
 
-  const openReportLogMode = () => {
+  const openReportLogMode = (targetDate: string = reportLogDate) => {
     setActiveQuickAction('report-log');
-    const today = new Date().toISOString().slice(0, 10);
+    setReportLogDate(targetDate);
     const myMainTasks = tasks.filter(t => {
       const isAssignee = t.assignees?.some(a => a.name === currentUserName);
       return !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && isAssignee;
     });
     const withLogsToday = myMainTasks
-      .filter(task => myLogs.some(log => log.task_id === task.id && log.date === today) || task.today_update?.trim() || task.next_day_focus?.trim() || /blocker:/i.test(task.description || ''))
+      .filter(task => myLogs.some(log => log.task_id === task.id && log.date === targetDate) || (isTodayDate(targetDate) && (task.today_update?.trim() || task.next_day_focus?.trim() || /blocker:/i.test(task.description || ''))))
       .map(task => {
-        const todayDone = task.today_update?.trim() || myLogs.some(log => log.task_id === task.id && log.date === today && /what i have done|today/i.test(log.event));
-        const tomorrow = task.next_day_focus?.trim() || myLogs.some(log => log.task_id === task.id && log.date === today && /next day focus|tomorrow/i.test(log.event));
-        const blocker = getBlockerText(task, myLogs)?.trim();
+        const todayDone = (isTodayDate(targetDate) ? task.today_update?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /what i have done|today/i.test(log.event));
+        const tomorrow = (isTodayDate(targetDate) ? task.next_day_focus?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /next day focus|tomorrow/i.test(log.event));
+        const blocker = getBlockerText(task, myLogs, targetDate)?.trim();
         return {
           id: task.id,
           title: task.title,
           due_date: task.due_date,
           status: task.status,
           assignees: task.assignees.map(a => a.name),
-          summary: summarizeReportText(task, myLogs),
+          summary: summarizeReportText(task, myLogs, targetDate),
           hasToday: !!todayDone,
           hasTomorrow: !!tomorrow,
           hasBlocker: !!blocker,
@@ -388,20 +402,21 @@ export function CantonAiCoachPage() {
         assignees: task.assignees.map(a => a.name),
         summary: '',
       }));
-    startTypingMessage(`小人稟報恩公，今日可 review 嘅 report task 有 ${withLogsToday.length} 個。下面已經幫你分好有 log 同未有 log 嘅 task。`, {
+    startTypingMessage(`小人稟報恩公，${targetDate} 可 review 嘅 report task 有 ${withLogsToday.length} 個。下面已經幫你分好有 log 同未有 log 嘅 task。`, {
       _action: 'report_log_list',
-      _data: { withLogsToday, withoutLogsToday }
+      _data: { withLogsToday, withoutLogsToday, reportDate: targetDate }
     });
   };
 
-  const openReportFieldEditor = (taskId: string, field: 'today' | 'tomorrow' | 'blocker') => {
+  const openReportFieldEditor = (taskId: string, field: 'today' | 'tomorrow' | 'blocker', targetDate: string = reportLogDate) => {
     const task = tasks.find(item => item.id === taskId);
     if (!task) return;
+    const dateLogs = myLogs.filter(log => log.task_id === task.id && log.date === targetDate);
     const nextText = field === 'today'
-      ? (task.today_update?.trim() || '')
+      ? ((isTodayDate(targetDate) ? task.today_update?.trim() : '') || dateLogs.find(log => /what i have done|today/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '')
       : field === 'tomorrow'
-        ? (task.next_day_focus?.trim() || '')
-        : (getBlockerText(task, myLogs) || '');
+        ? ((isTodayDate(targetDate) ? task.next_day_focus?.trim() : '') || dateLogs.find(log => /next day focus|tomorrow/i.test(log.event))?.event?.replace(/^\[[^\]]+\]\n?/,'') || '')
+        : (getBlockerText(task, myLogs, targetDate) || '');
     setPendingTaskAction({ taskId, title: task.title, kind: field });
     setReportEditorState({ taskId, title: task.title, field, text: nextText });
     setInput(nextText);
@@ -792,23 +807,26 @@ export function CantonAiCoachPage() {
     }
   };
 
-  const actionButtonStyle = (variant: 'primary' | 'soft' | 'danger' | 'focus' | 'panel' = 'soft') => ({
+  const actionButtonStyle = (variant: 'primary' | 'soft' | 'danger' | 'focus' | 'panel' | 'success' = 'soft') => ({
     background:
       variant === 'primary' ? '#0f172a' :
       variant === 'danger' ? '#fff1f2' :
       variant === 'focus' ? '#7c3aed' :
       variant === 'panel' ? '#ffffff' :
+      variant === 'success' ? '#ecfdf5' :
       '#f0f9ff',
     color:
       variant === 'primary' ? '#fff' :
       variant === 'danger' ? '#be123c' :
       variant === 'focus' ? '#ffffff' :
       variant === 'panel' ? '#475569' :
+      variant === 'success' ? '#047857' :
       '#0369a1',
     border:
       variant === 'danger' ? '1px solid #fecdd3' :
       variant === 'focus' ? '1px solid #8b5cf6' :
       variant === 'panel' ? '1px solid #e2e8f0' :
+      variant === 'success' ? '1px solid #86efac' :
       '1px solid #bae6fd',
     boxShadow: variant === 'focus' ? '0 8px 18px rgba(124,58,237,0.28)' : 'none',
     borderRadius: 14,
@@ -2177,6 +2195,7 @@ export function CantonAiCoachPage() {
               {message._action === 'report_log_list' && message._data && (() => {
                 const withLogsToday = message._data.withLogsToday || [];
                 const withoutLogsToday = message._data.withoutLogsToday || [];
+                const reportDate = message._data.reportDate || reportLogDate;
                 const counts = message.id
                   ? (revealedReportCounts[message.id] ?? { withLogs: withLogsToday.length, withoutLogs: withoutLogsToday.length })
                   : { withLogs: withLogsToday.length, withoutLogs: withoutLogsToday.length };
@@ -2188,8 +2207,15 @@ export function CantonAiCoachPage() {
                 };
                 return (
                   <div ref={reportAnchorRef} style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%', scrollMarginTop: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 12px', borderRadius: 16, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                      <button onClick={() => openReportLogMode(shiftReportDate(reportDate, -1))} style={{ width: 34, height: 34, borderRadius: 999, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronLeft size={18} /></button>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0D8A9C' }}>Ready for report</div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>{formatReportDateLabel(reportDate)}</div>
+                      </div>
+                      <button onClick={() => openReportLogMode(shiftReportDate(reportDate, 1))} style={{ width: 34, height: 34, borderRadius: 999, border: '1px solid #dbeafe', background: '#fff', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronRight size={18} /></button>
+                    </div>
                     <div style={{ display: 'grid', gap: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0D8A9C' }}>Ready for report</div>
                       {withLogsToday.length === 0 ? (
                         <div style={{ padding: '12px 14px', borderRadius: 16, background: '#f8fafc', color: '#64748b', fontSize: 14 }}>今日暫時未有 report log。</div>
                       ) : visibleWithLogs.map((task: any) => (
@@ -2198,16 +2224,13 @@ export function CantonAiCoachPage() {
                             <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>{task.title}</div>
                             <div style={{ color: '#64748b', fontSize: 12, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               <span>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</span>
-                              {task.hasToday && <span style={{ color: '#059669', fontWeight: 700 }}>✓ 今日</span>}
-                              {task.hasTomorrow && <span style={{ color: '#059669', fontWeight: 700 }}>✓ 明日</span>}
-                              {task.hasBlocker && <span style={{ color: '#059669', fontWeight: 700 }}>✓ Blocker</span>}
                             </div>
                           </div>
                           <div style={{ fontSize: 14, lineHeight: 1.55, color: '#334155' }}>{task.summary || 'No report summary yet.'}</div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                            <button onClick={() => openReportFieldEditor(task.id, 'today')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : 'panel')}>{task.hasToday ? '✓ 今日做咗乜' : '今日做咗乜'}</button>
-                            <button onClick={() => openReportFieldEditor(task.id, 'tomorrow')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'tomorrow' ? 'focus' : 'panel')}>{task.hasTomorrow ? '✓ 明日會做乜' : '明日會做乜'}</button>
-                            <button onClick={() => openReportFieldEditor(task.id, 'blocker')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'blocker' ? 'focus' : 'panel')}>{task.hasBlocker ? '✓ Blocker' : 'Blocker'}</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'today', reportDate)} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : (task.hasToday ? 'success' : 'panel'))}>做咗乜</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'tomorrow', reportDate)} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'tomorrow' ? 'focus' : (task.hasTomorrow ? 'success' : 'panel'))}>明天做</button>
+                            <button onClick={() => openReportFieldEditor(task.id, 'blocker', reportDate)} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'blocker' ? 'focus' : (task.hasBlocker ? 'success' : 'panel'))}>Blocker</button>
                           </div>
                         </div>
                       ))}
@@ -2229,9 +2252,9 @@ export function CantonAiCoachPage() {
                               </div>
                               <div style={{ color: '#94a3b8', fontSize: 13 }}>No report yet today.</div>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                                <button onClick={() => openReportFieldEditor(task.id, 'today')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : 'panel')}>今日做咗乜</button>
-                                <button onClick={() => openReportFieldEditor(task.id, 'tomorrow')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'tomorrow' ? 'focus' : 'panel')}>明日會做乜</button>
-                                <button onClick={() => openReportFieldEditor(task.id, 'blocker')} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'blocker' ? 'focus' : 'panel')}>Blocker</button>
+                                <button onClick={() => openReportFieldEditor(task.id, 'today', reportDate)} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : 'panel')}>做咗乜</button>
+                                <button onClick={() => openReportFieldEditor(task.id, 'tomorrow', reportDate)} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'tomorrow' ? 'focus' : 'panel')}>明天做</button>
+                                <button onClick={() => openReportFieldEditor(task.id, 'blocker', reportDate)} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'blocker' ? 'focus' : 'panel')}>Blocker</button>
                               </div>
                             </div>
                           ))}
