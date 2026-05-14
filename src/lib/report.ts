@@ -84,6 +84,11 @@ function matchesSelectedUser(task: TaskItem, selectedUser: string): boolean {
   return task.assignees.some((assignee) => assignee.id === selectedUser);
 }
 
+function matchesSelectedUserOnTree(mainTask: TaskItem, subtasks: TaskItem[], selectedUser: string): boolean {
+  if (selectedUser === 'all') return true;
+  return matchesSelectedUser(mainTask, selectedUser) || subtasks.some((subtask) => matchesSelectedUser(subtask, selectedUser));
+}
+
 function formatProgress(task: TaskItem): string {
   return `${task.is_finished ? 100 : task.progress_percent ?? 0}%`;
 }
@@ -101,12 +106,13 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
     const today = todayMyLogs.get(mainTask.id)?.trim() || '';
     const next = nextDayMyLogs.get(mainTask.id)?.trim() || '';
     const blocker = blockerLogs.get(mainTask.id)?.trim() || (reportDate === new Date().toISOString().slice(0, 10) ? getDescriptionBlocker(mainTask) : '');
-    const hasFocus = !!mainTask.is_focus && !mainTask.is_finished;
+    const hasFocus = (!!mainTask.is_focus && !mainTask.is_finished) || subtasks.some((subtask) => !!subtask.is_focus && !subtask.is_finished);
+    const matchesTree = matchesSelectedUserOnTree(mainTask, subtasks, selectedUser);
 
     if (!today && !next && !hasFocus) return [];
+    if (!matchesTree) return [];
 
     if (options?.mainTasksOnly) {
-      if (!matchesSelectedUser(mainTask, selectedUser)) return [];
       return [{
         mainTaskId: mainTask.id,
         subtaskId: null,
@@ -126,7 +132,22 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
     }
 
     if (subtasks.length > 0 && relevantSubtasks.length === 0 && selectedUser !== 'all') {
-      return [];
+      return [{
+        mainTaskId: mainTask.id,
+        subtaskId: null,
+        member: mainTask.assignees.map((item) => item.name).join(', ') || 'Unassigned',
+        mainTask: mainTask.title,
+        subtask: '',
+        status: getStatusMeta(mainTask.status).label,
+        progress: formatProgress(mainTask),
+        dueDate: mainTask.due_date?.trim() || 'TBC',
+        todayUpdate: today,
+        nextDayFocus: next,
+        blocker,
+        mainTaskStatus: getStatusMeta(mainTask.status).label,
+        mainTaskProgress: formatProgress(mainTask),
+        mainTaskDueDate: mainTask.due_date?.trim() || 'TBC',
+      }];
     }
 
     if (subtasks.length === 0) {

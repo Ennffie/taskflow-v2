@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createTask, fetchProfiles, fetchTasksForCantonAi, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog, fetchMyLogs } from '../lib/api';
+import { createTask, fetchProfiles, fetchTasksForCantonAi, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog, fetchAllLogs } from '../lib/api';
+import { buildTrackerRows } from '../lib/report';
+import { exportTrackerWorkbook } from '../lib/reportWorkbook';
 import { supabase } from '../lib/supabase';
 import { VersionBadge } from '../components/VersionBadge';
 import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
 import { tryBuildDeterministicSummary } from '../lib/cantonSummary';
 import { buildDecisionContext } from '../lib/cantonDecisionContext';
 import { getStatusMeta } from '../types';
-import type { LogEntry, Profile, TaskItem, TaskStatus } from '../types';
+import type { LogEntry, Profile, Role, TaskItem, TaskStatus } from '../types';
 import { SubtaskInlineEdit } from '../components/SubtaskInlineEdit';
 import { TaskFormModal } from '../components/TaskFormModal';
 
@@ -24,6 +26,7 @@ export function CantonAiCoachPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>('');
+  const [currentUserRole, setCurrentUserRole] = useState<Role>('member');
   const [input, setInput] = useState('');
   const [bridgeUrl, setBridgeUrl] = useState<string>(FALLBACK_BRIDGE_URL);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
@@ -118,9 +121,20 @@ export function CantonAiCoachPage() {
     } catch (e) { console.error(e); return null; }
   };
 
+  const loadLogs = async () => {
+    try {
+      const fetchedLogs = await fetchAllLogs();
+      setMyLogs(fetchedLogs);
+      return fetchedLogs;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
   useEffect(() => {
     void loadTasks();
-    fetchMyLogs().then(setMyLogs).catch(console.error);
+    void loadLogs();
     fetchProfiles().then((fetchedProfiles) => {
       console.log('[CantonAI] Profiles loaded:', fetchedProfiles.map(p => ({name: p.name, id: p.id})));
       console.log('[CantonAI] Total profiles:', fetchedProfiles.length);
@@ -140,6 +154,14 @@ export function CantonAiCoachPage() {
       }, 300);
     }).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const matchedProfile = profiles.find((profile) => profile.id === currentUserId);
+    if (matchedProfile?.role) {
+      setCurrentUserRole(matchedProfile.role);
+    }
+  }, [profiles, currentUserId]);
 
   useEffect(() => {
     if (!isTyping || !typingMessageId) return;
@@ -367,18 +389,44 @@ export function CantonAiCoachPage() {
     return sentences.slice(0, 2).join(' ');
   };
 
+  const canAccessMainTask = (task: TaskItem) => {
+    if (currentUserRole === 'admin') return true;
+    if (!currentUserId) return false;
+    if (task.assignees?.some((assignee) => assignee.id === currentUserId)) return true;
+    return task.subtasks?.some((subtask) => subtask.assignees?.some((assignee) => assignee.id === currentUserId)) ?? false;
+  };
+
+  const getReportCandidateMainTasks = (targetDate: string) => {
+    const selectedUser = currentUserRole === 'admin' ? 'all' : (currentUserId || 'all');
+    const includedIds = new Set(
+      buildTrackerRows(tasks, myLogs, targetDate, selectedUser, { mainTasksOnly: true }).map((row) => row.mainTaskId),
+    );
+
+    return tasks
+      .filter((task) => !task.parent_id && includedIds.has(task.id) && canAccessMainTask(task))
+      .sort((a, b) => {
+        const aDue = a.due_date || '9999-12-31';
+        const bDue = b.due_date || '9999-12-31';
+        return aDue.localeCompare(bDue) || a.title.localeCompare(b.title);
+      });
+  };
+
+  const exportCurrentReport = async (targetDate: string) => {
+    const selectedUser = currentUserRole === 'admin' ? 'all' : (currentUserId || 'all');
+    const rows = buildTrackerRows(tasks, myLogs, targetDate, selectedUser, { mainTasksOnly: true });
+    await exportTrackerWorkbook(rows, targetDate);
+  };
+
   const openReportLogMode = (targetDate: string = reportLogDate) => {
     setActiveQuickAction('report-log');
     setReportLogDate(targetDate);
-    const myMainTasks = tasks.filter(t => {
-      const isAssignee = t.assignees?.some(a => a.name === currentUserName);
-      return !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && isAssignee;
-    });
-    const withLogsToday = myMainTasks
+    const reportTasks = getReportCandidateMainTasks(targetDate);
+    const withLogsToday = reportTasks
       .filter(task => {
         const hasToday = ((isTodayDate(targetDate) ? task.today_update?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /what i have done|today/i.test(log.event)));
         const hasTomorrow = ((isTodayDate(targetDate) ? task.next_day_focus?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /next day focus|tomorrow/i.test(log.event)));
-        return !!(hasToday || hasTomorrow);
+        const hasBlocker = !!getBlockerText(task, myLogs, targetDate)?.trim();
+        return !!(hasToday || hasTomorrow || hasBlocker);
       })
       .map(task => {
         const todayDone = (isTodayDate(targetDate) ? task.today_update?.trim() : '') || myLogs.some(log => log.task_id === task.id && log.date === targetDate && /what i have done|today/i.test(log.event));
@@ -390,13 +438,21 @@ export function CantonAiCoachPage() {
           due_date: task.due_date,
           status: task.status,
           assignees: task.assignees.map(a => a.name),
+          subtasks: (task.subtasks || []).map((subtask) => ({
+            id: subtask.id,
+            title: subtask.title,
+            status: subtask.status,
+            progress: subtask.is_finished ? 100 : subtask.progress_percent ?? 0,
+            is_focus: !!subtask.is_focus && !subtask.is_finished,
+            assignees: subtask.assignees.map((a) => ({ id: a.id, name: a.name })),
+          })),
           summary: summarizeReportText(task, myLogs, targetDate),
           hasToday: !!todayDone,
           hasTomorrow: !!tomorrow,
           hasBlocker: !!blocker,
         };
       });
-    const withoutLogsToday = myMainTasks
+    const withoutLogsToday = reportTasks
       .filter(task => !withLogsToday.some(item => item.id === task.id))
       .map(task => ({
         id: task.id,
@@ -404,11 +460,19 @@ export function CantonAiCoachPage() {
         due_date: task.due_date,
         status: task.status,
         assignees: task.assignees.map(a => a.name),
+        subtasks: (task.subtasks || []).map((subtask) => ({
+          id: subtask.id,
+          title: subtask.title,
+          status: subtask.status,
+          progress: subtask.is_finished ? 100 : subtask.progress_percent ?? 0,
+          is_focus: !!subtask.is_focus && !subtask.is_finished,
+          assignees: subtask.assignees.map((a) => ({ id: a.id, name: a.name })),
+        })),
         summary: '',
       }));
-    startTypingMessage(`小人稟報恩公，${targetDate} 可 review 嘅 report task 有 ${withLogsToday.length} 個。下面已經幫你分好有 log 同未有 log 嘅 task。`, {
+    startTypingMessage(`小人稟報恩公，${targetDate} 可 review 嘅 main task 有 ${reportTasks.length} 個。下面已經幫你分好有 report 同未補 report 嘅 task。`, {
       _action: 'report_log_list',
-      _data: { withLogsToday, withoutLogsToday, reportDate: targetDate }
+      _data: { withLogsToday, withoutLogsToday, reportDate: targetDate, isAdmin: currentUserRole === 'admin' }
     });
   };
 
@@ -756,6 +820,7 @@ export function CantonAiCoachPage() {
 
   const confirmTaskMutation = async (taskId: string, _title: string, _message: string) => {
     const fresh = await loadTasks();
+    await loadLogs();
     const updated = fresh?.find(t => t.id === taskId);
     if (updated) updateTaskActionBubble(updated);
   };
@@ -841,6 +906,37 @@ export function CantonAiCoachPage() {
     opacity: isReplying ? 0.58 : 1,
   });
 
+  const renderAssigneeEditor = (taskId: string, title: string, assignees: Array<{ id: string; name: string }>, compact = false) => (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ color: compact ? '#64748b' : '#475569', fontSize: compact ? 12 : 13, fontWeight: 700 }}>
+          Assignee：{assignees.map((item) => item.name).join('、') || '未指派'}
+        </div>
+        <button
+          disabled={isReplying}
+          onClick={() => setAssigneePickerTaskId((current) => current === taskId ? null : taskId)}
+          style={{ ...actionButtonStyle(assigneePickerTaskId === taskId ? 'focus' : 'panel'), padding: compact ? '7px 10px' : '9px 12px', fontSize: compact ? 12 : 13 }}
+        >
+          改 Assignee
+        </button>
+      </div>
+      {assigneePickerTaskId === taskId && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {profiles.map((profile) => (
+            <button
+              key={profile.id}
+              disabled={isReplying}
+              onClick={() => void assignTaskTo(taskId, title, profile)}
+              style={actionButtonStyle(assignees.some((item) => item.id === profile.id) ? 'primary' : 'soft')}
+            >
+              {profile.name.split(' ')[0]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const applyDueDate = async (taskId: string, _title: string, dueDate: string | null) => {
     setDueDatePicker(null);
     setIsReplying(true);
@@ -924,6 +1020,7 @@ export function CantonAiCoachPage() {
             await createTaskEventLog(pendingTask.id, `[Progress Update]\n${actionText}`);
           }
           const freshTasks = await loadTasks();
+          await loadLogs();
           const actionKind = pendingTaskAction.kind;
           const refreshedTask = freshTasks?.find(t => t.id === pendingTask.id) || tasks.find(t => t.id === pendingTask.id) || pendingTask;
 
@@ -2231,6 +2328,19 @@ export function CantonAiCoachPage() {
                               <span>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</span>
                             </div>
                           </div>
+                          {renderAssigneeEditor(task.id, task.title, (tasks.find((item) => item.id === task.id)?.assignees || []).map((item) => ({ id: item.id, name: item.name })))}
+                          {task.subtasks?.length > 0 && (
+                            <div style={{ display: 'grid', gap: 8, padding: '10px 12px', borderRadius: 14, background: '#fff', border: '1px solid #e2e8f0' }}>
+                              <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>Subtasks ({task.subtasks.length})</div>
+                              {task.subtasks.map((subtask: any) => (
+                                <div key={subtask.id} style={{ display: 'grid', gap: 6, padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
+                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{subtask.title}</div>
+                                  <div style={{ fontSize: 12, color: '#64748b' }}>{subtask.status}｜{subtask.progress}%{subtask.is_focus ? '｜Focus' : ''}</div>
+                                  {renderAssigneeEditor(subtask.id, subtask.title, subtask.assignees, true)}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <div style={{ fontSize: 14, lineHeight: 1.55, color: '#334155' }}>{task.summary || 'No report summary yet.'}</div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                             <button onClick={() => openReportFieldEditor(task.id, 'today', reportDate)} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : (task.hasToday ? 'success' : 'panel'))}>做咗乜</button>
@@ -2255,6 +2365,19 @@ export function CantonAiCoachPage() {
                                 <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>{task.title}</div>
                                 <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>{task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}</div>
                               </div>
+                              {renderAssigneeEditor(task.id, task.title, (tasks.find((item) => item.id === task.id)?.assignees || []).map((item) => ({ id: item.id, name: item.name })))}
+                              {task.subtasks?.length > 0 && (
+                                <div style={{ display: 'grid', gap: 8, padding: '10px 12px', borderRadius: 14, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                                  <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>Subtasks ({task.subtasks.length})</div>
+                                  {task.subtasks.map((subtask: any) => (
+                                    <div key={subtask.id} style={{ display: 'grid', gap: 6, padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
+                                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{subtask.title}</div>
+                                      <div style={{ fontSize: 12, color: '#64748b' }}>{subtask.status}｜{subtask.progress}%{subtask.is_focus ? '｜Focus' : ''}</div>
+                                      {renderAssigneeEditor(subtask.id, subtask.title, subtask.assignees, true)}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                               <div style={{ color: '#94a3b8', fontSize: 13 }}>No report yet today.</div>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                                 <button onClick={() => openReportFieldEditor(task.id, 'today', reportDate)} style={actionButtonStyle(reportEditorState?.taskId === task.id && reportEditorState?.field === 'today' ? 'focus' : 'panel')}>做咗乜</button>
@@ -2266,8 +2389,8 @@ export function CantonAiCoachPage() {
                         </div>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                        <button onClick={() => navigate('/review-export', { state: { selectedDate: reportDate } })} style={{ border: '1px solid #0f172a', background: '#0f172a', color: '#fff', borderRadius: 999, padding: '10px 14px', fontSize: 13, fontWeight: 900, cursor: 'pointer' }}>
-                          Daily Log Book
+                        <button onClick={() => void exportCurrentReport(reportDate)} style={{ border: '1px solid #0f172a', background: '#0f172a', color: '#fff', borderRadius: 999, padding: '10px 14px', fontSize: 13, fontWeight: 900, cursor: 'pointer' }}>
+                          Gen Report
                         </button>
                       </div>
                     </div>
