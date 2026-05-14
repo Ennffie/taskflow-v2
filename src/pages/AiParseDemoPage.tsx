@@ -97,14 +97,16 @@ function DraftRow({ label, value }: { label: string; value: string }) {
   const hasValue = Boolean(value && value.trim() && value.trim() !== '—');
 
   return (
-    <div style={{ position: 'relative', padding: '14px 16px', borderRadius: 18, border: '1px solid #ede9fe', background: '#fff' }}>
-      {hasValue && (
-        <div style={{ position: 'absolute', top: 12, right: 14, fontSize: 12, fontWeight: 900, color: '#10b981' }}>
-          √
-        </div>
-      )}
-      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 15, lineHeight: 1.45, color: '#0f172a', fontWeight: 700, paddingRight: hasValue ? 18 : 0 }}>{value}</div>
+    <div style={{ padding: '14px 16px', borderRadius: 18, border: '1px solid #ede9fe', background: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: '#94a3b8' }}>{label}</div>
+        {hasValue && (
+          <div style={{ minWidth: 18, height: 18, borderRadius: 999, background: '#10b981', color: '#fff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(16,185,129,0.22)' }}>
+            ✓
+          </div>
+        )}
+      </div>
+      <div style={{ fontSize: 15, lineHeight: 1.45, color: '#0f172a', fontWeight: 700 }}>{value}</div>
     </div>
   );
 }
