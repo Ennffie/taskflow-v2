@@ -637,7 +637,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           'wip', 'in progress', 'finished', 'new', 'waiting', 'planning', 'focus', 'priority',
           'pending for approval', 'pending on tech team', 'pending for further requirement',
           'to do', 'todo', 'submitted', 'internal_review', 'internal review',
-        ].some((keyword) => normalized === keyword || normalized.includes(keyword));
+        ].some((keyword) => normalized === keyword);
       };
       
       // Parse rows

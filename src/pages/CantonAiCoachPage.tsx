@@ -1169,11 +1169,20 @@ export function CantonAiCoachPage() {
 
       let status = 'todo';
       let statusLabel = '待辦';
-      const statusSource = `${statusRaw} ${userText}`.toLowerCase();
-      if (/review|檢查|審批/.test(statusSource)) { status = 'review'; statusLabel = 'Review'; }
-      if (/wip|in progress|進行/.test(statusSource)) { status = 'in_progress'; statusLabel = '進行中'; }
-      if (/done|完成/.test(statusSource)) { status = 'finished'; statusLabel = '完成'; }
-      if (/todo|待辦/.test(statusSource)) { status = 'todo'; statusLabel = '待辦'; }
+      const normalizedStatusRaw = statusRaw.trim().toLowerCase();
+      if (['review', 'internal review', 'internal_review', '檢查', '審批'].includes(normalizedStatusRaw)) {
+        status = 'review';
+        statusLabel = 'Review';
+      } else if (['wip', 'in progress', '進行中', '進行'].includes(normalizedStatusRaw)) {
+        status = 'in_progress';
+        statusLabel = '進行中';
+      } else if (['done', 'finished', '完成'].includes(normalizedStatusRaw)) {
+        status = 'finished';
+        statusLabel = '完成';
+      } else if (['todo', 'to do', '待辦'].includes(normalizedStatusRaw)) {
+        status = 'todo';
+        statusLabel = '待辦';
+      }
       
       const subtaskMatch = userText.match(/Sub task[s]?[：:]\s*(.+)/i);
       const subtasks = subtaskMatch 
