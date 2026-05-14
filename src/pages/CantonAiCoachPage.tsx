@@ -1970,7 +1970,7 @@ export function CantonAiCoachPage() {
                     </div>
 
                     {openPanel.taskId === taskId && openPanel.panel === 'status' && (
-                      <div ref={statusPickerRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                      <div ref={statusPickerRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, paddingBottom: 18, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0', maxHeight: 'min(52vh, 360px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                         {[
                           ['Todo', 'todo'],
                           ['Planning', 'planning'],
