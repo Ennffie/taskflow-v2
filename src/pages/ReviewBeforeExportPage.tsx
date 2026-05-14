@@ -8,12 +8,13 @@ import { buildReviewWarnings, filterRowsByWarning, type ReviewWarningKind } from
 import type { LogEntry, Profile, TaskItem } from '../types';
 import { panelStyle } from './TaskListPage';
 import { useAuth } from '../contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 type ReviewTab = 'member' | 'task' | 'issues';
 
 export function ReviewBeforeExportPage() {
   const { profile } = useAuth();
+  const location = useLocation();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -22,9 +23,10 @@ export function ReviewBeforeExportPage() {
   const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
   const [draftTodayUpdate, setDraftTodayUpdate] = useState('');
   const [draftNextDayFocus, setDraftNextDayFocus] = useState('');
+  const [draftBlocker, setDraftBlocker] = useState('');
   const [draftDueDate, setDraftDueDate] = useState('');
   const [draftAssigneeId, setDraftAssigneeId] = useState('');
-  const [reportDate, setReportDate] = useState<string>(getReportDate());
+  const [reportDate, setReportDate] = useState<string>(() => location.state?.selectedDate || getReportDate());
   const [tab, setTab] = useState<ReviewTab>('issues');
   const [activeWarning, setActiveWarning] = useState<ReviewWarningKind | 'all'>('all');
 
@@ -85,6 +87,7 @@ export function ReviewBeforeExportPage() {
     setEditingRowKey(key);
     setDraftTodayUpdate(row.todayUpdate || '');
     setDraftNextDayFocus(row.nextDayFocus || '');
+    setDraftBlocker(row.blocker || '');
     setDraftDueDate(row.dueDate || '');
     const matchedProfile = profiles.find((item) => item.name === row.member);
     setDraftAssigneeId(matchedProfile?.id || '');
@@ -93,12 +96,22 @@ export function ReviewBeforeExportPage() {
   const handleSaveEdit = async (row: (typeof rows)[number], index: number) => {
     const key = `${row.mainTaskId}-${row.subtaskId ?? 'main'}-${index}`;
     const targetId = row.subtaskId ?? row.mainTaskId;
+    const blockerTargetId = row.mainTaskId;
     setSavingRowKey(key);
     try {
+      const blockerTask = tasks.find((task) => task.id === blockerTargetId);
+      const baseDescription = blockerTask?.description?.replace(/\n\n?Blocker:[\s\S]*$/i, '').trim() || '';
+      const mergedDescription = draftBlocker.trim()
+        ? [baseDescription, `Blocker: ${draftBlocker.trim()}`].filter(Boolean).join('\n\n')
+        : (baseDescription || '');
+
       await updateTask(targetId, {
         today_update: draftTodayUpdate.trim() || null,
         next_day_focus: draftNextDayFocus.trim() || null,
         due_date: draftDueDate.trim() || null,
+      });
+      await updateTask(blockerTargetId, {
+        description: mergedDescription,
       });
       await updateTaskAssignees(targetId, draftAssigneeId ? [draftAssigneeId] : []);
       const [logsData, tasksData, profilesData] = await Promise.all([fetchAllLogs(), fetchTasks(), fetchProfiles()]);
@@ -108,6 +121,7 @@ export function ReviewBeforeExportPage() {
       setEditingRowKey(null);
       setDraftTodayUpdate('');
       setDraftNextDayFocus('');
+      setDraftBlocker('');
       setDraftDueDate('');
       setDraftAssigneeId('');
     } catch (error: any) {
@@ -121,6 +135,7 @@ export function ReviewBeforeExportPage() {
     setEditingRowKey(null);
     setDraftTodayUpdate('');
     setDraftNextDayFocus('');
+    setDraftBlocker('');
     setDraftDueDate('');
     setDraftAssigneeId('');
   };
@@ -190,7 +205,7 @@ export function ReviewBeforeExportPage() {
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '10px' }}>
-              {issueRows.length === 0 ? <div style={{ color: '#6b7280' }}>No issues in this filter. Nice ✨</div> : <MiniRows rows={issueRows.map((item) => item.row)} issueReasons={issueRows.map((item) => item.reasons)} profiles={profiles} showTask showActions editingRowKey={editingRowKey} savingRowKey={savingRowKey} draftTodayUpdate={draftTodayUpdate} draftNextDayFocus={draftNextDayFocus} draftDueDate={draftDueDate} draftAssigneeId={draftAssigneeId} onDraftTodayUpdateChange={setDraftTodayUpdate} onDraftNextDayFocusChange={setDraftNextDayFocus} onDraftDueDateChange={setDraftDueDate} onDraftAssigneeIdChange={setDraftAssigneeId} onStartEdit={handleStartEdit} onSaveEdit={handleSaveEdit} onCancelEdit={handleCancelEdit} />}
+              {issueRows.length === 0 ? <div style={{ color: '#6b7280' }}>No issues in this filter. Nice ✨</div> : <MiniRows rows={issueRows.map((item) => item.row)} issueReasons={issueRows.map((item) => item.reasons)} profiles={profiles} showTask showActions editingRowKey={editingRowKey} savingRowKey={savingRowKey} draftTodayUpdate={draftTodayUpdate} draftNextDayFocus={draftNextDayFocus} draftBlocker={draftBlocker} draftDueDate={draftDueDate} draftAssigneeId={draftAssigneeId} onDraftTodayUpdateChange={setDraftTodayUpdate} onDraftNextDayFocusChange={setDraftNextDayFocus} onDraftBlockerChange={setDraftBlocker} onDraftDueDateChange={setDraftDueDate} onDraftAssigneeIdChange={setDraftAssigneeId} onStartEdit={handleStartEdit} onSaveEdit={handleSaveEdit} onCancelEdit={handleCancelEdit} />}
             </div>
           )}
         </section>
@@ -211,7 +226,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return <button onClick={onClick} style={{ padding: '10px 14px', borderRadius: '10px', border: 'none', background: active ? '#111827' : '#f3f4f6', color: active ? '#fff' : '#475569', fontWeight: 700, cursor: 'pointer' }}>{children}</button>;
 }
 
-function MiniRows({ rows, issueReasons, profiles, showTask = false, showActions = false, editingRowKey, savingRowKey, draftTodayUpdate, draftNextDayFocus, draftDueDate, draftAssigneeId, onDraftTodayUpdateChange, onDraftNextDayFocusChange, onDraftDueDateChange, onDraftAssigneeIdChange, onStartEdit, onSaveEdit, onCancelEdit }: { rows: ReturnType<typeof buildTrackerRows>; issueReasons?: string[][]; profiles: Profile[]; showTask?: boolean; showActions?: boolean; editingRowKey?: string | null; savingRowKey?: string | null; draftTodayUpdate?: string; draftNextDayFocus?: string; draftDueDate?: string; draftAssigneeId?: string; onDraftTodayUpdateChange?: (value: string) => void; onDraftNextDayFocusChange?: (value: string) => void; onDraftDueDateChange?: (value: string) => void; onDraftAssigneeIdChange?: (value: string) => void; onStartEdit?: (row: ReturnType<typeof buildTrackerRows>[number], index: number) => void; onSaveEdit?: (row: ReturnType<typeof buildTrackerRows>[number], index: number) => void; onCancelEdit?: () => void; }) {
+function MiniRows({ rows, issueReasons, profiles, showTask = false, showActions = false, editingRowKey, savingRowKey, draftTodayUpdate, draftNextDayFocus, draftBlocker, draftDueDate, draftAssigneeId, onDraftTodayUpdateChange, onDraftNextDayFocusChange, onDraftBlockerChange, onDraftDueDateChange, onDraftAssigneeIdChange, onStartEdit, onSaveEdit, onCancelEdit }: { rows: ReturnType<typeof buildTrackerRows>; issueReasons?: string[][]; profiles: Profile[]; showTask?: boolean; showActions?: boolean; editingRowKey?: string | null; savingRowKey?: string | null; draftTodayUpdate?: string; draftNextDayFocus?: string; draftBlocker?: string; draftDueDate?: string; draftAssigneeId?: string; onDraftTodayUpdateChange?: (value: string) => void; onDraftNextDayFocusChange?: (value: string) => void; onDraftBlockerChange?: (value: string) => void; onDraftDueDateChange?: (value: string) => void; onDraftAssigneeIdChange?: (value: string) => void; onStartEdit?: (row: ReturnType<typeof buildTrackerRows>[number], index: number) => void; onSaveEdit?: (row: ReturnType<typeof buildTrackerRows>[number], index: number) => void; onCancelEdit?: () => void; }) {
   return (
     <div style={{ display: 'grid', gap: '10px' }}>
       {rows.map((row, index) => (
@@ -246,7 +261,7 @@ function MiniRows({ rows, issueReasons, profiles, showTask = false, showActions 
               )}
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
             <div>
               <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: '4px' }}>Today Update</div>
               {isEditing ? (
@@ -261,6 +276,14 @@ function MiniRows({ rows, issueReasons, profiles, showTask = false, showActions 
                 <textarea value={draftNextDayFocus} onChange={(e) => onDraftNextDayFocusChange?.(e.target.value)} style={quickEditTextareaStyle} />
               ) : (
                 <div style={{ fontSize: '13px', color: row.nextDayFocus ? '#111827' : '#94a3b8', whiteSpace: 'pre-wrap' }}>{row.nextDayFocus || '—'}</div>
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#b45309', textTransform: 'uppercase', marginBottom: '4px' }}>Blocker</div>
+              {isEditing ? (
+                <textarea value={draftBlocker} onChange={(e) => onDraftBlockerChange?.(e.target.value)} style={quickEditTextareaStyle} />
+              ) : (
+                <div style={{ fontSize: '13px', color: row.blocker ? '#111827' : '#94a3b8', whiteSpace: 'pre-wrap' }}>{row.blocker || '—'}</div>
               )}
             </div>
           </div>

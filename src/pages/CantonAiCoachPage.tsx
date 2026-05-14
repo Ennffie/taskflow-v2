@@ -2260,6 +2260,11 @@ export function CantonAiCoachPage() {
                           ))}
                         </div>
                       )}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                        <button onClick={() => navigate('/review-export', { state: { selectedDate: reportDate } })} style={{ border: '1px solid #0f172a', background: '#0f172a', color: '#fff', borderRadius: 999, padding: '10px 14px', fontSize: 13, fontWeight: 900, cursor: 'pointer' }}>
+                          Daily Log Book
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

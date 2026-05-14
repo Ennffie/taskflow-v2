@@ -13,6 +13,7 @@ export type TrackerRow = {
   dueDate: string;
   todayUpdate: string;
   nextDayFocus: string;
+  blocker: string;
   mainTaskStatus?: string;
   mainTaskProgress?: string;
   mainTaskDueDate?: string;
@@ -58,6 +59,25 @@ function buildDailyMyLogMap(logs: LogEntry[], tasks: TaskItem[], date: string): 
   );
 }
 
+function buildFieldLogMap(logs: LogEntry[], tasks: TaskItem[], date: string, pattern: RegExp, stripPattern: RegExp): Map<string, string> {
+  const taskMap = new Map(tasks.map((task) => [task.id, task]));
+  const grouped = new Map<string, string>();
+
+  logs
+    .filter((log) => log.date === date && pattern.test(log.event.trim()))
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .forEach((log) => {
+      const rootTaskId = getRootTaskId(log.task_id, taskMap);
+      grouped.set(rootTaskId, log.event.trim().replace(stripPattern, '').trim());
+    });
+
+  return grouped;
+}
+
+function getDescriptionBlocker(task: TaskItem): string {
+  return task.description?.match(/Blocker:\s*([\s\S]*)/i)?.[1]?.trim() || '';
+}
+
 function matchesSelectedUser(task: TaskItem, selectedUser: string): boolean {
   if (selectedUser === 'all') return true;
   return task.assignees.some((assignee) => assignee.id === selectedUser);
@@ -72,6 +92,7 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
   const rootTasks = tasks.filter((task) => !task.parent_id);
   const todayMyLogs = buildDailyMyLogMap(logs, tasks, reportDate);
   const nextDayMyLogs = buildDailyMyLogMap(logs, tasks, nextFocusDate);
+  const blockerLogs = buildFieldLogMap(logs, tasks, reportDate, /^\[Blocker\]/i, /^\[Blocker\]\s*/i);
   const tasksWithUpdateToday = new Set(
     logs
       .filter((log) => log.date === reportDate)
@@ -83,8 +104,9 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
     const relevantSubtasks = subtasks.filter((subtask) => matchesSelectedUser(subtask, selectedUser));
     const today = todayMyLogs.get(mainTask.id)?.trim() || '';
     const next = nextDayMyLogs.get(mainTask.id)?.trim() || ((mainTask.is_focus && (!mainTask.is_finished || tasksWithUpdateToday.has(mainTask.id))) ? 'Continues tomorrow' : '');
+    const blocker = blockerLogs.get(mainTask.id)?.trim() || (reportDate === new Date().toISOString().slice(0, 10) ? getDescriptionBlocker(mainTask) : '');
 
-    if (!today && !next) return [];
+    if (!today && !next && !blocker) return [];
 
     if (subtasks.length > 0 && relevantSubtasks.length === 0 && selectedUser !== 'all') {
       return [];
@@ -103,6 +125,7 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
         dueDate: mainTask.due_date?.trim() || 'TBC',
         todayUpdate: today,
         nextDayFocus: next,
+        blocker,
         mainTaskStatus: getStatusMeta(mainTask.status).label,
         mainTaskProgress: formatProgress(mainTask),
         mainTaskDueDate: mainTask.due_date?.trim() || 'TBC',
@@ -120,6 +143,7 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
       dueDate: subtask.due_date?.trim() || 'TBC',
       todayUpdate: today,
       nextDayFocus: next,
+      blocker,
       mainTaskStatus: getStatusMeta(mainTask.status).label,
       mainTaskProgress: formatProgress(mainTask),
       mainTaskDueDate: mainTask.due_date?.trim() || 'TBC',
