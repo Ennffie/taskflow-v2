@@ -101,8 +101,9 @@ export function buildTrackerRows(tasks: TaskItem[], logs: LogEntry[], reportDate
     const today = todayMyLogs.get(mainTask.id)?.trim() || '';
     const next = nextDayMyLogs.get(mainTask.id)?.trim() || '';
     const blocker = blockerLogs.get(mainTask.id)?.trim() || (reportDate === new Date().toISOString().slice(0, 10) ? getDescriptionBlocker(mainTask) : '');
+    const hasFocus = !!mainTask.is_focus && !mainTask.is_finished;
 
-    if (!today && !next) return [];
+    if (!today && !next && !hasFocus) return [];
 
     if (options?.mainTasksOnly) {
       if (!matchesSelectedUser(mainTask, selectedUser)) return [];
