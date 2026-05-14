@@ -746,7 +746,24 @@ export async function updateSubtask(
     .single();
   if (fetchError) throw fetchError;
 
-  const { error } = await supabase.from('tasks').update(payload).eq('id', subtaskId);
+  const updatePayload: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (payload.title !== undefined) updatePayload.title = payload.title;
+  if (payload.due_date !== undefined) updatePayload.due_date = payload.due_date;
+  if (payload.status !== undefined) updatePayload.status = payload.status === 'finished' ? 'done' : payload.status;
+  if (payload.progress !== undefined) {
+    updatePayload.progress_percent = payload.progress;
+    updatePayload.is_finished = payload.progress >= 100;
+    if (payload.status === undefined) {
+      updatePayload.status = payload.progress >= 100
+        ? 'done'
+        : (before.status === 'done' || before.status === 'finished' ? 'in_progress' : before.status);
+    }
+  }
+
+  const { error } = await supabase.from('tasks').update(updatePayload).eq('id', subtaskId);
   if (error) throw error;
 
   // Create auto event log for subtask changes

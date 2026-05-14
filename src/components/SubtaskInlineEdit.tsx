@@ -33,6 +33,13 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
     }
   }, [isExpanded]);
 
+  useEffect(() => {
+    setTitle(subtask.title);
+    setProgress(subtask.progress ?? subtask.progress_percent ?? 0);
+    setStatus(subtask.status);
+    setAssigneeIds(subtask.assignees.map(a => a.id));
+  }, [subtask]);
+
   const handleDelete = async () => {
     if (isSaving || isReplying || !onDelete) return;
     setIsSaving(true);
@@ -68,6 +75,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
       onUpdate();
     } catch (e) {
       console.error('Failed to update subtask:', e);
+      alert(`Update sub-task failed: ${(e as any)?.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
