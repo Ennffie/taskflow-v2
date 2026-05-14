@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Wand2 } from 'lucide-react';
+import { Sparkles, Wand2, Check } from 'lucide-react';
 import { parseTaskWithGemma, type ParsedTaskDraft } from '../lib/localTaskParser';
 import { VersionBadge } from '../components/VersionBadge';
 
@@ -101,8 +101,8 @@ function DraftRow({ label, value }: { label: string; value: string }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: '#94a3b8' }}>{label}</div>
         {hasValue && (
-          <div style={{ minWidth: 18, height: 18, borderRadius: 999, background: '#10b981', color: '#fff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(16,185,129,0.22)' }}>
-            ✓
+          <div style={{ minWidth: 18, width: 18, height: 18, borderRadius: 999, background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(16,185,129,0.22)', flexShrink: 0 }}>
+            <Check size={12} strokeWidth={3.2} />
           </div>
         )}
       </div>
