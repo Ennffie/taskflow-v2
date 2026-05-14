@@ -255,9 +255,7 @@ export function CantonAiCoachPage() {
 
     if (isLatestReportLog) {
       const timer = window.setTimeout(() => {
-        if (!reportAnchorRef.current) return;
-        const top = reportAnchorRef.current.getBoundingClientRect().top + window.scrollY - 16;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        reportAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 60);
       return () => window.clearTimeout(timer);
     }
@@ -2189,7 +2187,7 @@ export function CantonAiCoachPage() {
                   transformOrigin: '50% 100%'
                 };
                 return (
-                  <div ref={reportAnchorRef} style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%' }}>
+                  <div ref={reportAnchorRef} style={{ marginTop: 14, display: 'grid', gap: 14, width: '100%', scrollMarginTop: 16 }}>
                     <div style={{ display: 'grid', gap: 10 }}>
                       <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0D8A9C' }}>Ready for report</div>
                       {withLogsToday.length === 0 ? (
