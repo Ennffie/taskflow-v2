@@ -49,6 +49,17 @@ export interface LogEntry {
   created_by_profile?: Profile;
 }
 
+export interface AttendanceLog {
+  id: string;
+  user_id: string;
+  date: string;
+  check_in_at: string;
+  note: string | null;
+  source: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const STATUS_META: Record<TaskStatus, { label: string; color: string; bg: string }> = {
   todo: { label: 'Todo', color: '#6b7280', bg: '#f3f4f6' },
   planning: { label: 'Planning', color: '#0f766e', bg: '#ccfbf1' },

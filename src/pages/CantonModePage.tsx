@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarDays, Clock3, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { fetchTasks } from '../lib/api';
+import { checkInToday, fetchTasks, fetchTodayAttendance } from '../lib/api';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
+import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
-import { getStatusMeta, type TaskItem } from '../types';
+import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile } from '../lib/horoscope';
+import { getStatusMeta, type AttendanceLog, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
 const cardStyle: React.CSSProperties = {
@@ -100,9 +102,13 @@ function hexToRgba(hex: string, alpha: number) {
 
 export function CantonModePage() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [attendance, setAttendance] = useState<AttendanceLog | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
+  const [checkInLoading, setCheckInLoading] = useState(false);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -115,14 +121,29 @@ export function CantonModePage() {
     }
   };
 
+  const loadAttendance = async () => {
+    setAttendanceLoading(true);
+    try {
+      setAttendance(await fetchTodayAttendance());
+    } catch (error: any) {
+      alert(`Load check-in failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const loadPageData = async () => {
+    await Promise.all([loadTasks(), loadAttendance()]);
+  };
+
   useEffect(() => {
-    void loadTasks();
+    void loadPageData();
     const onVis = () => {
-      if (document.visibilityState === 'visible') void loadTasks();
+      if (document.visibilityState === 'visible') void loadPageData();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, []);
+  }, [user?.id]);
 
   const rootTasks = useMemo(() => tasks.filter((task) => !task.parent_id), [tasks]);
   const focusTasks = useMemo(() => rootTasks.filter((task) => task.is_focus && !isDone(task)), [rootTasks]);
@@ -174,6 +195,26 @@ export function CantonModePage() {
             <div style={{ ...cardStyle, padding: 28, color: '#64748b', fontWeight: 700 }}>Loading Canton mode…</div>
           ) : (
             <>
+              <AttendanceCheckInCard
+                profileName={profile?.name || user?.user_metadata?.name || user?.email || 'Enfield'}
+                profileEmail={profile?.email || user?.email || ''}
+                attendance={attendance}
+                loading={attendanceLoading}
+                checkingIn={checkInLoading}
+                onCheckIn={async () => {
+                  if (attendance || checkInLoading) return;
+                  setCheckInLoading(true);
+                  try {
+                    const next = await checkInToday('canton_mode');
+                    setAttendance(next);
+                  } catch (error: any) {
+                    alert(`Check-in failed: ${error?.message || 'Unknown error'}`);
+                  } finally {
+                    setCheckInLoading(false);
+                  }
+                }}
+              />
+
               <section style={{ ...cardStyle, padding: '16px 0 0', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(251,247,255,0.94))' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6d28d9', fontWeight: 900, fontSize: 14 }}><Waves size={17} /> Focus Tasks ({focusTasks.length})</div>
@@ -209,6 +250,102 @@ export function CantonModePage() {
       </div>
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} variant="canton" />}
     </AppShell>
+  );
+}
+
+function AttendanceCheckInCard({
+  profileName,
+  profileEmail,
+  attendance,
+  loading,
+  checkingIn,
+  onCheckIn,
+}: {
+  profileName: string;
+  profileEmail: string;
+  attendance: AttendanceLog | null;
+  loading: boolean;
+  checkingIn: boolean;
+  onCheckIn: () => void | Promise<void>;
+}) {
+  const horoscope = getDailyHoroscopeForProfile({ name: profileName, email: profileEmail });
+  const hasCheckedIn = !!attendance;
+  const dateLabel = formatHongKongDateLabel(new Date());
+  const timeLabel = attendance ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
+
+  return (
+    <section style={{ ...cardStyle, padding: 18, background: 'linear-gradient(180deg, #fffaf5 0%, #fff 35%, #f7fbff 100%)', overflow: 'hidden', position: 'relative' }}>
+      <div style={{ position: 'absolute', right: -24, top: -20, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(251,191,36,0.15) 0%, rgba(251,191,36,0.02) 72%, transparent 100%)' }} />
+      <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <HamsterBadge />
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ea580c', fontSize: 13, fontWeight: 900 }}><Sparkles size={15} /> 報到</div>
+              <div style={{ marginTop: 4, fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em' }}>{hasCheckedIn ? '今日已經打咗卡 ✨' : '返工前記得撳一下呀'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ borderRadius: 22, padding: '16px 16px 18px', background: 'linear-gradient(135deg, #fff1f2 0%, #fefce8 48%, #eff6ff 100%)', border: '1px solid rgba(251,146,60,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9a3412', fontSize: 13, fontWeight: 900 }}><Sparkles size={14} /> 今日運程 · {horoscope.signLabel}</div>
+          <div style={{ marginTop: 10, fontSize: 20, lineHeight: 1.45, fontWeight: 900, color: '#7c2d12', letterSpacing: '-0.02em' }}>{horoscope.message}</div>
+          <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ padding: '7px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.74)', color: '#9a3412', fontSize: 12, fontWeight: 800 }}>幸運色：{horoscope.luckyColor}</span>
+            <span style={{ padding: '7px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.74)', color: '#9a3412', fontSize: 12, fontWeight: 800 }}>今日小物：{horoscope.luckyThing}</span>
+          </div>
+        </div>
+
+        <div style={{ borderRadius: 24, padding: '16px 16px 18px', background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 14px 30px rgba(148,163,184,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: 13, fontWeight: 800 }}><CalendarDays size={15} /> {dateLabel}</div>
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 52, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : timeLabel}</div>
+            {hasCheckedIn && <span style={{ padding: '6px 10px', borderRadius: 999, background: '#dcfce7', color: '#15803d', fontSize: 12, fontWeight: 900 }}>已報到</span>}
+          </div>
+          <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>
+            {hasCheckedIn ? '今日返工時間已記錄好，慢慢開工都得。' : '未報到前撳一下，會記低今日日期同而家時間。'}
+          </div>
+          <button
+            onClick={() => void onCheckIn()}
+            disabled={loading || checkingIn || hasCheckedIn}
+            style={{
+              marginTop: 16,
+              width: '100%',
+              border: 'none',
+              borderRadius: 18,
+              padding: '15px 18px',
+              background: hasCheckedIn ? '#e2e8f0' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
+              color: hasCheckedIn ? '#64748b' : '#fff',
+              fontSize: 16,
+              fontWeight: 900,
+              boxShadow: hasCheckedIn ? 'none' : '0 14px 26px rgba(249,115,22,0.24)',
+              cursor: loading || checkingIn || hasCheckedIn ? 'default' : 'pointer',
+              opacity: checkingIn ? 0.82 : 1,
+            }}
+          >
+            {checkingIn ? '報到中…' : hasCheckedIn ? '今日已報到' : '立即報到'}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HamsterBadge() {
+  return (
+    <div style={{ width: 72, height: 72, borderRadius: 24, background: 'linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid rgba(251,146,60,0.28)', display: 'grid', placeItems: 'center', boxShadow: '0 12px 24px rgba(251,146,60,0.16)' }}>
+      <div style={{ position: 'relative', width: 52, height: 52 }}>
+        <span style={{ position: 'absolute', left: 6, top: 2, width: 14, height: 14, borderRadius: '50%', background: '#f5c7a9', border: '2px solid #d4a373' }} />
+        <span style={{ position: 'absolute', right: 6, top: 2, width: 14, height: 14, borderRadius: '50%', background: '#f5c7a9', border: '2px solid #d4a373' }} />
+        <span style={{ position: 'absolute', inset: 6, borderRadius: '50%', background: 'linear-gradient(180deg, #f7d3b7 0%, #e8b48a 100%)', border: '2px solid #d4a373' }} />
+        <span style={{ position: 'absolute', left: 16, top: 24, width: 5, height: 7, borderRadius: '50%', background: '#3f3f46' }} />
+        <span style={{ position: 'absolute', right: 16, top: 24, width: 5, height: 7, borderRadius: '50%', background: '#3f3f46' }} />
+        <span style={{ position: 'absolute', left: '50%', top: 29, width: 8, height: 6, marginLeft: -4, borderRadius: '50%', background: '#7c2d12' }} />
+        <span style={{ position: 'absolute', left: '50%', top: 35, width: 16, height: 8, marginLeft: -8, borderBottom: '2px solid #7c2d12', borderRadius: '0 0 999px 999px' }} />
+        <span style={{ position: 'absolute', left: 11, top: 32, width: 8, height: 5, borderRadius: '50%', background: 'rgba(251,113,133,0.45)' }} />
+        <span style={{ position: 'absolute', right: 11, top: 32, width: 8, height: 5, borderRadius: '50%', background: 'rgba(251,113,133,0.45)' }} />
+      </div>
+    </div>
   );
 }
 

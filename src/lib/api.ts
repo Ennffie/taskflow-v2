@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { getReportDate } from './date';
-import type { LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
+import { getHongKongDateString } from './horoscope';
+import type { AttendanceLog, LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
 // Fetch bridge URL from Supabase app_config
 export async function fetchBridgeUrl(): Promise<string | null> {
@@ -88,6 +89,35 @@ function buildTaskUpdateEvents(before: TaskRecord, after: Partial<TaskRecord>): 
   }
 
   return events;
+}
+
+const ATTENDANCE_FALLBACK_STORAGE_KEY = 'taskflow_attendance_fallback_v1';
+
+function isMissingAttendanceTableError(error: any): boolean {
+  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return error?.code === '42P01' || message.includes('attendance_logs');
+}
+
+function readAttendanceFallback(userId: string, date: string): AttendanceLog | null {
+  try {
+    const raw = localStorage.getItem(ATTENDANCE_FALLBACK_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, AttendanceLog>;
+    return parsed[`${userId}:${date}`] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeAttendanceFallback(entry: AttendanceLog) {
+  try {
+    const raw = localStorage.getItem(ATTENDANCE_FALLBACK_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, AttendanceLog> : {};
+    parsed[`${entry.user_id}:${entry.date}`] = entry;
+    localStorage.setItem(ATTENDANCE_FALLBACK_STORAGE_KEY, JSON.stringify(parsed));
+  } catch {
+    // ignore storage failure
+  }
 }
 
 async function createAutoEventLog(params: {
@@ -910,4 +940,64 @@ export async function updateLog(
     .update(payload)
     .eq('id', logId);
   if (error) throw error;
+}
+
+export async function fetchTodayAttendance(): Promise<AttendanceLog | null> {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) return null;
+
+  const today = getHongKongDateString();
+  const { data, error } = await supabase
+    .from('attendance_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', today)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingAttendanceTableError(error)) {
+      return readAttendanceFallback(userId, today);
+    }
+    throw error;
+  }
+  return (data as AttendanceLog | null) ?? readAttendanceFallback(userId, today);
+}
+
+export async function checkInToday(source = 'manual'): Promise<AttendanceLog> {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) throw new Error('User not authenticated');
+
+  const payload = {
+    user_id: userId,
+    date: getHongKongDateString(),
+    check_in_at: new Date().toISOString(),
+    source,
+  };
+
+  const { data, error } = await supabase
+    .from('attendance_logs')
+    .upsert(payload, { onConflict: 'user_id,date' })
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    if (isMissingAttendanceTableError(error)) {
+      const fallbackEntry: AttendanceLog = {
+        id: `local-${userId}-${payload.date}`,
+        user_id: userId,
+        date: payload.date,
+        check_in_at: payload.check_in_at,
+        note: null,
+        source: `${source}:local_fallback`,
+        created_at: payload.check_in_at,
+        updated_at: payload.check_in_at,
+      };
+      writeAttendanceFallback(fallbackEntry);
+      return fallbackEntry;
+    }
+    throw error ?? new Error('Check-in failed');
+  }
+  return data as AttendanceLog;
 }
