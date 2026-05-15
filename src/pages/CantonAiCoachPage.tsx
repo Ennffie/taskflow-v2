@@ -719,6 +719,7 @@ export function CantonAiCoachPage() {
               ? 'report-log'
               : null;
     const isActive = key !== null && activeQuickAction === key;
+    const isLocked = isReplying || isTyping;
     if (preset === '退下') {
       return {
         flexShrink: 0,
@@ -729,6 +730,8 @@ export function CantonAiCoachPage() {
         padding: '8px 11px',
         fontSize: 13,
         fontWeight: 850,
+        opacity: isLocked ? 0.55 : 1,
+        cursor: isLocked ? 'default' : 'pointer',
       };
     }
     return {
@@ -740,7 +743,9 @@ export function CantonAiCoachPage() {
       padding: '8px 11px',
       fontSize: 13,
       fontWeight: 850,
-      boxShadow: isActive ? '0 0 0 2px rgba(14,165,233,0.12) inset' : 'none'
+      boxShadow: isActive ? '0 0 0 2px rgba(14,165,233,0.12) inset' : 'none',
+      opacity: isLocked ? 0.55 : 1,
+      cursor: isLocked ? 'default' : 'pointer',
     };
   };
 
@@ -2529,7 +2534,8 @@ export function CantonAiCoachPage() {
           )}
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
             {['退下', '搵 Task', '加Task', 'Focus', 'My Task', 'Report Log'].map(preset => (
-              <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} onClick={() => {
+              <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} disabled={isReplying || isTyping} onClick={() => {
+                if (isReplying || isTyping) return;
                 setPendingTaskAction(null);
 
                 if (preset !== '加Task') {
@@ -2598,6 +2604,11 @@ export function CantonAiCoachPage() {
               </button>
             ))}
           </div>
+          {(isReplying || isTyping) && (
+            <div style={{ marginTop: -2, marginBottom: 8, paddingLeft: 4, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+              諗緊緊，buttons 會暫時鎖住～
+            </div>
+          )}
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 {reportEditorState && (
