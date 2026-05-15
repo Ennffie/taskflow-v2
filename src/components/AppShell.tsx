@@ -1,5 +1,5 @@
-import { CheckSquare, ScrollText, Settings, Home, Plus, Sparkles } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { CheckSquare, ScrollText, Settings, Home, Sparkles } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { VersionBadge } from './VersionBadge';
@@ -23,10 +23,12 @@ export function notifyModalClose() {
   listeners.forEach(cb => cb(modalCount));
 }
 
-export function AppShell({ children, onAddTask }: AppShellProps) {
+export function AppShell({ children, onAddTask: _onAddTask }: AppShellProps) {
   const { profile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isLogPage = location.pathname === '/my-log';
+  const isAiPage = location.pathname === '/canton-ai';
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -126,27 +128,54 @@ export function AppShell({ children, onAddTask }: AppShellProps) {
             )}
           </nav>
 
-          {/* Add Task Button */}
+          {/* Silly AI Button */}
           <button
-            onClick={onAddTask}
+            onClick={() => navigate('/canton-ai')}
+            aria-label="Open Silly AI"
             style={{
-              width: '56px',
-              height: '56px',
+              width: '62px',
+              height: '62px',
               borderRadius: '50%',
-              background: isLogPage ? '#22c55e' : '#7c3aed',
-              border: 'none',
+              background: isAiPage
+                ? 'linear-gradient(135deg, #f97316 0%, #ec4899 45%, #7c3aed 100%)'
+                : isLogPage
+                  ? 'linear-gradient(135deg, #22c55e 0%, #14b8a6 100%)'
+                  : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 38%, #8b5cf6 100%)',
+              border: '2px solid rgba(255,255,255,0.92)',
               color: '#fff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: isLogPage ? '0 4px 16px rgba(34, 197, 94, 0.4)' : '0 4px 16px rgba(124, 58, 237, 0.4)',
+              boxShadow: isAiPage
+                ? '0 10px 26px rgba(236, 72, 153, 0.34)'
+                : '0 10px 26px rgba(139, 92, 246, 0.34)',
+              position: 'relative',
+              overflow: 'hidden',
             }}
           >
-            <Plus size={28} strokeWidth={2.5} />
+            <span style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.42), transparent 38%)' }} />
+            <SillyAiFabFace />
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function SillyAiFabFace() {
+  return (
+    <div style={{ position: 'relative', width: 38, height: 38, zIndex: 1 }}>
+      <span style={{ position: 'absolute', left: 3, top: 2, width: 11, height: 11, borderRadius: '50%', background: '#ffd6e7', border: '2px solid #fff3f7' }} />
+      <span style={{ position: 'absolute', right: 3, top: 2, width: 11, height: 11, borderRadius: '50%', background: '#ffd6e7', border: '2px solid #fff3f7' }} />
+      <span style={{ position: 'absolute', inset: 4, borderRadius: '50%', background: 'linear-gradient(180deg, #ffe3ee 0%, #ffc4d6 100%)', border: '2px solid rgba(255,255,255,0.88)', boxShadow: 'inset 0 -2px 4px rgba(251,113,133,0.2)' }} />
+      <span style={{ position: 'absolute', left: 12, top: 17, width: 4, height: 6, borderRadius: '50%', background: '#6b214d' }} />
+      <span style={{ position: 'absolute', right: 12, top: 17, width: 4, height: 6, borderRadius: '50%', background: '#6b214d' }} />
+      <span style={{ position: 'absolute', left: '50%', top: 21, width: 7, height: 5, marginLeft: -3.5, borderRadius: '50%', background: '#fb7185' }} />
+      <span style={{ position: 'absolute', left: '50%', top: 25, width: 14, height: 7, marginLeft: -7, borderBottom: '2px solid #6b214d', borderRadius: '0 0 999px 999px' }} />
+      <span style={{ position: 'absolute', left: 8, top: 22, width: 6, height: 4, borderRadius: '50%', background: 'rgba(244,114,182,0.55)' }} />
+      <span style={{ position: 'absolute', right: 8, top: 22, width: 6, height: 4, borderRadius: '50%', background: 'rgba(244,114,182,0.55)' }} />
+      <span style={{ position: 'absolute', right: -1, bottom: -2, width: 15, height: 15, borderRadius: '50%', background: 'linear-gradient(135deg, #fde68a 0%, #f59e0b 100%)', border: '2px solid rgba(255,255,255,0.92)', display: 'grid', placeItems: 'center', fontSize: 9, boxShadow: '0 4px 10px rgba(245,158,11,0.28)' }}>✦</span>
     </div>
   );
 }
