@@ -2339,9 +2339,13 @@ export function CantonAiCoachPage() {
                               <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>Subtasks ({task.subtasks.length})</div>
                               {task.subtasks.map((subtask: any) => (
                                 <div key={subtask.id} style={{ display: 'grid', gap: 6, padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
-                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{subtask.title}</div>
-                                  <div style={{ fontSize: 12, color: '#64748b' }}>{subtask.status}｜{subtask.progress}%{subtask.is_focus ? '｜Focus' : ''}</div>
-                                  {renderAssigneeEditor(subtask.id, subtask.title, subtask.assignees, true)}
+                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtask.title}</div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ fontSize: 12, color: '#64748b', flexShrink: 0 }}>{subtask.status}｜{subtask.progress}%</div>
+                                    <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}>
+                                      <div style={{ width: `${Math.max(0, Math.min(100, subtask.progress || 0))}%`, height: '100%', borderRadius: 999, background: subtask.status === 'finished' || subtask.progress >= 100 ? '#22c55e' : '#38bdf8' }} />
+                                    </div>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -2376,9 +2380,13 @@ export function CantonAiCoachPage() {
                                   <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>Subtasks ({task.subtasks.length})</div>
                                   {task.subtasks.map((subtask: any) => (
                                     <div key={subtask.id} style={{ display: 'grid', gap: 6, padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
-                                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{subtask.title}</div>
-                                      <div style={{ fontSize: 12, color: '#64748b' }}>{subtask.status}｜{subtask.progress}%{subtask.is_focus ? '｜Focus' : ''}</div>
-                                      {renderAssigneeEditor(subtask.id, subtask.title, subtask.assignees, true)}
+                                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtask.title}</div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <div style={{ fontSize: 12, color: '#64748b', flexShrink: 0 }}>{subtask.status}｜{subtask.progress}%</div>
+                                        <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}>
+                                          <div style={{ width: `${Math.max(0, Math.min(100, subtask.progress || 0))}%`, height: '100%', borderRadius: 999, background: subtask.status === 'finished' || subtask.progress >= 100 ? '#22c55e' : '#38bdf8' }} />
+                                        </div>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
