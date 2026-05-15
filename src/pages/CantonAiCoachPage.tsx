@@ -2338,13 +2338,13 @@ export function CantonAiCoachPage() {
                             <div style={{ display: 'grid', gap: 8, padding: '10px 12px', borderRadius: 14, background: '#fff', border: '1px solid #e2e8f0' }}>
                               <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>Subtasks ({task.subtasks.length})</div>
                               {task.subtasks.map((subtask: any) => (
-                                <div key={subtask.id} style={{ display: 'grid', gap: 6, padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
-                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtask.title}</div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <div style={{ fontSize: 12, color: '#64748b', flexShrink: 0 }}>{subtask.status}｜{subtask.progress}%</div>
+                                <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
+                                  <div style={{ minWidth: 0, flex: 1, fontSize: 13, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtask.title}</div>
+                                  <div style={{ width: 96, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}>
                                       <div style={{ width: `${Math.max(0, Math.min(100, subtask.progress || 0))}%`, height: '100%', borderRadius: 999, background: subtask.status === 'finished' || subtask.progress >= 100 ? '#22c55e' : '#38bdf8' }} />
                                     </div>
+                                    <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', minWidth: 34, textAlign: 'right' }}>{subtask.progress}%</div>
                                   </div>
                                 </div>
                               ))}
@@ -2379,13 +2379,13 @@ export function CantonAiCoachPage() {
                                 <div style={{ display: 'grid', gap: 8, padding: '10px 12px', borderRadius: 14, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                                   <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>Subtasks ({task.subtasks.length})</div>
                                   {task.subtasks.map((subtask: any) => (
-                                    <div key={subtask.id} style={{ display: 'grid', gap: 6, padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
-                                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtask.title}</div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <div style={{ fontSize: 12, color: '#64748b', flexShrink: 0 }}>{subtask.status}｜{subtask.progress}%</div>
+                                    <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
+                                      <div style={{ minWidth: 0, flex: 1, fontSize: 13, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtask.title}</div>
+                                      <div style={{ width: 96, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}>
                                           <div style={{ width: `${Math.max(0, Math.min(100, subtask.progress || 0))}%`, height: '100%', borderRadius: 999, background: subtask.status === 'finished' || subtask.progress >= 100 ? '#22c55e' : '#38bdf8' }} />
                                         </div>
+                                        <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', minWidth: 34, textAlign: 'right' }}>{subtask.progress}%</div>
                                       </div>
                                     </div>
                                   ))}
