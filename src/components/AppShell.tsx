@@ -2,6 +2,7 @@ import { CheckSquare, ScrollText, Settings, Home, Sparkles } from 'lucide-react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
+import sillyAiFabAvatar from '../assets/silly-ai-fab-avatar.png';
 import { VersionBadge } from './VersionBadge';
 
 interface AppShellProps {
@@ -141,41 +142,34 @@ export function AppShell({ children, onAddTask: _onAddTask }: AppShellProps) {
                 : isLogPage
                   ? 'linear-gradient(135deg, #22c55e 0%, #14b8a6 100%)'
                   : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 38%, #8b5cf6 100%)',
-              border: '2px solid rgba(255,255,255,0.92)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              border: '2px solid rgba(255,255,255,0.95)',
+              display: 'grid',
+              placeItems: 'center',
               cursor: 'pointer',
               boxShadow: isAiPage
                 ? '0 10px 26px rgba(236, 72, 153, 0.34)'
                 : '0 10px 26px rgba(139, 92, 246, 0.34)',
               position: 'relative',
               overflow: 'hidden',
+              padding: 0,
             }}
           >
             <span style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.42), transparent 38%)' }} />
-            <SillyAiFabFace />
+            <img
+              src={sillyAiFabAvatar}
+              alt="Silly AI"
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: 'scale(1.06)',
+              }}
+            />
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-function SillyAiFabFace() {
-  return (
-    <div style={{ position: 'relative', width: 38, height: 38, zIndex: 1 }}>
-      <span style={{ position: 'absolute', left: 3, top: 2, width: 11, height: 11, borderRadius: '50%', background: '#ffd6e7', border: '2px solid #fff3f7' }} />
-      <span style={{ position: 'absolute', right: 3, top: 2, width: 11, height: 11, borderRadius: '50%', background: '#ffd6e7', border: '2px solid #fff3f7' }} />
-      <span style={{ position: 'absolute', inset: 4, borderRadius: '50%', background: 'linear-gradient(180deg, #ffe3ee 0%, #ffc4d6 100%)', border: '2px solid rgba(255,255,255,0.88)', boxShadow: 'inset 0 -2px 4px rgba(251,113,133,0.2)' }} />
-      <span style={{ position: 'absolute', left: 12, top: 17, width: 4, height: 6, borderRadius: '50%', background: '#6b214d' }} />
-      <span style={{ position: 'absolute', right: 12, top: 17, width: 4, height: 6, borderRadius: '50%', background: '#6b214d' }} />
-      <span style={{ position: 'absolute', left: '50%', top: 21, width: 7, height: 5, marginLeft: -3.5, borderRadius: '50%', background: '#fb7185' }} />
-      <span style={{ position: 'absolute', left: '50%', top: 25, width: 14, height: 7, marginLeft: -7, borderBottom: '2px solid #6b214d', borderRadius: '0 0 999px 999px' }} />
-      <span style={{ position: 'absolute', left: 8, top: 22, width: 6, height: 4, borderRadius: '50%', background: 'rgba(244,114,182,0.55)' }} />
-      <span style={{ position: 'absolute', right: 8, top: 22, width: 6, height: 4, borderRadius: '50%', background: 'rgba(244,114,182,0.55)' }} />
-      <span style={{ position: 'absolute', right: -1, bottom: -2, width: 15, height: 15, borderRadius: '50%', background: 'linear-gradient(135deg, #fde68a 0%, #f59e0b 100%)', border: '2px solid rgba(255,255,255,0.92)', display: 'grid', placeItems: 'center', fontSize: 9, boxShadow: '0 4px 10px rgba(245,158,11,0.28)' }}>✦</span>
     </div>
   );
 }
