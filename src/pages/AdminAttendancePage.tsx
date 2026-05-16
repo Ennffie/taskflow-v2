@@ -27,6 +27,11 @@ function formatStatus(status: AttendanceLog['status']) {
   return 'Present';
 }
 
+function shouldHideFromAdminAttendance(profile: Profile) {
+  const normalized = profile.name.trim().toLowerCase();
+  return normalized.includes('claire') || normalized.includes('shani');
+}
+
 export function AdminAttendancePage() {
   const { profile } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -38,8 +43,10 @@ export function AdminAttendancePage() {
     const month = new Date().toISOString().slice(0, 7);
     Promise.all([fetchProfiles(), fetchAttendanceRecords({ month, includeAllUsers: true })])
       .then(([profilesData, recordsData]) => {
-        setProfiles(profilesData);
-        setRecords(recordsData);
+        const visibleProfiles = profilesData.filter((item) => !shouldHideFromAdminAttendance(item));
+        const visibleIds = new Set(visibleProfiles.map((item) => item.id));
+        setProfiles(visibleProfiles);
+        setRecords(recordsData.filter((item) => visibleIds.has(item.user_id)));
       })
       .finally(() => setLoading(false));
   }, []);
