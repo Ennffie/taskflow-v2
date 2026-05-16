@@ -116,16 +116,17 @@ export function AttendanceRecordPage() {
           <AttendanceTrendChart records={records} profile={profile} />
         </section>
 
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
+        <section style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: '#64748b', fontSize: 13, fontWeight: 700 }}>
           {[
             ['平均', formatMinutes(summary.avg)],
             ['最早', formatMinutes(summary.earliest)],
             ['最遲', formatMinutes(summary.latest)],
             ['Off', String(summary.offCount)],
-          ].map(([label, value]) => (
-            <div key={label} style={{ borderRadius: 16, background: '#fff', border: '1px solid #eef2f7', padding: '10px 12px' }}>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>{label}</div>
-              <div style={{ fontSize: 15, color: '#334155', fontWeight: 800, marginTop: 4 }}>{value}</div>
+          ].map(([label, value], index, array) => (
+            <div key={label} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+              <span style={{ color: '#94a3b8', fontWeight: 700 }}>{label}</span>
+              <span style={{ color: '#334155', fontWeight: 900 }}>{value}</span>
+              {index < array.length - 1 ? <span style={{ color: '#cbd5e1' }}>·</span> : null}
             </div>
           ))}
         </section>
