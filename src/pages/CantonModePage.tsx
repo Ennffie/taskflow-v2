@@ -415,16 +415,16 @@ function AttendanceCheckInCard({
                   border: 'none',
                   borderRadius: 18,
                   padding: '15px 18px',
-                  background: attendance?.status === 'present' ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
-                  color: attendance?.status === 'present' ? '#c2410c' : '#fff',
+                  background: attendance ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
+                  color: attendance ? '#c2410c' : '#fff',
                   fontSize: 16,
                   fontWeight: 900,
-                  boxShadow: attendance?.status === 'present' ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
+                  boxShadow: attendance ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
                   cursor: loading || checkingIn ? 'default' : 'pointer',
                   opacity: checkingIn ? 0.82 : 1,
                 }}
               >
-                {checkingIn ? '處理中…' : attendance?.status === 'present' ? '唔好意思我想改' : '簽到'}
+                {checkingIn ? '處理中…' : attendance ? '唔好意思我想改' : '簽到'}
               </button>
 
               {attendance?.status === 'present' && showTimePicker ? (
