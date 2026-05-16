@@ -14,6 +14,8 @@ const TrackerByMemberPage = lazy(() => import('./pages/TrackerByMemberPage').the
 const TrackerByTaskPage = lazy(() => import('./pages/TrackerByTaskPage').then((mod) => ({ default: mod.TrackerByTaskPage })));
 const ReviewBeforeExportPage = lazy(() => import('./pages/ReviewBeforeExportPage').then((mod) => ({ default: mod.ReviewBeforeExportPage })));
 const AdminLogsPage = lazy(() => import('./pages/AdminLogsPage').then((mod) => ({ default: mod.AdminLogsPage })));
+const AttendanceRecordPage = lazy(() => import('./pages/AttendanceRecordPage').then((mod) => ({ default: mod.AttendanceRecordPage })));
+const AdminAttendancePage = lazy(() => import('./pages/AdminAttendancePage').then((mod) => ({ default: mod.AdminAttendancePage })));
 const CantonModeMockupPage = lazy(() => import('./pages/CantonModeMockupPage').then((mod) => ({ default: mod.CantonModeMockupPage })));
 const CantonModePage = lazy(() => import('./pages/CantonModePage').then((mod) => ({ default: mod.CantonModePage })));
 const CantonAiCoachPage = lazy(() => import('./pages/CantonAiCoachPage').then((mod) => ({ default: mod.CantonAiCoachPage }))); // lazy route v2
@@ -48,6 +50,8 @@ function App() {
           <Route path="/my-tasks" element={session ? <MyTasksPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/tasks/:taskId" element={session ? <LogBookPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/my-log" element={session ? <MyLogPage /> : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/attendance" element={session ? <AttendanceRecordPage /> : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/attendance/admin" element={session && profile?.role === 'admin' ? <AdminAttendancePage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
           <Route path="/team-logs" element={session && profile?.role === 'admin' ? <AdminLogsPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
           <Route path="/tracker/member" element={session && profile?.role === 'admin' ? <TrackerByMemberPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
           <Route path="/tracker/task" element={session && profile?.role === 'admin' ? <TrackerByTaskPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />

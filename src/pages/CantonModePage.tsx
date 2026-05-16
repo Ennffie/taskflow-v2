@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarDays, Clock3, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Clock3, Pencil, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { checkInToday, fetchTasks, fetchTodayAttendance } from '../lib/api';
+import { checkInToday, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceNote } from '../lib/api';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
 import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile } from '../lib/horoscope';
-import { getStatusMeta, type AttendanceLog, type TaskItem } from '../types';
+import { getStatusMeta, type AttendanceLog, type AttendanceStatus, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
 const cardStyle: React.CSSProperties = {
@@ -201,8 +201,9 @@ export function CantonModePage() {
                 attendance={attendance}
                 loading={attendanceLoading}
                 checkingIn={checkInLoading}
+                isAdmin={profile?.role === 'admin'}
                 onCheckIn={async () => {
-                  if (attendance || checkInLoading) return;
+                  if (checkInLoading) return;
                   setCheckInLoading(true);
                   try {
                     const next = await checkInToday('canton_mode');
@@ -213,6 +214,35 @@ export function CantonModePage() {
                     setCheckInLoading(false);
                   }
                 }}
+                onMarkOff={async (status) => {
+                  if (checkInLoading) return;
+                  const note = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
+                  setCheckInLoading(true);
+                  try {
+                    const next = await markOffToday(status, note, 'canton_mode');
+                    setAttendance(next);
+                  } catch (error: any) {
+                    alert(`Update off failed: ${error?.message || 'Unknown error'}`);
+                  } finally {
+                    setCheckInLoading(false);
+                  }
+                }}
+                onEditNote={async () => {
+                  if (!attendance) return;
+                  const nextNote = window.prompt('輸入今日情況', attendance.note ?? '') ?? attendance.note ?? '';
+                  if ((nextNote ?? '') === (attendance.note ?? '')) return;
+                  setCheckInLoading(true);
+                  try {
+                    const next = await updateTodayAttendanceNote(nextNote);
+                    setAttendance(next);
+                  } catch (error: any) {
+                    alert(`Update note failed: ${error?.message || 'Unknown error'}`);
+                  } finally {
+                    setCheckInLoading(false);
+                  }
+                }}
+                onOpenRecords={() => navigate('/attendance')}
+                onOpenAdminRecords={profile?.role === 'admin' ? () => navigate('/attendance/admin') : undefined}
               />
 
               <section style={{ ...cardStyle, padding: '16px 0 0', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(251,247,255,0.94))' }}>
@@ -259,19 +289,29 @@ function AttendanceCheckInCard({
   attendance,
   loading,
   checkingIn,
+  isAdmin,
   onCheckIn,
+  onMarkOff,
+  onEditNote,
+  onOpenRecords,
+  onOpenAdminRecords,
 }: {
   profileName: string;
   profileEmail: string;
   attendance: AttendanceLog | null;
   loading: boolean;
   checkingIn: boolean;
+  isAdmin?: boolean;
   onCheckIn: () => void | Promise<void>;
+  onMarkOff: (status: Exclude<AttendanceStatus, 'present'>) => void | Promise<void>;
+  onEditNote: () => void | Promise<void>;
+  onOpenRecords: () => void;
+  onOpenAdminRecords?: () => void;
 }) {
   const horoscope = getDailyHoroscopeForProfile({ name: profileName, email: profileEmail });
-  const hasCheckedIn = !!attendance;
   const dateLabel = formatHongKongDateLabel(new Date());
   const timeLabel = attendance?.check_in_at ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
+  const statusLabel = attendance ? (attendance.status === 'present' ? `已簽到 ${timeLabel}` : `今日：${attendance.status.toUpperCase()}`) : '未簽到';
 
   return (
     <section style={{ ...cardStyle, padding: 18, background: 'linear-gradient(180deg, #fffaf5 0%, #fff 35%, #f7fbff 100%)', overflow: 'hidden', position: 'relative' }}>
@@ -282,49 +322,58 @@ function AttendanceCheckInCard({
             <HamsterBadge />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ea580c', fontSize: 13, fontWeight: 900 }}><Sparkles size={15} /> 報到</div>
-              <div style={{ marginTop: 4, fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em' }}>{hasCheckedIn ? '今日已經打咗卡 ✨' : '返工前記得撳一下呀'}</div>
+              <div style={{ marginTop: 4, fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em' }}>{dateLabel}</div>
             </div>
           </div>
+          <button onClick={() => void onEditNote()} disabled={!attendance || checkingIn} style={{ width: 42, height: 42, borderRadius: 14, border: '1px solid #e2e8f0', background: attendance?.note ? '#fff7ed' : '#fff', color: attendance?.note ? '#ea580c' : '#64748b', display: 'grid', placeItems: 'center', cursor: !attendance || checkingIn ? 'default' : 'pointer', opacity: !attendance ? 0.45 : 1 }} aria-label="Edit note">
+            <Pencil size={16} />
+          </button>
         </div>
 
         <div style={{ borderRadius: 22, padding: '16px 16px 18px', background: 'linear-gradient(135deg, #fff1f2 0%, #fefce8 48%, #eff6ff 100%)', border: '1px solid rgba(251,146,60,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9a3412', fontSize: 13, fontWeight: 900 }}><Sparkles size={14} /> 今日運程 · {horoscope.signLabel}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9a3412', fontSize: 13, fontWeight: 900 }}><Sparkles size={14} /> 今天運程</div>
           <div style={{ marginTop: 10, fontSize: 20, lineHeight: 1.45, fontWeight: 900, color: '#7c2d12', letterSpacing: '-0.02em' }}>{horoscope.message}</div>
-          <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ padding: '7px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.74)', color: '#9a3412', fontSize: 12, fontWeight: 800 }}>幸運色：{horoscope.luckyColor}</span>
-            <span style={{ padding: '7px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.74)', color: '#9a3412', fontSize: 12, fontWeight: 800 }}>今日小物：{horoscope.luckyThing}</span>
-          </div>
         </div>
 
         <div style={{ borderRadius: 24, padding: '16px 16px 18px', background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 14px 30px rgba(148,163,184,0.08)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: 13, fontWeight: 800 }}><CalendarDays size={15} /> {dateLabel}</div>
-          <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 52, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : timeLabel}</div>
-            {hasCheckedIn && <span style={{ padding: '6px 10px', borderRadius: 999, background: '#dcfce7', color: '#15803d', fontSize: 12, fontWeight: 900 }}>已報到</span>}
-          </div>
-          <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>
-            {hasCheckedIn ? '今日返工時間已記錄好，慢慢開工都得。' : '未報到前撳一下，會記低今日日期同而家時間。'}
-          </div>
+          <div style={{ fontSize: 52, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : timeLabel}</div>
+          <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{attendance?.note || statusLabel}</div>
           <button
             onClick={() => void onCheckIn()}
-            disabled={loading || checkingIn || hasCheckedIn}
+            disabled={loading || checkingIn || attendance?.status === 'present'}
             style={{
               marginTop: 16,
               width: '100%',
               border: 'none',
               borderRadius: 18,
               padding: '15px 18px',
-              background: hasCheckedIn ? '#e2e8f0' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
-              color: hasCheckedIn ? '#64748b' : '#fff',
+              background: attendance?.status === 'present' ? '#e2e8f0' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
+              color: attendance?.status === 'present' ? '#64748b' : '#fff',
               fontSize: 16,
               fontWeight: 900,
-              boxShadow: hasCheckedIn ? 'none' : '0 14px 26px rgba(249,115,22,0.24)',
-              cursor: loading || checkingIn || hasCheckedIn ? 'default' : 'pointer',
+              boxShadow: attendance?.status === 'present' ? 'none' : '0 14px 26px rgba(249,115,22,0.24)',
+              cursor: loading || checkingIn || attendance?.status === 'present' ? 'default' : 'pointer',
               opacity: checkingIn ? 0.82 : 1,
             }}
           >
-            {checkingIn ? '報到中…' : hasCheckedIn ? '今日已報到' : '立即報到'}
+            {checkingIn ? '處理中…' : attendance?.status === 'present' ? `已簽到 ${timeLabel}` : '簽到'}
           </button>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginTop: 12 }}>
+            {(['al', 'sl', 'bl', 'other'] as const).map((status) => {
+              const active = attendance?.status === status;
+              return (
+                <button key={status} onClick={() => void onMarkOff(status)} disabled={checkingIn || loading} style={{ borderRadius: 14, border: active ? '1px solid #111827' : '1px solid #e2e8f0', background: active ? '#111827' : '#fff', color: active ? '#fff' : '#475569', padding: '11px 8px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}>
+                  {status === 'other' ? 'Others' : status.toUpperCase()}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+            <button onClick={onOpenRecords} style={{ flex: 1, borderRadius: 16, border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', padding: '12px 14px', fontSize: 14, fontWeight: 900, cursor: 'pointer' }}>記錄</button>
+            {isAdmin && onOpenAdminRecords ? <button onClick={onOpenAdminRecords} style={{ flex: 1, borderRadius: 16, border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', padding: '12px 14px', fontSize: 14, fontWeight: 900, cursor: 'pointer' }}>Team Record</button> : null}
+          </div>
         </div>
       </div>
     </section>
