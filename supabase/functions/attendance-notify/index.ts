@@ -34,7 +34,19 @@ function isLate(iso: string | null) {
   return h * 60 + m > 9 * 60 + 30;
 }
 
-function formatMessage(name: string, kind: 'status' | 'note', record: AttendanceRecord) {
+function getLeaveLabel(status: AttendanceRecord['status']) {
+  if (status === 'al') return '年假';
+  if (status === 'sl') return '病假';
+  if (status === 'bl') return '生日假';
+  if (status === 'other') return '其他假';
+  return '簽到';
+}
+
+function formatMessage(name: string, kind: 'status' | 'note' | 'clear', record: AttendanceRecord) {
+  if (kind === 'clear') {
+    return `${name} 已取消今日${getLeaveLabel(record.status)}`;
+  }
+
   if (kind === 'note') {
     return `${name} 更新 note：${record.note || '—'}`;
   }
@@ -46,8 +58,8 @@ function formatMessage(name: string, kind: 'status' | 'note', record: Attendance
     return extras ? `${name} ${time} 已簽到｜${extras}` : `${name} ${time} 已簽到`;
   }
 
-  const statusLabel = record.status === 'other' ? 'Other' : record.status.toUpperCase();
-  return record.note ? `${name} 今日 ${statusLabel}｜note: ${record.note}` : `${name} 今日 ${statusLabel}`;
+  const statusLabel = getLeaveLabel(record.status);
+  return record.note ? `${name} 今日${statusLabel}｜note: ${record.note}` : `${name} 今日${statusLabel}`;
 }
 
 Deno.serve(async (req) => {
@@ -65,7 +77,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing secrets' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { kind, record } = await req.json() as { kind: 'status' | 'note'; record: AttendanceRecord };
+    const { kind, record } = await req.json() as { kind: 'status' | 'note' | 'clear'; record: AttendanceRecord };
     if (!record?.user_id || !record?.status || !kind) {
       return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }

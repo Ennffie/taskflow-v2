@@ -109,11 +109,17 @@ function readAttendanceFallback(userId: string, date: string): AttendanceLog | n
   }
 }
 
-function writeAttendanceFallback(entry: AttendanceLog) {
+function writeAttendanceFallback(entry: AttendanceLog | null) {
   try {
     const raw = localStorage.getItem(ATTENDANCE_FALLBACK_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) as Record<string, AttendanceLog> : {};
-    parsed[`${entry.user_id}:${entry.date}`] = entry;
+    if (entry) {
+      parsed[`${entry.user_id}:${entry.date}`] = entry;
+    } else {
+      Object.keys(parsed).forEach((key) => {
+        delete parsed[key];
+      });
+    }
     localStorage.setItem(ATTENDANCE_FALLBACK_STORAGE_KEY, JSON.stringify(parsed));
   } catch {
     // ignore storage failure
@@ -184,7 +190,7 @@ async function fetchAttendanceByDate(userId: string, date: string): Promise<Atte
 }
 
 async function sendAttendanceNotification(params: {
-  kind: 'status' | 'note';
+  kind: 'status' | 'note' | 'clear';
   record: AttendanceLog;
   previous?: AttendanceLog | null;
 }) {
@@ -1151,6 +1157,34 @@ export async function updateTodayAttendanceNote(note?: string | null): Promise<A
   const record = data as AttendanceLog;
   void sendAttendanceNotification({ kind: 'note', record, previous: existing });
   return record;
+}
+
+export async function clearTodayAttendance(): Promise<void> {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const date = getHongKongDateString();
+  const existing = await fetchAttendanceByDate(userId, date);
+  if (!existing) return;
+
+  const { error } = await supabase
+    .from('attendance_logs')
+    .delete()
+    .eq('id', existing.id)
+    .eq('user_id', userId)
+    .eq('date', date);
+
+  if (error) {
+    if (isMissingAttendanceTableError(error)) {
+      writeAttendanceFallback(null);
+      void sendAttendanceNotification({ kind: 'clear', record: existing, previous: existing });
+      return;
+    }
+    throw error;
+  }
+
+  writeAttendanceFallback(null);
+  void sendAttendanceNotification({ kind: 'clear', record: existing, previous: existing });
 }
 
 export async function updateTodayAttendanceTime(timeHHMM: string): Promise<AttendanceLog> {

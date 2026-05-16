@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarDays, Clock3, Pencil, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, CalendarDays, Clock3, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
-import { checkInToday, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceNote } from '../lib/api';
+import { checkInToday, clearTodayAttendance, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceTime } from '../lib/api';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -99,6 +99,36 @@ function hexToRgba(hex: string, alpha: number) {
   const g = (value >> 8) & 255;
   const b = value & 255;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getLeaveLabel(status: AttendanceStatus | null | undefined) {
+  if (status === 'al') return '年假';
+  if (status === 'sl') return '病假';
+  if (status === 'bl') return '生日假';
+  if (status === 'other') return '其他假';
+  return '';
+}
+
+function getAttendanceBlessing(profileName: string, attendance: AttendanceLog | null, fallbackMessage: string) {
+  if (!attendance) return fallbackMessage;
+  if (attendance.status === 'al') return `${profileName} 今日放年假，小休一下都好重要呀。願你鬆一鬆、叉滿電，慢慢享受自己嘅節奏。`;
+  if (attendance.status === 'sl') return `${profileName} 今日病假，我有少少心疼。最緊要好好休息、飲多啲水，願你快啲回氣，早日康復。`;
+  if (attendance.status === 'bl') return `${profileName} 今日生日假，值得好好被祝福 ✨ 願你今日開開心心，心願順順利利，收穫滿滿溫柔。`;
+  if (attendance.status === 'other') return `${profileName} 今日先放慢一步都無妨。願你收心養神，整理好節奏，再順勢出發。`;
+  return fallbackMessage;
+}
+
+function getTimeValueFromAttendance(attendance: AttendanceLog | null) {
+  if (!attendance?.check_in_at) return '09:30';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Hong_Kong',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(attendance.check_in_at));
+  const hh = parts.find((part) => part.type === 'hour')?.value ?? '09';
+  const mm = parts.find((part) => part.type === 'minute')?.value ?? '30';
+  return `${hh}:${mm}`;
 }
 
 export function CantonModePage() {
@@ -217,6 +247,19 @@ export function CantonModePage() {
                 }}
                 onMarkOff={async (status) => {
                   if (checkInLoading) return;
+                  if (attendance?.status === status) {
+                    setCheckInLoading(true);
+                    try {
+                      await clearTodayAttendance();
+                      setAttendance(null);
+                    } catch (error: any) {
+                      alert(`Cancel leave failed: ${error?.message || 'Unknown error'}`);
+                    } finally {
+                      setCheckInLoading(false);
+                    }
+                    return;
+                  }
+
                   const note = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
                   setCheckInLoading(true);
                   try {
@@ -228,16 +271,13 @@ export function CantonModePage() {
                     setCheckInLoading(false);
                   }
                 }}
-                onEditNote={async () => {
-                  if (!attendance) return;
-                  const nextNote = window.prompt('輸入今日情況', attendance.note ?? '') ?? attendance.note ?? '';
-                  if ((nextNote ?? '') === (attendance.note ?? '')) return;
+                onUpdateTime={async (time) => {
                   setCheckInLoading(true);
                   try {
-                    const next = await updateTodayAttendanceNote(nextNote);
+                    const next = await updateTodayAttendanceTime(time);
                     setAttendance(next);
                   } catch (error: any) {
-                    alert(`Update note failed: ${error?.message || 'Unknown error'}`);
+                    alert(`Update time failed: ${error?.message || 'Unknown error'}`);
                   } finally {
                     setCheckInLoading(false);
                   }
@@ -293,7 +333,7 @@ function AttendanceCheckInCard({
   isAdmin,
   onCheckIn,
   onMarkOff,
-  onEditNote,
+  onUpdateTime,
   onOpenRecords,
   onOpenAdminRecords,
 }: {
@@ -305,14 +345,36 @@ function AttendanceCheckInCard({
   isAdmin?: boolean;
   onCheckIn: () => void | Promise<void>;
   onMarkOff: (status: Exclude<AttendanceStatus, 'present'>) => void | Promise<void>;
-  onEditNote: () => void | Promise<void>;
+  onUpdateTime: (time: string) => void | Promise<void>;
   onOpenRecords: () => void;
   onOpenAdminRecords?: () => void;
 }) {
+  const timePickerRef = useRef<HTMLInputElement | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedTime, setSelectedTime] = useState(() => getTimeValueFromAttendance(attendance));
   const horoscope = getDailyHoroscopeForProfile({ name: profileName, email: profileEmail });
+  const blessingMessage = getAttendanceBlessing(profileName, attendance, horoscope.message);
   const dateLabel = formatHongKongDateLabel(new Date());
   const timeLabel = attendance?.check_in_at ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
-  const statusLabel = attendance ? (attendance.status === 'present' ? `已簽到 ${timeLabel}` : `今日：${attendance.status.toUpperCase()}`) : '未簽到';
+  const leaveLabel = getLeaveLabel(attendance?.status);
+  const displayLabel = attendance?.status === 'present' ? timeLabel : leaveLabel || '—:—';
+  const statusLabel = attendance
+    ? attendance.status === 'present'
+      ? `已簽到 ${timeLabel}`
+      : `今日：${leaveLabel}`
+    : '未簽到';
+
+  useEffect(() => {
+    setSelectedTime(getTimeValueFromAttendance(attendance));
+    if (attendance?.status !== 'present') {
+      setShowTimePicker(false);
+    }
+  }, [attendance?.check_in_at, attendance?.status]);
+
+  useEffect(() => {
+    if (!showTimePicker) return;
+    window.setTimeout(() => timePickerRef.current?.showPicker?.(), 50);
+  }, [showTimePicker]);
 
   return (
     <section style={{ ...cardStyle, padding: 18, background: 'linear-gradient(180deg, #fffaf5 0%, #fff 35%, #f7fbff 100%)', overflow: 'hidden', position: 'relative' }}>
@@ -326,46 +388,66 @@ function AttendanceCheckInCard({
               <div style={{ marginTop: 4, fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em' }}>{dateLabel}</div>
             </div>
           </div>
-          <button onClick={() => void onEditNote()} disabled={!attendance || checkingIn} style={{ width: 42, height: 42, borderRadius: 14, border: '1px solid #e2e8f0', background: attendance?.note ? '#fff7ed' : '#fff', color: attendance?.note ? '#ea580c' : '#64748b', display: 'grid', placeItems: 'center', cursor: !attendance || checkingIn ? 'default' : 'pointer', opacity: !attendance ? 0.45 : 1 }} aria-label="Edit note">
-            <Pencil size={16} />
-          </button>
         </div>
 
         <div style={{ borderRadius: 22, padding: '16px 16px 18px', background: 'linear-gradient(135deg, #fff1f2 0%, #fefce8 48%, #eff6ff 100%)', border: '1px solid rgba(251,146,60,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9a3412', fontSize: 13, fontWeight: 900 }}><Sparkles size={14} /> 今天運程</div>
-          <div style={{ marginTop: 10, fontSize: 20, lineHeight: 1.45, fontWeight: 900, color: '#7c2d12', letterSpacing: '-0.02em' }}>{horoscope.message}</div>
+          <div style={{ marginTop: 10, fontSize: 20, lineHeight: 1.45, fontWeight: 900, color: '#7c2d12', letterSpacing: '-0.02em' }}>{blessingMessage}</div>
         </div>
 
         <div style={{ borderRadius: 24, padding: '16px 16px 18px', background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 14px 30px rgba(148,163,184,0.08)' }}>
-          <div style={{ fontSize: 52, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : timeLabel}</div>
+          <div style={{ fontSize: attendance?.status === 'present' || !attendance ? 52 : 34, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : displayLabel}</div>
           <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{attendance?.note || statusLabel}</div>
           <button
-            onClick={() => void onCheckIn()}
-            disabled={loading || checkingIn || attendance?.status === 'present'}
+            onClick={() => {
+              if (attendance?.status === 'present') {
+                setShowTimePicker((current) => !current);
+                return;
+              }
+              void onCheckIn();
+            }}
+            disabled={loading || checkingIn}
             style={{
               marginTop: 16,
               width: '100%',
               border: 'none',
               borderRadius: 18,
               padding: '15px 18px',
-              background: attendance?.status === 'present' ? '#e2e8f0' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
-              color: attendance?.status === 'present' ? '#64748b' : '#fff',
+              background: attendance?.status === 'present' ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
+              color: attendance?.status === 'present' ? '#c2410c' : '#fff',
               fontSize: 16,
               fontWeight: 900,
-              boxShadow: attendance?.status === 'present' ? 'none' : '0 14px 26px rgba(249,115,22,0.24)',
-              cursor: loading || checkingIn || attendance?.status === 'present' ? 'default' : 'pointer',
+              boxShadow: attendance?.status === 'present' ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
+              cursor: loading || checkingIn ? 'default' : 'pointer',
               opacity: checkingIn ? 0.82 : 1,
             }}
           >
-            {checkingIn ? '處理中…' : attendance?.status === 'present' ? `已簽到 ${timeLabel}` : '簽到'}
+            {checkingIn ? '處理中…' : attendance?.status === 'present' ? '唔好意思我想改' : '簽到'}
           </button>
+
+          {attendance?.status === 'present' && showTimePicker ? (
+            <div style={{ marginTop: 12, display: 'grid', gap: 10, padding: 12, borderRadius: 18, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+              <div style={{ color: '#9a3412', fontSize: 13, fontWeight: 900 }}>重新揀今日簽到時間</div>
+              <input
+                ref={timePickerRef}
+                type="time"
+                value={selectedTime}
+                onChange={(event) => setSelectedTime(event.target.value)}
+                style={{ width: '100%', borderRadius: 14, border: '1px solid #fdba74', padding: '12px 14px', fontSize: 16, fontWeight: 800, color: '#7c2d12', background: '#fff' }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setShowTimePicker(false)} style={{ flex: 1, borderRadius: 14, border: '1px solid #fed7aa', background: '#fff', color: '#9a3412', padding: '11px 12px', fontSize: 13, fontWeight: 900 }}>算啦</button>
+                <button onClick={() => { void onUpdateTime(selectedTime); setShowTimePicker(false); }} disabled={checkingIn} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#f97316', color: '#fff', padding: '11px 12px', fontSize: 13, fontWeight: 900, opacity: checkingIn ? 0.7 : 1 }}>改時間</button>
+              </div>
+            </div>
+          ) : null}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginTop: 12 }}>
             {(['al', 'sl', 'bl', 'other'] as const).map((status) => {
               const active = attendance?.status === status;
               return (
                 <button key={status} onClick={() => void onMarkOff(status)} disabled={checkingIn || loading} style={{ borderRadius: 14, border: active ? '1px solid #111827' : '1px solid #e2e8f0', background: active ? '#111827' : '#fff', color: active ? '#fff' : '#475569', padding: '11px 8px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}>
-                  {status === 'other' ? 'Others' : status.toUpperCase()}
+                  {status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}
                 </button>
               );
             })}
