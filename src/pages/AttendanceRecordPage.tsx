@@ -4,6 +4,7 @@ import { BackButton } from '../components/BackButton';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
 import { fetchAttendanceRecords, updateTodayAttendanceTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import { getHongKongDateString } from '../lib/horoscope';
 import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
 import type { AttendanceLog } from '../types';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from 'lucide-react';
@@ -51,7 +52,7 @@ export function AttendanceRecordPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTime, setDraftTime] = useState('09:30');
   const timePickerRef = useRef<HTMLInputElement | null>(null);
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(() => getHongKongDateString().slice(0, 7));
 
   const loadRecords = async () => {
     setLoading(true);
@@ -81,7 +82,7 @@ export function AttendanceRecordPage() {
 
   const color = getProfileColor(profile);
   const soft = getProfileSoftColor(profile);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getHongKongDateString();
 
   useEffect(() => {
     if (!editingId) return;
