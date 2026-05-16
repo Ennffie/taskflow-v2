@@ -2,6 +2,7 @@ export type Role = 'admin' | 'member' | 'viewer';
 export type TaskStatus = 'todo' | 'planning' | 'in_progress' | 'internal_review' | 'round_1_wip' | 'round_1_review' | 'round_2_wip' | 'round_2_review' | 'round_3_wip' | 'round_3_review' | 'pending_mpfa_pc_nfc' | 'finished' | 'cancelled' | 'archived';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'other';
+export type AttendanceStatus = 'present' | 'al' | 'sl' | 'bl' | 'other';
 
 export interface Profile {
   id: string;
@@ -53,7 +54,8 @@ export interface AttendanceLog {
   id: string;
   user_id: string;
   date: string;
-  check_in_at: string;
+  status: AttendanceStatus;
+  check_in_at: string | null;
   note: string | null;
   source: string | null;
   created_at: string;

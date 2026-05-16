@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { getReportDate } from './date';
 import { getHongKongDateString } from './horoscope';
-import type { AttendanceLog, LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
+import type { AttendanceLog, AttendanceStatus, LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
 // Fetch bridge URL from Supabase app_config
 export async function fetchBridgeUrl(): Promise<string | null> {
@@ -118,6 +118,106 @@ function writeAttendanceFallback(entry: AttendanceLog) {
   } catch {
     // ignore storage failure
   }
+}
+
+function normalizeAttendanceNote(note?: string | null): string | null {
+  const trimmed = note?.trim();
+  return trimmed ? trimmed.slice(0, 120) : null;
+}
+
+function buildAttendanceFallbackEntry(params: {
+  userId: string;
+  date: string;
+  status: AttendanceStatus;
+  checkInAt: string | null;
+  note?: string | null;
+  source: string;
+  existingId?: string;
+  createdAt?: string;
+}): AttendanceLog {
+  const nowIso = params.checkInAt ?? new Date().toISOString();
+  return {
+    id: params.existingId ?? `local-${params.userId}-${params.date}`,
+    user_id: params.userId,
+    date: params.date,
+    status: params.status,
+    check_in_at: params.checkInAt,
+    note: normalizeAttendanceNote(params.note),
+    source: `${params.source}:local_fallback`,
+    created_at: params.createdAt ?? nowIso,
+    updated_at: nowIso,
+  };
+}
+
+async function getCurrentUserId(): Promise<string | null> {
+  const { data: userData } = await supabase.auth.getUser();
+  return userData.user?.id ?? null;
+}
+
+async function fetchAttendanceByDate(userId: string, date: string): Promise<AttendanceLog | null> {
+  const { data, error } = await supabase
+    .from('attendance_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', date)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingAttendanceTableError(error)) {
+      return readAttendanceFallback(userId, date);
+    }
+    throw error;
+  }
+
+  return (data as AttendanceLog | null) ?? readAttendanceFallback(userId, date);
+}
+
+async function upsertAttendanceForToday(params: {
+  status: AttendanceStatus;
+  checkInAt: string | null;
+  note?: string | null;
+  source?: string;
+}): Promise<AttendanceLog> {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const date = getHongKongDateString();
+  const note = normalizeAttendanceNote(params.note);
+  const payload = {
+    user_id: userId,
+    date,
+    status: params.status,
+    check_in_at: params.checkInAt,
+    note,
+    source: params.source ?? 'manual',
+  };
+
+  const existingFallback = readAttendanceFallback(userId, date);
+  const { data, error } = await supabase
+    .from('attendance_logs')
+    .upsert(payload, { onConflict: 'user_id,date' })
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    if (isMissingAttendanceTableError(error)) {
+      const fallbackEntry = buildAttendanceFallbackEntry({
+        userId,
+        date,
+        status: params.status,
+        checkInAt: params.checkInAt,
+        note,
+        source: params.source ?? 'manual',
+        existingId: existingFallback?.id,
+        createdAt: existingFallback?.created_at,
+      });
+      writeAttendanceFallback(fallbackEntry);
+      return fallbackEntry;
+    }
+    throw error ?? new Error('Attendance update failed');
+  }
+
+  return data as AttendanceLog;
 }
 
 async function createAutoEventLog(params: {
@@ -943,61 +1043,97 @@ export async function updateLog(
 }
 
 export async function fetchTodayAttendance(): Promise<AttendanceLog | null> {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+  const userId = await getCurrentUserId();
   if (!userId) return null;
-
-  const today = getHongKongDateString();
-  const { data, error } = await supabase
-    .from('attendance_logs')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('date', today)
-    .maybeSingle();
-
-  if (error) {
-    if (isMissingAttendanceTableError(error)) {
-      return readAttendanceFallback(userId, today);
-    }
-    throw error;
-  }
-  return (data as AttendanceLog | null) ?? readAttendanceFallback(userId, today);
+  return fetchAttendanceByDate(userId, getHongKongDateString());
 }
 
-export async function checkInToday(source = 'manual'): Promise<AttendanceLog> {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+export async function checkInToday(source = 'manual', note?: string | null): Promise<AttendanceLog> {
+  return upsertAttendanceForToday({
+    status: 'present',
+    checkInAt: new Date().toISOString(),
+    note,
+    source,
+  });
+}
+
+export async function markOffToday(status: Exclude<AttendanceStatus, 'present'>, note?: string | null, source = 'manual'): Promise<AttendanceLog> {
+  return upsertAttendanceForToday({
+    status,
+    checkInAt: null,
+    note,
+    source,
+  });
+}
+
+export async function updateTodayAttendanceNote(note?: string | null): Promise<AttendanceLog> {
+  const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
-  const payload = {
-    user_id: userId,
-    date: getHongKongDateString(),
-    check_in_at: new Date().toISOString(),
-    source,
-  };
+  const date = getHongKongDateString();
+  const existing = await fetchAttendanceByDate(userId, date);
+  if (!existing) throw new Error('No attendance record for today');
+
+  const nextNote = normalizeAttendanceNote(note);
+  if ((existing.note ?? null) === nextNote) return existing;
 
   const { data, error } = await supabase
     .from('attendance_logs')
-    .upsert(payload, { onConflict: 'user_id,date' })
+    .update({ note: nextNote })
+    .eq('id', existing.id)
+    .eq('user_id', userId)
+    .eq('date', date)
     .select('*')
     .single();
 
   if (error || !data) {
     if (isMissingAttendanceTableError(error)) {
-      const fallbackEntry: AttendanceLog = {
-        id: `local-${userId}-${payload.date}`,
-        user_id: userId,
-        date: payload.date,
-        check_in_at: payload.check_in_at,
-        note: null,
-        source: `${source}:local_fallback`,
-        created_at: payload.check_in_at,
-        updated_at: payload.check_in_at,
-      };
+      const fallbackEntry = {
+        ...existing,
+        note: nextNote,
+        updated_at: new Date().toISOString(),
+      } as AttendanceLog;
       writeAttendanceFallback(fallbackEntry);
       return fallbackEntry;
     }
-    throw error ?? new Error('Check-in failed');
+    throw error ?? new Error('Attendance note update failed');
   }
+
   return data as AttendanceLog;
+}
+
+export async function fetchAttendanceRecords(options?: {
+  userId?: string;
+  month?: string;
+}): Promise<AttendanceLog[]> {
+  const currentUserId = await getCurrentUserId();
+  if (!currentUserId) return [];
+
+  let query = supabase
+    .from('attendance_logs')
+    .select('*')
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (options?.userId) {
+    query = query.eq('user_id', options.userId);
+  }
+
+  if (options?.month) {
+    const start = `${options.month}-01`;
+    const end = `${options.month}-31`;
+    query = query.gte('date', start).lte('date', end);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    if (isMissingAttendanceTableError(error)) {
+      const today = getHongKongDateString();
+      const fallback = readAttendanceFallback(options?.userId ?? currentUserId, today);
+      return fallback ? [fallback] : [];
+    }
+    throw error;
+  }
+
+  return (data ?? []) as AttendanceLog[];
 }

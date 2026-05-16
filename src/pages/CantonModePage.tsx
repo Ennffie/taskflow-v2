@@ -271,7 +271,7 @@ function AttendanceCheckInCard({
   const horoscope = getDailyHoroscopeForProfile({ name: profileName, email: profileEmail });
   const hasCheckedIn = !!attendance;
   const dateLabel = formatHongKongDateLabel(new Date());
-  const timeLabel = attendance ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
+  const timeLabel = attendance?.check_in_at ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
 
   return (
     <section style={{ ...cardStyle, padding: 18, background: 'linear-gradient(180deg, #fffaf5 0%, #fff 35%, #f7fbff 100%)', overflow: 'hidden', position: 'relative' }}>
