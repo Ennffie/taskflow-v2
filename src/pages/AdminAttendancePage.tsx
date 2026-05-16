@@ -28,7 +28,7 @@ export function AdminAttendancePage() {
 
   useEffect(() => {
     const month = new Date().toISOString().slice(0, 7);
-    Promise.all([fetchProfiles(), fetchAttendanceRecords({ month })])
+    Promise.all([fetchProfiles(), fetchAttendanceRecords({ month, includeAllUsers: true })])
       .then(([profilesData, recordsData]) => {
         setProfiles(profilesData);
         setRecords(recordsData);

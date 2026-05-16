@@ -1237,6 +1237,7 @@ export async function updateTodayAttendanceTime(timeHHMM: string): Promise<Atten
 export async function fetchAttendanceRecords(options?: {
   userId?: string;
   month?: string;
+  includeAllUsers?: boolean;
 }): Promise<AttendanceLog[]> {
   const currentUserId = await getCurrentUserId();
   if (!currentUserId) return [];
@@ -1249,6 +1250,8 @@ export async function fetchAttendanceRecords(options?: {
 
   if (options?.userId) {
     query = query.eq('user_id', options.userId);
+  } else if (!options?.includeAllUsers) {
+    query = query.eq('user_id', currentUserId);
   }
 
   if (options?.month) {
@@ -1267,5 +1270,21 @@ export async function fetchAttendanceRecords(options?: {
     throw error;
   }
 
-  return (data ?? []) as AttendanceLog[];
+  const records = (data ?? []) as AttendanceLog[];
+  const deduped = new Map<string, AttendanceLog>();
+
+  for (const record of records) {
+    const key = `${record.user_id}:${record.date}`;
+    const existing = deduped.get(key);
+    if (!existing) {
+      deduped.set(key, record);
+      continue;
+    }
+
+    const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime();
+    const recordTime = new Date(record.updated_at ?? record.created_at).getTime();
+    if (recordTime > existingTime) deduped.set(key, record);
+  }
+
+  return Array.from(deduped.values());
 }
