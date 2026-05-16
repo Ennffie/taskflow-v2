@@ -39,12 +39,10 @@ function buildTimeDomain(values: number[], baselineMinutes: number) {
     min -= max - 24 * 60;
     max = 24 * 60;
   }
+
   min = Math.max(0, min);
   max = Math.min(24 * 60, max);
-
-  if (max - min < 60) {
-    max = Math.min(24 * 60, min + 60);
-  }
+  if (max - min < 60) max = Math.min(24 * 60, min + 60);
 
   return { min, max, span: max - min };
 }
@@ -56,74 +54,130 @@ function getTickStep(span: number) {
   return 120;
 }
 
-export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, height = 240 }: AttendanceTrendChartProps) {
-  const presentRecords = [...records]
-    .filter((r) => r.status === 'present' && r.check_in_at)
-    .sort((a, b) => a.date.localeCompare(b.date));
+function getLeaveLabel(status: AttendanceLog['status']) {
+  if (status === 'al') return 'AL';
+  if (status === 'sl') return 'SL';
+  if (status === 'bl') return 'BL';
+  if (status === 'other') return 'OFF';
+  return '';
+}
+
+function buildSmoothPath(points: Array<{ x: number; y: number }>) {
+  if (!points.length) return '';
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const current = points[i];
+    const next = points[i + 1];
+    const prev = points[i - 1] ?? current;
+    const after = points[i + 2] ?? next;
+    const cp1x = current.x + (next.x - prev.x) / 6;
+    const cp1y = current.y + (next.y - prev.y) / 6;
+    const cp2x = next.x - (after.x - current.x) / 6;
+    const cp2y = next.y - (after.y - current.y) / 6;
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
+  }
+  return d;
+}
+
+export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, height = 260 }: AttendanceTrendChartProps) {
+  const monthRecords = [...records].sort((a, b) => a.date.localeCompare(b.date));
+  const presentRecords = monthRecords.filter((record) => record.status === 'present' && record.check_in_at);
+
+  if (monthRecords.length === 0) {
+    return <div style={{ height, display: 'grid', placeItems: 'center', color: '#94a3b8', fontSize: 13, borderRadius: 20, background: '#fff' }}>No attendance record yet.</div>;
+  }
 
   if (presentRecords.length === 0) {
     return <div style={{ height, display: 'grid', placeItems: 'center', color: '#94a3b8', fontSize: 13, borderRadius: 20, background: '#fff' }}>No present record yet.</div>;
   }
 
-  const points = presentRecords.map((record, index) => ({
+  const items = monthRecords.map((record, index) => ({
     index,
     date: record.date.slice(-2),
     fullDate: record.date,
-    minutes: toMinutes(record.check_in_at) ?? baselineMinutes,
+    status: record.status,
+    label: getLeaveLabel(record.status),
+    minutes: record.status === 'present' ? (toMinutes(record.check_in_at) ?? baselineMinutes) : null,
   }));
 
-  const domain = buildTimeDomain(points.map((point) => point.minutes), baselineMinutes);
+  const domain = buildTimeDomain(presentRecords.map((record) => toMinutes(record.check_in_at) ?? baselineMinutes), baselineMinutes);
   const tickStep = getTickStep(domain.span);
   const ticks: number[] = [];
   for (let value = domain.min; value <= domain.max; value += tickStep) ticks.push(value);
   if (ticks[ticks.length - 1] !== domain.max) ticks.push(domain.max);
 
-  const width = 100;
-  const padLeft = 12;
-  const padRight = 6;
-  const padTop = 10;
-  const padBottom = 14;
-  const innerWidth = width - padLeft - padRight;
-  const innerHeight = 100 - padTop - padBottom;
-  const step = points.length === 1 ? 0 : innerWidth / (points.length - 1);
+  const dayWidth = 34;
+  const svgWidth = Math.max(560, 88 + items.length * dayWidth);
+  const chartHeight = height;
+  const padLeft = 54;
+  const padRight = 18;
+  const padTop = 18;
+  const padBottom = 32;
+  const innerWidth = svgWidth - padLeft - padRight;
+  const innerHeight = chartHeight - padTop - padBottom;
+  const step = items.length === 1 ? 0 : innerWidth / Math.max(1, items.length - 1);
   const xFor = (index: number) => padLeft + index * step;
   const yFor = (minutes: number) => padTop + (1 - ((minutes - domain.min) / Math.max(1, domain.max - domain.min))) * innerHeight;
   const baselineY = yFor(baselineMinutes);
-  const polyline = points.map((point) => `${xFor(point.index)},${yFor(point.minutes)}`).join(' ');
+  const presentPoints = items.filter((item) => item.minutes !== null).map((item) => ({ x: xFor(item.index), y: yFor(item.minutes as number), key: item.fullDate, minutes: item.minutes as number }));
+  const pathD = buildSmoothPath(presentPoints.map((point) => ({ x: point.x, y: point.y })));
   const lineColor = getProfileColor(profile);
 
   return (
     <div style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 14 }}>
-      <svg viewBox="0 0 100 100" style={{ width: '100%', height }}>
-        {ticks.map((tick) => {
-          const y = yFor(tick);
-          return (
-            <g key={tick}>
-              <line x1={padLeft} x2={100 - padRight} y1={y} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
-              <text x={padLeft - 2} y={y + 1.4} textAnchor="end" fontSize="4" fill="#64748b">{formatMinutes(tick)}</text>
-            </g>
-          );
-        })}
+      <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 2 }}>
+        <svg viewBox={`0 0 ${svgWidth} ${chartHeight}`} style={{ width: svgWidth, height: chartHeight, display: 'block' }}>
+          {ticks.map((tick) => {
+            const y = yFor(tick);
+            return (
+              <g key={tick}>
+                <line x1={padLeft} x2={svgWidth - padRight} y1={y} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3 3" />
+                <text x={padLeft - 10} y={y + 4} textAnchor="end" fontSize="11" fill="#94a3b8">{formatMinutes(tick)}</text>
+              </g>
+            );
+          })}
 
-        <line x1={padLeft} x2={100 - padRight} y1={baselineY} y2={baselineY} stroke="#94a3b8" strokeDasharray="3 2" strokeWidth="1.1" />
-        <text x={100 - padRight} y={baselineY - 2} textAnchor="end" fontSize="4" fill="#64748b">09:30</text>
+          <line x1={padLeft} x2={svgWidth - padRight} y1={baselineY} y2={baselineY} stroke="#94a3b8" strokeDasharray="5 4" strokeWidth="1.2" />
+          <text x={svgWidth - padRight} y={baselineY - 6} textAnchor="end" fontSize="11" fill="#94a3b8">09:30</text>
 
-        <polyline fill="none" stroke={lineColor} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" points={polyline} />
+          {items.map((item) => {
+            const x = xFor(item.index);
+            return (
+              <g key={`grid-${item.fullDate}`}>
+                <line x1={x} x2={x} y1={padTop} y2={chartHeight - padBottom} stroke="#f1f5f9" strokeWidth="1" />
+                <text x={x} y={chartHeight - 10} textAnchor="middle" fontSize="11" fill="#64748b">{item.date}</text>
+              </g>
+            );
+          })}
 
-        {points.map((point) => {
-          const late = point.minutes > baselineMinutes;
-          const x = xFor(point.index);
-          return (
-            <g key={point.fullDate}>
-              <circle cx={x} cy={yFor(point.minutes)} r="2.8" fill={late ? '#f97316' : lineColor} stroke="#fff" strokeWidth="1.1" />
-              <text x={x} y={98} textAnchor="middle" fontSize="4" fill="#64748b">{point.date}</text>
-            </g>
-          );
-        })}
-      </svg>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -2, color: '#94a3b8', fontSize: 11, fontWeight: 700 }}>
-        <span>{points.length} days</span>
-        <span>{formatMinutes(points[points.length - 1].minutes)}</span>
+          {items.filter((item) => item.status !== 'present').map((item) => {
+            const x = xFor(item.index);
+            return (
+              <g key={`leave-${item.fullDate}`}>
+                <rect x={x - 5} y={padTop} width={10} height={innerHeight} rx={5} fill="#e5e7eb" opacity="0.9" />
+                <text x={x} y={padTop + 14} textAnchor="middle" fontSize="10" fontWeight="700" fill="#6b7280">{item.label}</text>
+              </g>
+            );
+          })}
+
+          <path d={pathD} fill="none" stroke={lineColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+
+          {presentPoints.map((point) => {
+            const late = point.minutes > baselineMinutes;
+            return (
+              <g key={`dot-${point.key}`}>
+                <circle cx={point.x} cy={point.y} r="4.5" fill={late ? '#f97316' : lineColor} stroke="#fff" strokeWidth="2" />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, color: '#94a3b8', fontSize: 11, fontWeight: 700 }}>
+        <span>{items.length} records</span>
+        <span>{formatMinutes(presentPoints[presentPoints.length - 1].minutes)}</span>
       </div>
     </div>
   );
