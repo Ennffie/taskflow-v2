@@ -127,8 +127,9 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
 
   return (
     <div style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 14 }}>
-      <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 2 }}>
-        <svg viewBox={`0 0 ${svgWidth} ${chartHeight}`} style={{ width: svgWidth, height: chartHeight, display: 'block' }}>
+      <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 2, WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ width: svgWidth, minWidth: svgWidth }}>
+          <svg width={svgWidth} height={chartHeight} style={{ display: 'block' }}>
           {ticks.map((tick) => {
             const y = yFor(tick);
             return (
@@ -172,7 +173,8 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
               </g>
             );
           })}
-        </svg>
+          </svg>
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, color: '#94a3b8', fontSize: 11, fontWeight: 700 }}>
