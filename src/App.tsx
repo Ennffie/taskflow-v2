@@ -45,7 +45,7 @@ function App() {
           <Route path="/canton-mode" element={session ? <CantonModePage /> : <Navigate to="/" replace />} />
           <Route path="/canton-ai" element={session ? <CantonAiCoachPage /> : <Navigate to="/" replace />} />
           <Route path="/ai-parse-demo" element={<AiParseDemoPage />} />
-          <Route path="/" element={session ? <CantonAiCoachPage /> : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/" element={session ? <CantonModePage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/my-tasks" element={session ? <MyTasksPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/tasks/:taskId" element={session ? <LogBookPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/my-log" element={session ? <MyLogPage /> : <Navigate to="/ai-parse-demo" replace />} />
