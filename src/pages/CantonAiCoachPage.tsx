@@ -80,7 +80,7 @@ export function CantonAiCoachPage() {
   const reportAnchorRef = useRef<HTMLDivElement | null>(null);
   // ── Guided creation flow ──
   type CreateMode = 'idle' | 'main' | 'subtask';
-  type QuickAction = 'search' | 'add' | 'focus' | 'my-task' | 'report-log' | null;
+  type QuickAction = 'search' | 'add' | 'focus' | 'my-task' | 'report-log' | 'free-talk' | null;
   const [, setCreateMode] = useState<CreateMode>('idle');
   const [activeQuickAction, setActiveQuickAction] = useState<QuickAction>(null);
   const [guidedStep, setGuidedStep] = useState(0); // main: 0:title 1:desc | subtask: -1 parent 0:title 1:desc 2:assignee 3:due 4:confirm
@@ -717,7 +717,9 @@ export function CantonAiCoachPage() {
             ? 'my-task'
             : preset === 'Report Log'
               ? 'report-log'
-              : null;
+              : preset === 'Free talk'
+                ? 'free-talk'
+                : null;
     const isActive = key !== null && activeQuickAction === key;
     const isLocked = isReplying || isTyping;
     if (preset === '退下') {
@@ -956,6 +958,8 @@ export function CantonAiCoachPage() {
       setIsReplying(false);
     }
   };
+
+  const buildFreeTalkPrompt = (userPrompt: string) => `你而家係一個廣東話 AI 陪伴，語氣要同 Silly AI 一樣：古代小廝 / 軍師口吻，自稱小人、小的，稱呼對方做大人或恩公。\n\n任務：陪對方 free talk，用正向思維、心靈雞湯、少少風水師 / 軍師式鼓勵去回應，但唔好太迷信，重點係安定人心、俾方向、俾情緒價值。\n\n規則：\n1. 一律用繁體廣東話。\n2. 唔好拉返去 task 管理，除非大人主動問。\n3. 語氣溫柔、有智慧、有少少古風。\n4. 可以講運勢、氣場、心境、節奏、收心、聚氣、順勢而行，但要自然。\n5. 回覆短中篇幅，似真人傾偈，唔好太公式。\n6. 適度用句式如：小人斗膽稟報、依小人愚見、恩公且寬心、順勢而行、養神蓄銳。\n\n大人而家講：${userPrompt}`;
 
   const send = async (text?: string) => {
     // Verify current user before sending
@@ -1762,6 +1766,26 @@ export function CantonAiCoachPage() {
         return;
       }
 
+      if (activeQuickAction === 'free-talk' && !looksLikeTaskQuery) {
+        try {
+          const reply = await generateLocalChatReply(
+            bridgeUrl,
+            FIXED_LOCAL_MODEL,
+            buildFreeTalkPrompt(userText),
+            `${sessionId}-free-talk`,
+            buildDecisionContext(tasks, currentUserName, profiles.map((profile) => ({ name: profile.name }))),
+          );
+          setLastReplyType('life');
+          setActiveQuickAction('free-talk');
+          startTypingMessage(reply || '小人斗膽稟報，今日宜放鬆心神、順氣養神。恩公有咩心事，儘管講來。');
+        } catch (error: any) {
+          startTypingMessage(`小人斗膽稟報，今日氣場宜靜不宜躁。恩公且寬心，慢慢講，小人喺度陪住你。`);
+        } finally {
+          setIsReplying(false);
+        }
+        return;
+      }
+
       if (looksLikeLifeChat && !looksLikeTaskQuery) {
         const lifeReplies = [
           '放工就放松下啦，食餐好嘅，hea 吓都係應該嘅 😌',
@@ -2541,7 +2565,7 @@ export function CantonAiCoachPage() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {['退下', '搵 Task', '加Task', 'Focus', 'My Task', 'Report Log'].map(preset => (
+            {['退下', '搵 Task', '加Task', 'Focus', 'My Task', 'Report Log', 'Free talk'].map(preset => (
               <button data-testid={`quick-${preset.replace(/\s+/g, '-').toLowerCase()}`} key={preset} disabled={isReplying || isTyping} onClick={() => {
                 if (isReplying || isTyping) return;
                 setPendingTaskAction(null);
@@ -2595,6 +2619,19 @@ export function CantonAiCoachPage() {
                   return;
                 }
 
+                if (preset === 'Free talk') {
+                  setActiveQuickAction('free-talk');
+                  setIntroText('');
+                  setMessages(current => [...current, { role: 'user', text: preset }]);
+                  startTypingMessage('小人遵命。恩公若想隨意傾兩句、聽下寬心之言，儘管開口，小人願作軍師，亦可略談氣場風水，為恩公解悶寬心。');
+                  setInput('');
+                  window.setTimeout(() => {
+                    immediateFocusInput();
+                    scrollToInput();
+                  }, 0);
+                  return;
+                }
+
                 if (preset === 'Focus') {
                   setActiveQuickAction('focus');
                 } else if (preset === 'My Task') {
@@ -2629,7 +2666,7 @@ export function CantonAiCoachPage() {
                 )}
                 <textarea
                   data-testid="chat-input"
-                  placeholder={reportEditorState ? '可直接修改呢段 report 內容…' : (messages[messages.length - 1]?.text.includes('想搵邊個') ? '輸入 task 名稱或關鍵字...' : '隨意問 task 相關問題…')}
+                  placeholder={reportEditorState ? '可直接修改呢段 report 內容…' : activeQuickAction === 'free-talk' ? '隨便傾下心事、運勢、心情都可以…' : (messages[messages.length - 1]?.text.includes('想搵邊個') ? '輸入 task 名稱或關鍵字...' : '隨意問 task 相關問題…')}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
