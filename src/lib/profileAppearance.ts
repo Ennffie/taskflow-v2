@@ -15,6 +15,7 @@ export function getProfileColor(profile?: Pick<Profile, 'id' | 'name'> | null) {
   if (!profile) return '#94A3B8';
   const normalized = `${profile.id ?? ''}:${profile.name}`.toLowerCase();
   if (normalized.includes('enfield')) return '#6366F1';
+  if (normalized.includes('alice')) return '#997EF0';
   let hash = 0;
   for (let i = 0; i < normalized.length; i++) {
     hash = ((hash << 5) - hash) + normalized.charCodeAt(i);
