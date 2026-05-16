@@ -1,4 +1,4 @@
-import { CheckSquare, ScrollText, Settings, Home, Sparkles } from 'lucide-react';
+import { CheckSquare, ScrollText, Settings, Rows3, Sparkles } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
@@ -119,8 +119,8 @@ export function AppShell({ children, onAddTask: _onAddTask }: AppShellProps) {
               boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04)',
             }}
           >
-            <BottomNavLink to="/" icon={<Home size={20} />} label="All" />
-            <BottomNavLink to="/canton-mode" icon={<Sparkles size={20} />} label="Canton" />
+            <BottomNavLink to="/" icon={<Sparkles size={20} />} label="Canton" />
+            <BottomNavLink to="/all-tasks" icon={<Rows3 size={20} />} label="List" />
             <BottomNavLink to="/my-tasks" icon={<CheckSquare size={20} />} label="Me" />
             <BottomNavLink to="/my-log" icon={<ScrollText size={20} />} label="Logs" />
             
