@@ -23,8 +23,8 @@ function formatMinutes(total: number) {
 
 function buildTimeDomain(values: number[], baselineMinutes: number) {
   const all = [...values, baselineMinutes];
-  const rawMin = Math.min(...all);
-  const rawMax = Math.max(...all);
+  const rawMin = Math.min(...all) - 15;
+  const rawMax = Math.max(...all) + 15;
   const rawSpan = Math.max(0, rawMax - rawMin);
   const targetSpan = Math.max(60, Math.ceil(rawSpan / 60) * 60);
   const center = (rawMin + rawMax) / 2;
@@ -94,8 +94,8 @@ export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUser
   const chartHeight = height;
   const padLeft = 42;
   const padRight = 12;
-  const padTop = 18;
-  const padBottom = 34;
+  const padTop = 26;
+  const padBottom = 38;
   const innerWidth = svgWidth - padLeft - padRight;
   const innerHeight = chartHeight - padTop - padBottom;
   const step = dates.length === 1 ? 0 : innerWidth / Math.max(1, dates.length - 1);
