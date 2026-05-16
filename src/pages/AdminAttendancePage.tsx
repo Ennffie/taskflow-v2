@@ -19,14 +19,6 @@ function formatMinutes(total: number | null) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
-function formatStatus(status: AttendanceLog['status']) {
-  if (status === 'al') return 'AL';
-  if (status === 'sl') return 'SL';
-  if (status === 'bl') return 'BL';
-  if (status === 'other') return 'OFF';
-  return 'Present';
-}
-
 function shouldHideFromAdminAttendance(profile: Profile) {
   const normalized = profile.name.trim().toLowerCase();
   return normalized.includes('claire') || normalized.includes('shani');
@@ -147,9 +139,7 @@ export function AdminAttendancePage() {
             <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
               {visibleSummaries.map((item) => {
                 const color = getProfileColor(item.member);
-                const soft = getProfileSoftColor(item.member);
                 const border = getProfileBorderColor(item.member);
-                const recent = [...item.records].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
                 return (
                   <div key={item.member.id} style={{ borderRadius: 22, border: `1px solid ${border}`, background: '#fff', padding: 16, display: 'grid', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -172,14 +162,6 @@ export function AdminAttendancePage() {
                           <span style={{ color: '#94a3b8' }}>{label}</span>
                           <span style={{ color: '#334155', fontWeight: 900 }}>{value}</span>
                           {index < array.length - 1 ? <span style={{ color: '#cbd5e1' }}>·</span> : null}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {recent.map((record) => (
-                        <div key={record.id} style={{ padding: '7px 10px', borderRadius: 999, background: record.status === 'present' ? soft : '#f3f4f6', border: `1px solid ${record.status === 'present' ? border : '#e5e7eb'}`, color: record.status === 'present' ? color : '#6b7280', fontSize: 11, fontWeight: 900 }}>
-                          {record.date.slice(5)} · {record.status === 'present' ? formatMinutes(getMinutes(record.check_in_at)) : formatStatus(record.status)}
                         </div>
                       ))}
                     </div>
