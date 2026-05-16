@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CalendarDays, Clock3, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ChevronDown, ChevronUp, Clock3, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
 import { checkInToday, clearTodayAttendance, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceTime } from '../lib/api';
@@ -351,6 +351,7 @@ function AttendanceCheckInCard({
 }) {
   const timePickerRef = useRef<HTMLInputElement | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showLeaveOptions, setShowLeaveOptions] = useState(false);
   const [selectedTime, setSelectedTime] = useState(() => getTimeValueFromAttendance(attendance));
   const horoscope = getDailyHoroscopeForProfile({ name: profileName, email: profileEmail });
   const blessingMessage = getAttendanceBlessing(profileName, attendance, horoscope.message);
@@ -358,11 +359,7 @@ function AttendanceCheckInCard({
   const timeLabel = attendance?.check_in_at ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
   const leaveLabel = getLeaveLabel(attendance?.status);
   const displayLabel = attendance?.status === 'present' ? timeLabel : leaveLabel || '—:—';
-  const statusLabel = attendance
-    ? attendance.status === 'present'
-      ? `已簽到 ${timeLabel}`
-      : `今日：${leaveLabel}`
-    : '未簽到';
+  const helperText = attendance?.note || (attendance && attendance.status !== 'present' ? `今日：${leaveLabel}` : '');
 
   useEffect(() => {
     setSelectedTime(getTimeValueFromAttendance(attendance));
@@ -370,6 +367,10 @@ function AttendanceCheckInCard({
       setShowTimePicker(false);
     }
   }, [attendance?.check_in_at, attendance?.status]);
+
+  useEffect(() => {
+    setShowLeaveOptions(false);
+  }, [attendance?.status]);
 
   useEffect(() => {
     if (!showTimePicker) return;
@@ -399,7 +400,7 @@ function AttendanceCheckInCard({
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(88px, 1fr)', gap: 12, alignItems: 'start' }}>
             <div>
               <div style={{ fontSize: attendance?.status === 'present' || !attendance ? 52 : 34, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : displayLabel}</div>
-              <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{attendance?.note || statusLabel}</div>
+              {helperText ? <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{helperText}</div> : null}
               <button
                 onClick={() => {
                   if (attendance?.status === 'present') {
@@ -446,16 +447,26 @@ function AttendanceCheckInCard({
             </div>
 
             <div style={{ borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', padding: 10 }}>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 900, marginBottom: 8, textAlign: 'center' }}>請假</div>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {(['al', 'sl', 'bl', 'other'] as const).map((status) => {
-                  const active = attendance?.status === status;
-                  return (
-                    <button key={status} onClick={() => void onMarkOff(status)} disabled={checkingIn || loading} style={{ borderRadius: 12, border: active ? '1px solid #111827' : '1px solid #e2e8f0', background: active ? '#111827' : '#fff', color: active ? '#fff' : '#475569', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}>
-                      {status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}
-                    </button>
-                  );
-                })}
+              <button
+                onClick={() => setShowLeaveOptions((current) => !current)}
+                disabled={checkingIn || loading}
+                style={{ width: '100%', borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '11px 8px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                請假 {showLeaveOptions ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              <div style={{ display: 'grid', gridTemplateRows: showLeaveOptions ? '1fr' : '0fr', transition: 'grid-template-rows 220ms ease, opacity 220ms ease', opacity: showLeaveOptions ? 1 : 0 }}>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gap: 8, paddingTop: showLeaveOptions ? 8 : 0, transform: showLeaveOptions ? 'translateY(0)' : 'translateY(-6px)', transition: 'transform 220ms ease, padding-top 220ms ease' }}>
+                    {(['al', 'sl', 'bl', 'other'] as const).map((status) => {
+                      const active = attendance?.status === status;
+                      return (
+                        <button key={status} onClick={() => void onMarkOff(status)} disabled={checkingIn || loading} style={{ borderRadius: 12, border: active ? '1px solid #111827' : '1px solid #e2e8f0', background: active ? '#111827' : '#fff', color: active ? '#fff' : '#475569', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}>
+                          {status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
