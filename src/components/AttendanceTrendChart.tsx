@@ -81,7 +81,7 @@ function buildSmoothPath(points: Array<{ x: number; y: number }>) {
   return d;
 }
 
-export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, height = 260 }: AttendanceTrendChartProps) {
+export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, height = 300 }: AttendanceTrendChartProps) {
   const monthRecords = [...records].sort((a, b) => a.date.localeCompare(b.date));
   const presentRecords = monthRecords.filter((record) => record.status === 'present' && record.check_in_at);
 
@@ -108,13 +108,13 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
   for (let value = domain.min; value <= domain.max; value += tickStep) ticks.push(value);
   if (ticks[ticks.length - 1] !== domain.max) ticks.push(domain.max);
 
-  const dayWidth = 34;
-  const svgWidth = Math.max(560, 88 + items.length * dayWidth);
+  const dayWidth = 42;
+  const svgWidth = Math.max(640, 76 + items.length * dayWidth);
   const chartHeight = height;
-  const padLeft = 54;
-  const padRight = 18;
+  const padLeft = 42;
+  const padRight = 12;
   const padTop = 18;
-  const padBottom = 32;
+  const padBottom = 34;
   const innerWidth = svgWidth - padLeft - padRight;
   const innerHeight = chartHeight - padTop - padBottom;
   const step = items.length === 1 ? 0 : innerWidth / Math.max(1, items.length - 1);
@@ -126,29 +126,30 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
   const lineColor = getProfileColor(profile);
 
   return (
-    <div style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 14 }}>
-      <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 2, WebkitOverflowScrolling: 'touch' }}>
-        <div style={{ width: svgWidth, minWidth: svgWidth }}>
-          <svg width={svgWidth} height={chartHeight} style={{ display: 'block' }}>
+    <div style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: '12px 10px' }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 800, marginBottom: 8 }}>← 左右移動睇全月 →</div>
+      <div style={{ width: '100%', maxWidth: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ width: svgWidth, minWidth: svgWidth, display: 'inline-block', flex: 'none' }}>
+          <svg width={svgWidth} height={chartHeight} style={{ display: 'block', maxWidth: 'none' }}>
           {ticks.map((tick) => {
             const y = yFor(tick);
             return (
               <g key={tick}>
                 <line x1={padLeft} x2={svgWidth - padRight} y1={y} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3 3" />
-                <text x={padLeft - 10} y={y + 4} textAnchor="end" fontSize="11" fill="#94a3b8">{formatMinutes(tick)}</text>
+                <text x={padLeft - 8} y={y + 4} textAnchor="end" fontSize="12" fill="#94a3b8">{formatMinutes(tick)}</text>
               </g>
             );
           })}
 
           <line x1={padLeft} x2={svgWidth - padRight} y1={baselineY} y2={baselineY} stroke="#94a3b8" strokeDasharray="5 4" strokeWidth="1.2" />
-          <text x={svgWidth - padRight} y={baselineY - 6} textAnchor="end" fontSize="11" fill="#94a3b8">09:30</text>
+          <text x={svgWidth - padRight} y={baselineY - 6} textAnchor="end" fontSize="12" fill="#94a3b8">09:30</text>
 
           {items.map((item) => {
             const x = xFor(item.index);
             return (
               <g key={`grid-${item.fullDate}`}>
                 <line x1={x} x2={x} y1={padTop} y2={chartHeight - padBottom} stroke="#f1f5f9" strokeWidth="1" />
-                <text x={x} y={chartHeight - 10} textAnchor="middle" fontSize="11" fill="#64748b">{item.date}</text>
+                <text x={x} y={chartHeight - 10} textAnchor="middle" fontSize="12" fill="#64748b">{item.date}</text>
               </g>
             );
           })}

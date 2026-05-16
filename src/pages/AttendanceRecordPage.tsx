@@ -90,7 +90,7 @@ export function AttendanceRecordPage() {
 
   return (
     <AppShell>
-      <div style={{ maxWidth: 780, margin: '0 auto', display: 'grid', gap: 16 }}>
+      <div style={{ width: '100%', maxWidth: 780, minWidth: 0, margin: '0 auto', display: 'grid', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Link to="/canton-mode" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', color: '#64748b', fontWeight: 800 }}><ArrowLeft size={17} /> Back</Link>
         </div>
@@ -104,7 +104,7 @@ export function AttendanceRecordPage() {
           </div>
         </section>
 
-        <section style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 14, display: 'grid', gap: 12 }}>
+        <section style={{ width: '100%', minWidth: 0, borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 12, display: 'grid', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <button onClick={() => setMonth((current) => shiftMonth(current, -1))} style={{ width: 40, height: 40, borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Previous month">
               <ChevronLeft size={18} />
@@ -118,7 +118,7 @@ export function AttendanceRecordPage() {
           <AttendanceTrendChart records={records} profile={profile} />
         </section>
 
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
           {[
             ['平均', formatMinutes(summary.avg)],
             ['最早', formatMinutes(summary.earliest)],
