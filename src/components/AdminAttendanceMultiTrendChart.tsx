@@ -75,7 +75,6 @@ function buildSmoothPath(points: Array<{ x: number; y: number }>) {
 
 export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUserId = null, baselineMinutes = 570, height = 320 }: AdminAttendanceMultiTrendChartProps) {
   const activeProfiles = selectedUserId ? profiles.filter((profile) => profile.id === selectedUserId) : profiles;
-  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
   const dates = Array.from(new Set(records.map((record) => record.date))).sort();
   const presentRecords = records.filter((record) => record.status === 'present' && record.check_in_at && activeProfiles.some((profile) => profile.id === record.user_id));
 
@@ -124,7 +123,6 @@ export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUser
 
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 800 }}>← 左右移動睇全月 →</div>
       <div style={{ width: '100%', minWidth: 0, borderRadius: 20, border: '1px solid #e2e8f0', background: '#fff', overflow: 'hidden' }}>
         <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}>
           <div style={{ width: svgWidth, minWidth: svgWidth, display: 'block' }}>
@@ -175,10 +173,7 @@ export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUser
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: 11, fontWeight: 700, padding: '0 2px' }}>
-        <span>{activeProfiles.length} user{activeProfiles.length > 1 ? 's' : ''}</span>
-        <span>{selectedUserId ? (profileMap.get(selectedUserId)?.name ?? 'Selected') : 'All members'}</span>
-      </div>
+
     </div>
   );
 }
