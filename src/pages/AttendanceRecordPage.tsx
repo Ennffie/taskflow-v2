@@ -104,12 +104,12 @@ export function AttendanceRecordPage() {
           </div>
         </section>
 
-        <section style={{ width: '100%', minWidth: 0, borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 12, display: 'grid', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <section style={{ width: '100%', minWidth: 0, borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 12, display: 'grid', gap: 12, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <button onClick={() => setMonth((current) => shiftMonth(current, -1))} style={{ width: 40, height: 40, borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Previous month">
               <ChevronLeft size={18} />
             </button>
-            <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a' }}>{formatMonthLabel(month)}</div>
+            <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a', flex: '1 1 140px', textAlign: 'center' }}>{formatMonthLabel(month)}</div>
             <button onClick={() => setMonth((current) => shiftMonth(current, 1))} style={{ width: 40, height: 40, borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Next month">
               <ChevronRight size={18} />
             </button>

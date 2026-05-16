@@ -126,11 +126,12 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
   const lineColor = getProfileColor(profile);
 
   return (
-    <div style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: '12px 10px' }}>
-      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 800, marginBottom: 8 }}>← 左右移動睇全月 →</div>
-      <div style={{ width: '100%', maxWidth: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }}>
-        <div style={{ width: svgWidth, minWidth: svgWidth, display: 'inline-block', flex: 'none' }}>
-          <svg width={svgWidth} height={chartHeight} style={{ display: 'block', maxWidth: 'none' }}>
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 800 }}>← 左右移動睇全月 →</div>
+      <div style={{ width: '100%', minWidth: 0, borderRadius: 20, border: '1px solid #e2e8f0', background: '#fff', overflow: 'hidden' }}>
+        <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}>
+          <div style={{ width: svgWidth, minWidth: svgWidth, display: 'block' }}>
+            <svg width={svgWidth} height={chartHeight} style={{ display: 'block', maxWidth: 'none', background: '#fff' }}>
           {ticks.map((tick) => {
             const y = yFor(tick);
             return (
@@ -174,11 +175,12 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
               </g>
             );
           })}
-          </svg>
+            </svg>
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, color: '#94a3b8', fontSize: 11, fontWeight: 700 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: 11, fontWeight: 700, padding: '0 2px' }}>
         <span>{items.length} records</span>
         <span>{formatMinutes(presentPoints[presentPoints.length - 1].minutes)}</span>
       </div>
