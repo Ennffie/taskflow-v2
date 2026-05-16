@@ -396,65 +396,72 @@ function AttendanceCheckInCard({
         </div>
 
         <div style={{ borderRadius: 24, padding: '16px 16px 18px', background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 14px 30px rgba(148,163,184,0.08)' }}>
-          <div style={{ fontSize: attendance?.status === 'present' || !attendance ? 52 : 34, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : displayLabel}</div>
-          <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{attendance?.note || statusLabel}</div>
-          <button
-            onClick={() => {
-              if (attendance?.status === 'present') {
-                setShowTimePicker((current) => !current);
-                return;
-              }
-              void onCheckIn();
-            }}
-            disabled={loading || checkingIn}
-            style={{
-              marginTop: 16,
-              width: '100%',
-              border: 'none',
-              borderRadius: 18,
-              padding: '15px 18px',
-              background: attendance?.status === 'present' ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
-              color: attendance?.status === 'present' ? '#c2410c' : '#fff',
-              fontSize: 16,
-              fontWeight: 900,
-              boxShadow: attendance?.status === 'present' ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
-              cursor: loading || checkingIn ? 'default' : 'pointer',
-              opacity: checkingIn ? 0.82 : 1,
-            }}
-          >
-            {checkingIn ? '處理中…' : attendance?.status === 'present' ? '唔好意思我想改' : '簽到'}
-          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(88px, 1fr)', gap: 12, alignItems: 'start' }}>
+            <div>
+              <div style={{ fontSize: attendance?.status === 'present' || !attendance ? 52 : 34, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : displayLabel}</div>
+              <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{attendance?.note || statusLabel}</div>
+              <button
+                onClick={() => {
+                  if (attendance?.status === 'present') {
+                    setShowTimePicker((current) => !current);
+                    return;
+                  }
+                  void onCheckIn();
+                }}
+                disabled={loading || checkingIn}
+                style={{
+                  marginTop: 16,
+                  width: '100%',
+                  border: 'none',
+                  borderRadius: 18,
+                  padding: '15px 18px',
+                  background: attendance?.status === 'present' ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
+                  color: attendance?.status === 'present' ? '#c2410c' : '#fff',
+                  fontSize: 16,
+                  fontWeight: 900,
+                  boxShadow: attendance?.status === 'present' ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
+                  cursor: loading || checkingIn ? 'default' : 'pointer',
+                  opacity: checkingIn ? 0.82 : 1,
+                }}
+              >
+                {checkingIn ? '處理中…' : attendance?.status === 'present' ? '唔好意思我想改' : '簽到'}
+              </button>
 
-          {attendance?.status === 'present' && showTimePicker ? (
-            <div style={{ marginTop: 12, display: 'grid', gap: 10, padding: 12, borderRadius: 18, background: '#fff7ed', border: '1px solid #fed7aa' }}>
-              <div style={{ color: '#9a3412', fontSize: 13, fontWeight: 900 }}>重新揀今日簽到時間</div>
-              <input
-                ref={timePickerRef}
-                type="time"
-                value={selectedTime}
-                onChange={(event) => setSelectedTime(event.target.value)}
-                style={{ width: '100%', borderRadius: 14, border: '1px solid #fdba74', padding: '12px 14px', fontSize: 16, fontWeight: 800, color: '#7c2d12', background: '#fff' }}
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setShowTimePicker(false)} style={{ flex: 1, borderRadius: 14, border: '1px solid #fed7aa', background: '#fff', color: '#9a3412', padding: '11px 12px', fontSize: 13, fontWeight: 900 }}>算啦</button>
-                <button onClick={() => { void onUpdateTime(selectedTime); setShowTimePicker(false); }} disabled={checkingIn} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#f97316', color: '#fff', padding: '11px 12px', fontSize: 13, fontWeight: 900, opacity: checkingIn ? 0.7 : 1 }}>改時間</button>
+              {attendance?.status === 'present' && showTimePicker ? (
+                <div style={{ marginTop: 12, display: 'grid', gap: 10, padding: 12, borderRadius: 18, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                  <div style={{ color: '#9a3412', fontSize: 13, fontWeight: 900 }}>重新揀今日簽到時間</div>
+                  <input
+                    ref={timePickerRef}
+                    type="time"
+                    value={selectedTime}
+                    onChange={(event) => setSelectedTime(event.target.value)}
+                    style={{ width: '100%', borderRadius: 14, border: '1px solid #fdba74', padding: '12px 14px', fontSize: 16, fontWeight: 800, color: '#7c2d12', background: '#fff' }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setShowTimePicker(false)} style={{ flex: 1, borderRadius: 14, border: '1px solid #fed7aa', background: '#fff', color: '#9a3412', padding: '11px 12px', fontSize: 13, fontWeight: 900 }}>算啦</button>
+                    <button onClick={() => { void onUpdateTime(selectedTime); setShowTimePicker(false); }} disabled={checkingIn} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#f97316', color: '#fff', padding: '11px 12px', fontSize: 13, fontWeight: 900, opacity: checkingIn ? 0.7 : 1 }}>改時間</button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', padding: 10 }}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 900, marginBottom: 8, textAlign: 'center' }}>請假</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {(['al', 'sl', 'bl', 'other'] as const).map((status) => {
+                  const active = attendance?.status === status;
+                  return (
+                    <button key={status} onClick={() => void onMarkOff(status)} disabled={checkingIn || loading} style={{ borderRadius: 12, border: active ? '1px solid #111827' : '1px solid #e2e8f0', background: active ? '#111827' : '#fff', color: active ? '#fff' : '#475569', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}>
+                      {status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          ) : null}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginTop: 12 }}>
-            {(['al', 'sl', 'bl', 'other'] as const).map((status) => {
-              const active = attendance?.status === status;
-              return (
-                <button key={status} onClick={() => void onMarkOff(status)} disabled={checkingIn || loading} style={{ borderRadius: 14, border: active ? '1px solid #111827' : '1px solid #e2e8f0', background: active ? '#111827' : '#fff', color: active ? '#fff' : '#475569', padding: '11px 8px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}>
-                  {status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}
-                </button>
-              );
-            })}
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <button onClick={onOpenRecords} style={{ flex: 1, borderRadius: 16, border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', padding: '12px 14px', fontSize: 14, fontWeight: 900, cursor: 'pointer' }}>記錄</button>
+            <button onClick={onOpenRecords} style={{ flex: 1, borderRadius: 16, border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', padding: '12px 14px', fontSize: 14, fontWeight: 900, cursor: 'pointer' }}>你的紀錄</button>
             {isAdmin && onOpenAdminRecords ? <button onClick={onOpenAdminRecords} style={{ flex: 1, borderRadius: 16, border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', padding: '12px 14px', fontSize: 14, fontWeight: 900, cursor: 'pointer' }}>Team Record</button> : null}
           </div>
         </div>
