@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarDays, Clock3, Pencil, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
+import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
 import { checkInToday, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceNote } from '../lib/api';
 import { AppShell } from '../components/AppShell';
@@ -382,18 +383,8 @@ function AttendanceCheckInCard({
 
 function HamsterBadge() {
   return (
-    <div style={{ width: 72, height: 72, borderRadius: 24, background: 'linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid rgba(251,146,60,0.28)', display: 'grid', placeItems: 'center', boxShadow: '0 12px 24px rgba(251,146,60,0.16)' }}>
-      <div style={{ position: 'relative', width: 52, height: 52 }}>
-        <span style={{ position: 'absolute', left: 6, top: 2, width: 14, height: 14, borderRadius: '50%', background: '#f5c7a9', border: '2px solid #d4a373' }} />
-        <span style={{ position: 'absolute', right: 6, top: 2, width: 14, height: 14, borderRadius: '50%', background: '#f5c7a9', border: '2px solid #d4a373' }} />
-        <span style={{ position: 'absolute', inset: 6, borderRadius: '50%', background: 'linear-gradient(180deg, #f7d3b7 0%, #e8b48a 100%)', border: '2px solid #d4a373' }} />
-        <span style={{ position: 'absolute', left: 16, top: 24, width: 5, height: 7, borderRadius: '50%', background: '#3f3f46' }} />
-        <span style={{ position: 'absolute', right: 16, top: 24, width: 5, height: 7, borderRadius: '50%', background: '#3f3f46' }} />
-        <span style={{ position: 'absolute', left: '50%', top: 29, width: 8, height: 6, marginLeft: -4, borderRadius: '50%', background: '#7c2d12' }} />
-        <span style={{ position: 'absolute', left: '50%', top: 35, width: 16, height: 8, marginLeft: -8, borderBottom: '2px solid #7c2d12', borderRadius: '0 0 999px 999px' }} />
-        <span style={{ position: 'absolute', left: 11, top: 32, width: 8, height: 5, borderRadius: '50%', background: 'rgba(251,113,133,0.45)' }} />
-        <span style={{ position: 'absolute', right: 11, top: 32, width: 8, height: 5, borderRadius: '50%', background: 'rgba(251,113,133,0.45)' }} />
-      </div>
+    <div style={{ width: 72, height: 72, borderRadius: 24, background: 'linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid rgba(251,146,60,0.22)', display: 'grid', placeItems: 'center', boxShadow: '0 12px 24px rgba(251,146,60,0.14)', overflow: 'hidden', padding: 6 }}>
+      <img src={attendanceMascotCute} alt="Attendance mascot" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 18, display: 'block' }} />
     </div>
   );
 }
