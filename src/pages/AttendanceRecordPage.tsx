@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
-import { fetchAttendanceRecords, updateTodayAttendanceTime } from '../lib/api';
+import { fetchAttendanceRecords, fetchProfiles, updateAttendanceTime, updateTodayAttendanceTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getHongKongDateString } from '../lib/horoscope';
 import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
-import type { AttendanceLog } from '../types';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from 'lucide-react';
+import type { AttendanceLog, Profile } from '../types';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Users } from 'lucide-react';
 
 function formatMinutes(total: number | null) {
   if (total === null) return '—';
@@ -45,7 +45,8 @@ function statusLabel(record: AttendanceLog) {
 }
 
 export function AttendanceRecordPage() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const [records, setRecords] = useState<AttendanceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -53,20 +54,33 @@ export function AttendanceRecordPage() {
   const [draftTime, setDraftTime] = useState('09:30');
   const timePickerRef = useRef<HTMLInputElement | null>(null);
   const [month, setMonth] = useState(() => getHongKongDateString().slice(0, 7));
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [showUserPicker, setShowUserPicker] = useState(false);
+
+  const targetUserId = selectedUserId ?? profile?.id ?? user?.id ?? null;
+  const targetProfile = profiles.find((p) => p.id === targetUserId) ?? profile;
 
   const loadRecords = async () => {
+    if (!targetUserId) return;
     setLoading(true);
     try {
-      setRecords(await fetchAttendanceRecords({ month }));
+      setRecords(await fetchAttendanceRecords({ month, userId: targetUserId }));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (isAdmin) {
+      void fetchProfiles().then(setProfiles).catch(() => {});
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
     void loadRecords();
     setEditingId(null);
-  }, [month]);
+  }, [month, targetUserId]);
 
   const summary = useMemo(() => {
     const present = records.filter((r) => r.status === 'present' && r.check_in_at);
@@ -80,8 +94,8 @@ export function AttendanceRecordPage() {
     };
   }, [records]);
 
-  const color = getProfileColor(profile);
-  const soft = getProfileSoftColor(profile);
+  const color = getProfileColor(targetProfile);
+  const soft = getProfileSoftColor(targetProfile);
   const today = getHongKongDateString();
 
   useEffect(() => {
@@ -89,15 +103,51 @@ export function AttendanceRecordPage() {
     window.setTimeout(() => timePickerRef.current?.showPicker?.(), 50);
   }, [editingId]);
 
+  const isSelf = targetUserId === (profile?.id ?? user?.id);
+
   return (
     <AppShell>
       <div style={{ width: '100%', maxWidth: 780, minWidth: 0, margin: '0 auto', display: 'grid', gap: 16 }}>
         <section style={{ borderRadius: 28, background: '#fff', border: '1px solid #e2e8f0', padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <BackButton to="/canton-mode" iconOnly style={{ flex: '0 0 auto', padding: 10 }} />
-            <div style={{ width: 44, height: 44, borderRadius: 14, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900, flex: '0 0 auto' }}>{getProfileInitials(profile?.name)}</div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 24, fontWeight: 950, color: '#0f172a', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>你的紀錄</div>
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900, flex: '0 0 auto' }}>{getProfileInitials(targetProfile?.name)}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontSize: 24, fontWeight: 950, color: '#0f172a', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {targetProfile?.id === profile?.id ? '你的紀錄' : `${targetProfile?.name ?? 'User'} 的紀錄`}
+                </div>
+                {isAdmin ? (
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      onClick={() => setShowUserPicker((c) => !c)}
+                      style={{ borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '6px 10px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                    >
+                      <Users size={13} /> 揀人
+                    </button>
+                    {showUserPicker ? (
+                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 20, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 8, boxShadow: '0 10px 28px rgba(0,0,0,0.12)', minWidth: 160, maxHeight: 260, overflowY: 'auto' }}>
+                        <button
+                          onClick={() => { setSelectedUserId(null); setShowUserPicker(false); }}
+                          style={{ width: '100%', textAlign: 'left', borderRadius: 10, border: 'none', background: selectedUserId === null ? '#f1f5f9' : 'transparent', color: '#0f172a', padding: '8px 10px', fontSize: 13, fontWeight: 900, cursor: 'pointer' }}
+                        >
+                          自己 ({profile?.name ?? 'Me'})
+                        </button>
+                        {profiles.filter((p) => p.id !== profile?.id).map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => { setSelectedUserId(p.id); setShowUserPicker(false); }}
+                            style={{ width: '100%', textAlign: 'left', borderRadius: 10, border: 'none', background: selectedUserId === p.id ? '#f1f5f9' : 'transparent', color: '#0f172a', padding: '8px 10px', fontSize: 13, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                          >
+                            <div style={{ width: 22, height: 22, borderRadius: 7, background: getProfileColor(p), color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flex: '0 0 auto' }}>{getProfileInitials(p.name)}</div>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
               <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatMonthLabel(month)}</div>
             </div>
           </div>
@@ -114,7 +164,7 @@ export function AttendanceRecordPage() {
             </button>
           </div>
 
-          <AttendanceTrendChart records={records} profile={profile} />
+          <AttendanceTrendChart records={records} profile={targetProfile} />
         </section>
 
         <section style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: '#64748b', fontSize: 13, fontWeight: 700 }}>
@@ -137,7 +187,7 @@ export function AttendanceRecordPage() {
           {loading ? <div style={{ color: '#64748b', fontWeight: 700 }}>Loading…</div> : records.length === 0 ? <div style={{ color: '#94a3b8' }}>No attendance record yet.</div> : (
             <div style={{ display: 'grid', gap: 10 }}>
               {records.map((record) => {
-                const canEditTime = record.date === today && record.status === 'present';
+                const canEditTime = (isAdmin || (isSelf && record.date === today)) && record.status === 'present';
                 const currentTime = statusLabel(record);
                 return (
                   <div key={record.id} style={{ display: 'grid', gap: 10, padding: '12px 14px', borderRadius: 18, background: '#f8fafc' }}>
@@ -147,11 +197,37 @@ export function AttendanceRecordPage() {
                       {record.note ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{record.note}</div> : null}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {canEditTime ? <button onClick={() => {
-                        setEditingId((current) => current === record.id ? null : record.id);
-                        setDraftTime(currentTime);
-                      }} disabled={savingId === record.id} style={{ borderRadius: 999, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: savingId === record.id ? 'default' : 'pointer', opacity: savingId === record.id ? 0.6 : 1 }}><Clock3 size={13} />改時間</button> : null}
-                      <div style={{ padding: '7px 10px', borderRadius: 999, background: record.status === 'present' ? soft : '#e2e8f0', color: record.status === 'present' ? color : '#475569', fontSize: 12, fontWeight: 900 }}>{statusLabel(record)}</div>
+                      {canEditTime ? (
+                        <button
+                          onClick={() => {
+                            setEditingId((current) => current === record.id ? null : record.id);
+                            setDraftTime(currentTime);
+                          }}
+                          disabled={savingId === record.id}
+                          style={{ borderRadius: 999, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: savingId === record.id ? 'default' : 'pointer', opacity: savingId === record.id ? 0.6 : 1 }}
+                        >
+                          <Clock3 size={13} />改時間
+                        </button>
+                      ) : null}
+                      <div
+                        onClick={() => {
+                          if (isAdmin && record.status === 'present') {
+                            setEditingId((current) => current === record.id ? null : record.id);
+                            setDraftTime(currentTime);
+                          }
+                        }}
+                        style={{
+                          padding: '7px 10px',
+                          borderRadius: 999,
+                          background: record.status === 'present' ? soft : '#e2e8f0',
+                          color: record.status === 'present' ? color : '#475569',
+                          fontSize: 12,
+                          fontWeight: 900,
+                          cursor: isAdmin && record.status === 'present' ? 'pointer' : 'default',
+                        }}
+                      >
+                        {statusLabel(record)}
+                      </div>
                     </div>
                   </div>
                   {editingId === record.id ? (
@@ -172,7 +248,9 @@ export function AttendanceRecordPage() {
                           }
                           setSavingId(record.id);
                           try {
-                            const next = await updateTodayAttendanceTime(draftTime);
+                            const next = isSelf && record.date === today
+                              ? await updateTodayAttendanceTime(draftTime)
+                              : await updateAttendanceTime(record.date, draftTime);
                             setRecords((current) => current.map((item) => item.id === record.id ? next : item));
                             setEditingId(null);
                           } catch (error: any) {
