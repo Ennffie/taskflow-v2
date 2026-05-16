@@ -1,5 +1,18 @@
 alter table public.tasks drop constraint if exists tasks_status_check;
 
+update public.tasks
+set
+  status = case
+    when status = 'done' then 'finished'
+    when status = 'review' then 'internal_review'
+    else status
+  end,
+  is_finished = case
+    when status = 'done' then true
+    else is_finished
+  end
+where status in ('done', 'review');
+
 alter table public.tasks
   add constraint tasks_status_check
   check (
