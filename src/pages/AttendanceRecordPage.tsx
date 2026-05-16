@@ -6,7 +6,7 @@ import { fetchAttendanceRecords, updateTodayAttendanceTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfileBorderColor, getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
 import type { AttendanceLog } from '../types';
-import { ArrowLeft, CalendarDays, Clock3 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3 } from 'lucide-react';
 
 function formatMinutes(total: number | null) {
   if (total === null) return '—';
@@ -22,6 +22,17 @@ function getMinutes(iso: string | null) {
 function formatDay(date: string) {
   const d = new Date(`${date}T00:00:00`);
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+
+function shiftMonth(month: string, delta: number) {
+  const [year, mm] = month.split('-').map(Number);
+  const next = new Date(year, mm - 1 + delta, 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(month: string) {
+  const [year, mm] = month.split('-').map(Number);
+  return new Date(year, mm - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 function statusLabel(record: AttendanceLog) {
@@ -40,11 +51,11 @@ export function AttendanceRecordPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTime, setDraftTime] = useState('09:30');
   const timePickerRef = useRef<HTMLInputElement | null>(null);
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   const loadRecords = async () => {
     setLoading(true);
     try {
-      const month = new Date().toISOString().slice(0, 7);
       setRecords(await fetchAttendanceRecords({ month }));
     } finally {
       setLoading(false);
@@ -53,7 +64,8 @@ export function AttendanceRecordPage() {
 
   useEffect(() => {
     void loadRecords();
-  }, []);
+    setEditingId(null);
+  }, [month]);
 
   const summary = useMemo(() => {
     const present = records.filter((r) => r.status === 'present' && r.check_in_at);
@@ -88,12 +100,24 @@ export function AttendanceRecordPage() {
             <div style={{ width: 52, height: 52, borderRadius: 18, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900 }}>{getProfileInitials(profile?.name)}</div>
             <div>
               <div style={{ fontSize: 28, fontWeight: 950, color: '#0f172a' }}>記錄</div>
-              <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700 }}>{new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</div>
+              <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700 }}>{formatMonthLabel(month)}</div>
             </div>
           </div>
         </section>
 
-        <AttendanceTrendChart records={records} profile={profile} />
+        <section style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 14, display: 'grid', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <button onClick={() => setMonth((current) => shiftMonth(current, -1))} style={{ width: 40, height: 40, borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Previous month">
+              <ChevronLeft size={18} />
+            </button>
+            <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a' }}>{formatMonthLabel(month)}</div>
+            <button onClick={() => setMonth((current) => shiftMonth(current, 1))} style={{ width: 40, height: 40, borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Next month">
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <AttendanceTrendChart records={records} profile={profile} />
+        </section>
 
         <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
           {[
