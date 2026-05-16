@@ -4,7 +4,6 @@ import { useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((mod) => ({ default: mod.LoginPage })));
-const TaskListPage = lazy(() => import('./pages/TaskListPage').then((mod) => ({ default: mod.TaskListPage })));
 const MyTasksPage = lazy(() => import('./pages/MyTasksPage').then((mod) => ({ default: mod.MyTasksPage })));
 const LogBookPage = lazy(() => import('./pages/LogBookPage').then((mod) => ({ default: mod.LogBookPage })));
 const MyLogPage = lazy(() => import('./pages/MyLogPage').then((mod) => ({ default: mod.MyLogPage })));
@@ -46,7 +45,7 @@ function App() {
           <Route path="/canton-mode" element={session ? <CantonModePage /> : <Navigate to="/" replace />} />
           <Route path="/canton-ai" element={session ? <CantonAiCoachPage /> : <Navigate to="/" replace />} />
           <Route path="/ai-parse-demo" element={<AiParseDemoPage />} />
-          <Route path="/" element={session ? <TaskListPage /> : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/" element={session ? <CantonAiCoachPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/my-tasks" element={session ? <MyTasksPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/tasks/:taskId" element={session ? <LogBookPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/my-log" element={session ? <MyLogPage /> : <Navigate to="/ai-parse-demo" replace />} />
