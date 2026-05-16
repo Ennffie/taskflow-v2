@@ -120,6 +120,17 @@ function writeAttendanceFallback(entry: AttendanceLog) {
   }
 }
 
+const attendanceNotifyUrl = (() => {
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  if (!base) return null;
+  try {
+    const url = new URL(base);
+    return `https://${url.hostname.replace('.supabase.co', '.functions.supabase.co')}/attendance-notify`;
+  } catch {
+    return null;
+  }
+})();
+
 function normalizeAttendanceNote(note?: string | null): string | null {
   const trimmed = note?.trim();
   return trimmed ? trimmed.slice(0, 120) : null;
@@ -172,6 +183,35 @@ async function fetchAttendanceByDate(userId: string, date: string): Promise<Atte
   return (data as AttendanceLog | null) ?? readAttendanceFallback(userId, date);
 }
 
+async function sendAttendanceNotification(params: {
+  kind: 'status' | 'note';
+  record: AttendanceLog;
+  previous?: AttendanceLog | null;
+}) {
+  if (!attendanceNotifyUrl) return;
+  try {
+    await fetch(attendanceNotifyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        kind: params.kind,
+        record: params.record,
+        previous: params.previous ? {
+          status: params.previous.status,
+          note: params.previous.note,
+          check_in_at: params.previous.check_in_at,
+        } : null,
+      }),
+    });
+  } catch (error) {
+    console.error('[attendance-notify] failed', error);
+  }
+}
+
 async function upsertAttendanceForToday(params: {
   status: AttendanceStatus;
   checkInAt: string | null;
@@ -183,6 +223,7 @@ async function upsertAttendanceForToday(params: {
 
   const date = getHongKongDateString();
   const note = normalizeAttendanceNote(params.note);
+  const existing = await fetchAttendanceByDate(userId, date);
   const payload = {
     user_id: userId,
     date,
@@ -212,12 +253,19 @@ async function upsertAttendanceForToday(params: {
         createdAt: existingFallback?.created_at,
       });
       writeAttendanceFallback(fallbackEntry);
+      if (!existing || existing.status !== fallbackEntry.status || existing.note !== fallbackEntry.note || existing.check_in_at !== fallbackEntry.check_in_at) {
+        void sendAttendanceNotification({ kind: 'status', record: fallbackEntry, previous: existing });
+      }
       return fallbackEntry;
     }
     throw error ?? new Error('Attendance update failed');
   }
 
-  return data as AttendanceLog;
+  const record = data as AttendanceLog;
+  if (!existing || existing.status !== record.status || existing.note !== record.note || existing.check_in_at !== record.check_in_at) {
+    void sendAttendanceNotification({ kind: 'status', record, previous: existing });
+  }
+  return record;
 }
 
 async function createAutoEventLog(params: {
@@ -1094,12 +1142,15 @@ export async function updateTodayAttendanceNote(note?: string | null): Promise<A
         updated_at: new Date().toISOString(),
       } as AttendanceLog;
       writeAttendanceFallback(fallbackEntry);
+      void sendAttendanceNotification({ kind: 'note', record: fallbackEntry, previous: existing });
       return fallbackEntry;
     }
     throw error ?? new Error('Attendance note update failed');
   }
 
-  return data as AttendanceLog;
+  const record = data as AttendanceLog;
+  void sendAttendanceNotification({ kind: 'note', record, previous: existing });
+  return record;
 }
 
 export async function fetchAttendanceRecords(options?: {
