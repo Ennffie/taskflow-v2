@@ -1153,6 +1153,53 @@ export async function updateTodayAttendanceNote(note?: string | null): Promise<A
   return record;
 }
 
+export async function updateTodayAttendanceTime(timeHHMM: string): Promise<AttendanceLog> {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const date = getHongKongDateString();
+  const existing = await fetchAttendanceByDate(userId, date);
+  if (!existing) throw new Error('No attendance record for today');
+  if (existing.status !== 'present') throw new Error('Only present record can change time');
+
+  const match = /^(\d{2}):(\d{2})$/.exec(timeHHMM.trim());
+  if (!match) throw new Error('Invalid time format');
+  const hh = Number(match[1]);
+  const mm = Number(match[2]);
+  if (hh > 23 || mm > 59) throw new Error('Invalid time');
+
+  const nextIso = new Date(`${date}T${match[1]}:${match[2]}:00+08:00`).toISOString();
+  if (existing.check_in_at === nextIso) return existing;
+
+  const { data, error } = await supabase
+    .from('attendance_logs')
+    .update({ check_in_at: nextIso })
+    .eq('id', existing.id)
+    .eq('user_id', userId)
+    .eq('date', date)
+    .eq('status', 'present')
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    if (isMissingAttendanceTableError(error)) {
+      const fallbackEntry = {
+        ...existing,
+        check_in_at: nextIso,
+        updated_at: new Date().toISOString(),
+      } as AttendanceLog;
+      writeAttendanceFallback(fallbackEntry);
+      void sendAttendanceNotification({ kind: 'status', record: fallbackEntry, previous: existing });
+      return fallbackEntry;
+    }
+    throw error ?? new Error('Attendance time update failed');
+  }
+
+  const record = data as AttendanceLog;
+  void sendAttendanceNotification({ kind: 'status', record, previous: existing });
+  return record;
+}
+
 export async function fetchAttendanceRecords(options?: {
   userId?: string;
   month?: string;
