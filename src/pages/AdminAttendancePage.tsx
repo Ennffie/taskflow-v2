@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
+import { BackButton } from '../components/BackButton';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
 import { fetchAttendanceRecords, fetchProfiles } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfileBorderColor, getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
 import type { AttendanceLog, Profile } from '../types';
-import { ArrowLeft, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 function getMinutes(iso: string | null) {
   if (!iso) return null;
@@ -62,7 +62,7 @@ export function AdminAttendancePage() {
     <AppShell>
       <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Link to="/canton-mode" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', color: '#64748b', fontWeight: 800 }}><ArrowLeft size={17} /> Back</Link>
+          <BackButton to="/canton-mode" />
         </div>
         <section style={{ borderRadius: 28, background: '#fff', border: '1px solid #e2e8f0', padding: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#0f172a', fontWeight: 950, fontSize: 28 }}><Users size={24} /> Team Record</div>

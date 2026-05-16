@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
+import { BackButton } from '../components/BackButton';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
 import { fetchAttendanceRecords, updateTodayAttendanceTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
 import type { AttendanceLog } from '../types';
-import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3 } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from 'lucide-react';
 
 function formatMinutes(total: number | null) {
   if (total === null) return '—';
@@ -92,7 +92,7 @@ export function AttendanceRecordPage() {
     <AppShell>
       <div style={{ width: '100%', maxWidth: 780, minWidth: 0, margin: '0 auto', display: 'grid', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Link to="/canton-mode" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', color: '#64748b', fontWeight: 800 }}><ArrowLeft size={17} /> Back</Link>
+          <BackButton to="/canton-mode" />
         </div>
         <section style={{ borderRadius: 28, background: '#fff', border: '1px solid #e2e8f0', padding: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

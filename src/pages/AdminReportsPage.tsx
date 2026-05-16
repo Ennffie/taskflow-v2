@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { BackButton } from '../components/BackButton';
 import { supabase } from '../lib/supabase';
 
 interface DailyLogEntry {
@@ -71,9 +72,7 @@ export function AdminReportsPage() {
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '20px 16px' }}>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <button onClick={() => navigate('/canton-mode')} style={{ background: 'none', border: 'none', padding: 8 }}>
-            <ArrowLeft size={24} />
-          </button>
+          <BackButton onClick={() => navigate('/canton-mode')} iconOnly />
           <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>Admin - Daily Logs</h1>
         </div>
 

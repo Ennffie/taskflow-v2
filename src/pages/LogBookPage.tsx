@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, User, FileText, GitBranch } from 'lucide-react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, User, FileText, GitBranch } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
+import { BackButton } from '../components/BackButton';
 import { LogFormModal } from '../components/LogFormModal';
 import { fetchLogs, fetchTask, deleteTask, updateLog, deleteLog, fetchSubtasks, updateTask } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
@@ -316,9 +317,7 @@ export function LogBookPage() {
   return (
     <AppShell>
       <div style={{ display: 'grid', gap: '16px' }}>
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: '#6b7280', fontWeight: 600, fontSize: '14px' }}>
-          <ArrowLeft size={16} /> Back to tasks
-        </Link>
+        <BackButton to="/" label="Back to tasks" />
 
         {parentTask && (
           <div style={{ padding: '12px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>

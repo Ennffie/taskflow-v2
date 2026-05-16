@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createTask, fetchProfiles, fetchTasksForCantonAi, updateTask, updateTaskAssignees, deleteTask, fetchBridgeUrl, createTaskEventLog, fetchAllLogs } from '../lib/api';
 import { buildTrackerRows } from '../lib/report';
 import { exportTrackerWorkbook } from '../lib/reportWorkbook';
 import { supabase } from '../lib/supabase';
 import { VersionBadge } from '../components/VersionBadge';
+import { BackButton } from '../components/BackButton';
 import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
 import { tryBuildDeterministicSummary } from '../lib/cantonSummary';
 import { buildDecisionContext } from '../lib/cantonDecisionContext';
@@ -1952,7 +1953,7 @@ export function CantonAiCoachPage() {
       <header style={{ padding: '14px 16px 10px', background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(226,232,240,0.9)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <button onClick={() => navigate('/canton-mode')} style={{ border: 'none', background: 'transparent', color: '#475569', display: 'flex', gap: 8, alignItems: 'center', fontWeight: 900, padding: 0 }}><ArrowLeft size={18} /> Canton</button>
+            <BackButton onClick={() => navigate('/canton-mode')} label="Canton" style={{ padding: '10px 12px' }} />
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, color: '#0369a1', fontWeight: 950 }}><Sparkles size={17} /> Silly AI <VersionBadge align="inline" /></div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, AlertCircle, Plus, ArrowLeft, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Plus, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
+import { BackButton } from '../components/BackButton';
 import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, updateTaskAssignees, createTask, createLog } from '../lib/api';
 import type { TaskItem, Profile, TaskStatus } from '../types';
 import { getStatusMeta } from '../types';
@@ -418,10 +419,7 @@ export function ImportReviewPage() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: '14px', color: '#475569' }}>
-              <ArrowLeft size={16} />
-              Back
-            </button>
+            <BackButton onClick={() => navigate('/')} style={{ border: '1px solid #e2e8f0', background: '#fff', padding: '10px 16px' }} />
             <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 }}>Import Review</h1>
           </div>
           
