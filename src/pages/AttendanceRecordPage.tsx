@@ -91,15 +91,13 @@ export function AttendanceRecordPage() {
   return (
     <AppShell>
       <div style={{ width: '100%', maxWidth: 780, minWidth: 0, margin: '0 auto', display: 'grid', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BackButton to="/canton-mode" />
-        </div>
-        <section style={{ borderRadius: 28, background: '#fff', border: '1px solid #e2e8f0', padding: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 18, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900 }}>{getProfileInitials(profile?.name)}</div>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 950, color: '#0f172a' }}>你的紀錄</div>
-              <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700 }}>{formatMonthLabel(month)}</div>
+        <section style={{ borderRadius: 28, background: '#fff', border: '1px solid #e2e8f0', padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <BackButton to="/canton-mode" iconOnly style={{ flex: '0 0 auto', padding: 10 }} />
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900, flex: '0 0 auto' }}>{getProfileInitials(profile?.name)}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 24, fontWeight: 950, color: '#0f172a', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>你的紀錄</div>
+              <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatMonthLabel(month)}</div>
             </div>
           </div>
         </section>
