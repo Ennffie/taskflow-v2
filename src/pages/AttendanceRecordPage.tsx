@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
@@ -37,6 +37,9 @@ export function AttendanceRecordPage() {
   const [records, setRecords] = useState<AttendanceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftTime, setDraftTime] = useState('09:30');
+  const timePickerRef = useRef<HTMLInputElement | null>(null);
 
   const loadRecords = async () => {
     setLoading(true);
@@ -68,6 +71,11 @@ export function AttendanceRecordPage() {
   const soft = getProfileSoftColor(profile);
   const border = getProfileBorderColor(profile);
   const today = new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    if (!editingId) return;
+    window.setTimeout(() => timePickerRef.current?.showPicker?.(), 50);
+  }, [editingId]);
 
   return (
     <AppShell>
@@ -107,28 +115,52 @@ export function AttendanceRecordPage() {
             <div style={{ display: 'grid', gap: 10 }}>
               {records.map((record) => {
                 const canEditTime = record.date === today && record.status === 'present';
+                const currentTime = statusLabel(record);
                 return (
-                  <div key={record.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', borderRadius: 18, background: '#f8fafc' }}>
+                  <div key={record.id} style={{ display: 'grid', gap: 10, padding: '12px 14px', borderRadius: 18, background: '#f8fafc' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{formatDay(record.date)}</div>
                       {record.note ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{record.note}</div> : null}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {canEditTime ? <button onClick={async () => {
-                        const nextTime = window.prompt('輸入今日報到時間（HH:mm）', statusLabel(record));
-                        if (!nextTime || nextTime === statusLabel(record)) return;
-                        setSavingId(record.id);
-                        try {
-                          const next = await updateTodayAttendanceTime(nextTime);
-                          setRecords((current) => current.map((item) => item.id === record.id ? next : item));
-                        } catch (error: any) {
-                          alert(`Update time failed: ${error?.message || 'Unknown error'}`);
-                        } finally {
-                          setSavingId(null);
-                        }
+                      {canEditTime ? <button onClick={() => {
+                        setEditingId((current) => current === record.id ? null : record.id);
+                        setDraftTime(currentTime);
                       }} disabled={savingId === record.id} style={{ borderRadius: 999, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: savingId === record.id ? 'default' : 'pointer', opacity: savingId === record.id ? 0.6 : 1 }}><Clock3 size={13} />改時間</button> : null}
                       <div style={{ padding: '7px 10px', borderRadius: 999, background: record.status === 'present' ? soft : '#e2e8f0', color: record.status === 'present' ? color : '#475569', fontSize: 12, fontWeight: 900 }}>{statusLabel(record)}</div>
                     </div>
+                  </div>
+                  {editingId === record.id ? (
+                    <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 16, background: '#fff', border: '1px solid #e2e8f0' }}>
+                      <input
+                        ref={timePickerRef}
+                        type="time"
+                        value={draftTime}
+                        onChange={(event) => setDraftTime(event.target.value)}
+                        style={{ width: '100%', borderRadius: 14, border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: 16, fontWeight: 800, color: '#0f172a', background: '#fff' }}
+                      />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => setEditingId(null)} style={{ flex: 1, borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '10px 12px', fontSize: 13, fontWeight: 900 }}>算啦</button>
+                        <button onClick={async () => {
+                          if (!draftTime || draftTime === currentTime) {
+                            setEditingId(null);
+                            return;
+                          }
+                          setSavingId(record.id);
+                          try {
+                            const next = await updateTodayAttendanceTime(draftTime);
+                            setRecords((current) => current.map((item) => item.id === record.id ? next : item));
+                            setEditingId(null);
+                          } catch (error: any) {
+                            alert(`Update time failed: ${error?.message || 'Unknown error'}`);
+                          } finally {
+                            setSavingId(null);
+                          }
+                        }} disabled={savingId === record.id} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#0f172a', color: '#fff', padding: '10px 12px', fontSize: 13, fontWeight: 900, opacity: savingId === record.id ? 0.7 : 1 }}>儲存</button>
+                      </div>
+                    </div>
+                  ) : null}
                   </div>
                 );
               })}
