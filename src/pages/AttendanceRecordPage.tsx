@@ -4,7 +4,7 @@ import { AppShell } from '../components/AppShell';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
 import { fetchAttendanceRecords, updateTodayAttendanceTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-import { getProfileBorderColor, getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
+import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
 import type { AttendanceLog } from '../types';
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3 } from 'lucide-react';
 
@@ -81,7 +81,6 @@ export function AttendanceRecordPage() {
 
   const color = getProfileColor(profile);
   const soft = getProfileSoftColor(profile);
-  const border = getProfileBorderColor(profile);
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
@@ -99,7 +98,7 @@ export function AttendanceRecordPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 52, height: 52, borderRadius: 18, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900 }}>{getProfileInitials(profile?.name)}</div>
             <div>
-              <div style={{ fontSize: 28, fontWeight: 950, color: '#0f172a' }}>記錄</div>
+              <div style={{ fontSize: 28, fontWeight: 950, color: '#0f172a' }}>你的紀錄</div>
               <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700 }}>{formatMonthLabel(month)}</div>
             </div>
           </div>
@@ -119,16 +118,16 @@ export function AttendanceRecordPage() {
           <AttendanceTrendChart records={records} profile={profile} />
         </section>
 
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
           {[
             ['平均', formatMinutes(summary.avg)],
             ['最早', formatMinutes(summary.earliest)],
             ['最遲', formatMinutes(summary.latest)],
             ['Off', String(summary.offCount)],
           ].map(([label, value]) => (
-            <div key={label} style={{ borderRadius: 20, background: soft, border: `1px solid ${border}`, padding: 14 }}>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 800 }}>{label}</div>
-              <div style={{ fontSize: 20, color: '#0f172a', fontWeight: 950, marginTop: 6 }}>{value}</div>
+            <div key={label} style={{ borderRadius: 16, background: '#fff', border: '1px solid #eef2f7', padding: '10px 12px' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>{label}</div>
+              <div style={{ fontSize: 15, color: '#334155', fontWeight: 800, marginTop: 4 }}>{value}</div>
             </div>
           ))}
         </section>

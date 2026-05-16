@@ -56,7 +56,7 @@ function getTickStep(span: number) {
   return 120;
 }
 
-export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, height = 260 }: AttendanceTrendChartProps) {
+export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, height = 240 }: AttendanceTrendChartProps) {
   const presentRecords = [...records]
     .filter((r) => r.status === 'present' && r.check_in_at)
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -70,71 +70,58 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
     date: record.date.slice(-2),
     fullDate: record.date,
     minutes: toMinutes(record.check_in_at) ?? baselineMinutes,
-    note: record.note,
   }));
 
   const domain = buildTimeDomain(points.map((point) => point.minutes), baselineMinutes);
   const tickStep = getTickStep(domain.span);
   const ticks: number[] = [];
-  for (let value = domain.min; value <= domain.max; value += tickStep) {
-    ticks.push(value);
-  }
-  if (ticks[ticks.length - 1] !== domain.max) {
-    ticks.push(domain.max);
-  }
+  for (let value = domain.min; value <= domain.max; value += tickStep) ticks.push(value);
+  if (ticks[ticks.length - 1] !== domain.max) ticks.push(domain.max);
 
   const width = 100;
-  const padLeft = 14;
+  const padLeft = 12;
   const padRight = 6;
-  const padTop = 8;
-  const padBottom = 12;
+  const padTop = 10;
+  const padBottom = 14;
   const innerWidth = width - padLeft - padRight;
   const innerHeight = 100 - padTop - padBottom;
-  const rowStep = points.length === 1 ? 0 : innerHeight / (points.length - 1);
-  const xFor = (minutes: number) => padLeft + ((minutes - domain.min) / Math.max(1, domain.max - domain.min)) * innerWidth;
-  const yFor = (index: number) => padTop + index * rowStep;
-  const baselineX = xFor(baselineMinutes);
-  const polyline = points.map((point) => `${xFor(point.minutes)},${yFor(point.index)}`).join(' ');
+  const step = points.length === 1 ? 0 : innerWidth / (points.length - 1);
+  const xFor = (index: number) => padLeft + index * step;
+  const yFor = (minutes: number) => padTop + (1 - ((minutes - domain.min) / Math.max(1, domain.max - domain.min))) * innerHeight;
+  const baselineY = yFor(baselineMinutes);
+  const polyline = points.map((point) => `${xFor(point.index)},${yFor(point.minutes)}`).join(' ');
   const lineColor = getProfileColor(profile);
 
   return (
     <div style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 14 }}>
       <svg viewBox="0 0 100 100" style={{ width: '100%', height }}>
         {ticks.map((tick) => {
-          const x = xFor(tick);
+          const y = yFor(tick);
           return (
             <g key={tick}>
-              <line x1={x} x2={x} y1={padTop} y2={100 - padBottom} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
-              <text x={x} y={98} textAnchor="middle" fontSize="4" fill="#64748b">{formatMinutes(tick)}</text>
+              <line x1={padLeft} x2={100 - padRight} y1={y} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+              <text x={padLeft - 2} y={y + 1.4} textAnchor="end" fontSize="4" fill="#64748b">{formatMinutes(tick)}</text>
             </g>
           );
         })}
 
-        <line x1={baselineX} x2={baselineX} y1={padTop} y2={100 - padBottom} stroke="#94a3b8" strokeDasharray="3 2" strokeWidth="1.1" />
-        <text x={baselineX} y={6} textAnchor="middle" fontSize="4" fill="#64748b">09:30</text>
-
-        {points.map((point) => {
-          const y = yFor(point.index);
-          return (
-            <g key={`${point.fullDate}-${point.index}`}>
-              <line x1={padLeft} x2={100 - padRight} y1={y} y2={y} stroke="#f1f5f9" strokeWidth="0.8" />
-              <text x={padLeft - 2} y={y + 1.4} textAnchor="end" fontSize="4" fill="#64748b">{point.date}</text>
-            </g>
-          );
-        })}
+        <line x1={padLeft} x2={100 - padRight} y1={baselineY} y2={baselineY} stroke="#94a3b8" strokeDasharray="3 2" strokeWidth="1.1" />
+        <text x={100 - padRight} y={baselineY - 2} textAnchor="end" fontSize="4" fill="#64748b">09:30</text>
 
         <polyline fill="none" stroke={lineColor} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" points={polyline} />
 
         {points.map((point) => {
           const late = point.minutes > baselineMinutes;
+          const x = xFor(point.index);
           return (
-            <g key={`dot-${point.fullDate}-${point.index}`}>
-              <circle cx={xFor(point.minutes)} cy={yFor(point.index)} r="2.8" fill={late ? '#f97316' : lineColor} stroke="#fff" strokeWidth="1.1" />
+            <g key={point.fullDate}>
+              <circle cx={x} cy={yFor(point.minutes)} r="2.8" fill={late ? '#f97316' : lineColor} stroke="#fff" strokeWidth="1.1" />
+              <text x={x} y={98} textAnchor="middle" fontSize="4" fill="#64748b">{point.date}</text>
             </g>
           );
         })}
       </svg>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -2, color: '#64748b', fontSize: 12, fontWeight: 700 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -2, color: '#94a3b8', fontSize: 11, fontWeight: 700 }}>
         <span>{points.length} days</span>
         <span>{formatMinutes(points[points.length - 1].minutes)}</span>
       </div>
