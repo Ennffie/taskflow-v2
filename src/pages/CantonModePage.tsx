@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CalendarDays, ChevronDown, ChevronUp, Clock3, RefreshCw, Sparkles, UserRound, Waves } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ChevronDown, ChevronUp, Clock3, RefreshCw, Sparkles, UserRound, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
 import { checkInToday, clearTodayAttendance, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceTime } from '../lib/api';
@@ -285,6 +285,18 @@ export function CantonModePage() {
                 }}
                 onOpenRecords={() => navigate('/attendance')}
                 onOpenAdminRecords={profile?.role === 'admin' ? () => navigate('/attendance/admin') : undefined}
+                onReset={async () => {
+                  if (checkInLoading || !attendance) return;
+                  setCheckInLoading(true);
+                  try {
+                    await clearTodayAttendance();
+                    setAttendance(null);
+                  } catch (error: any) {
+                    alert(`Reset failed: ${error?.message || 'Unknown error'}`);
+                  } finally {
+                    setCheckInLoading(false);
+                  }
+                }}
               />
 
               <section style={{ ...cardStyle, padding: '16px 0 0', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(251,247,255,0.94))' }}>
@@ -337,6 +349,7 @@ function AttendanceCheckInCard({
   onUpdateTime,
   onOpenRecords,
   onOpenAdminRecords,
+  onReset,
 }: {
   profileName: string;
   profileEmail: string;
@@ -349,6 +362,7 @@ function AttendanceCheckInCard({
   onUpdateTime: (time: string) => void | Promise<void>;
   onOpenRecords: () => void;
   onOpenAdminRecords?: () => void;
+  onReset: () => void | Promise<void>;
 }) {
   const timePickerRef = useRef<HTMLInputElement | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -424,32 +438,56 @@ function AttendanceCheckInCard({
               {helperText ? <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{helperText}</div> : null}
               {!isNonWorkingDay ? (
                 <>
-                  <button
-                    onClick={() => {
-                      if (attendance?.status === 'present') {
-                        setShowTimePicker((current) => !current);
-                        return;
-                      }
-                      void onCheckIn();
-                    }}
-                    disabled={loading || checkingIn}
-                    style={{
-                      marginTop: 16,
-                      width: '100%',
-                      border: 'none',
-                      borderRadius: 18,
-                      padding: '15px 18px',
-                      background: attendance ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
-                      color: attendance ? '#c2410c' : '#fff',
-                      fontSize: 16,
-                      fontWeight: 900,
-                      boxShadow: attendance ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
-                      cursor: loading || checkingIn ? 'default' : 'pointer',
-                      opacity: checkingIn ? 0.82 : 1,
-                    }}
-                  >
-                    {checkingIn ? '處理中…' : attendance ? '唔好意思我想改' : '簽到'}
-                  </button>
+                  <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                    <button
+                      onClick={() => {
+                        if (attendance?.status === 'present') {
+                          setShowTimePicker((current) => !current);
+                          return;
+                        }
+                        void onCheckIn();
+                      }}
+                      disabled={loading || checkingIn}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        borderRadius: 18,
+                        padding: '15px 18px',
+                        background: attendance ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
+                        color: attendance ? '#c2410c' : '#fff',
+                        fontSize: 16,
+                        fontWeight: 900,
+                        boxShadow: attendance ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
+                        cursor: loading || checkingIn ? 'default' : 'pointer',
+                        opacity: checkingIn ? 0.82 : 1,
+                      }}
+                    >
+                      {checkingIn ? '處理中…' : attendance ? '唔好意思我想改' : '簽到'}
+                    </button>
+                    {attendance ? (
+                      <button
+                        onClick={() => void onReset()}
+                        disabled={loading || checkingIn}
+                        aria-label="Reset attendance record"
+                        title="Reset record"
+                        style={{
+                          width: 52,
+                          flex: '0 0 52px',
+                          border: '1px solid #fecaca',
+                          borderRadius: 18,
+                          background: '#fff1f2',
+                          color: '#e11d48',
+                          display: 'grid',
+                          placeItems: 'center',
+                          boxShadow: '0 10px 22px rgba(244,63,94,0.10)',
+                          cursor: loading || checkingIn ? 'default' : 'pointer',
+                          opacity: checkingIn ? 0.72 : 1,
+                        }}
+                      >
+                        <X size={20} />
+                      </button>
+                    ) : null}
+                  </div>
 
                   {attendance?.status === 'present' && showTimePicker ? (
                     <div style={{ marginTop: 12, display: 'grid', gap: 10, padding: 12, borderRadius: 18, background: '#fff7ed', border: '1px solid #fed7aa' }}>
