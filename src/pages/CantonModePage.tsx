@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CalendarDays, ChevronDown, ChevronUp, RefreshCw, Sparkles, UserRound, Waves, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, RefreshCw, Sparkles, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
 import { checkInToday, clearTodayAttendance, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceTime } from '../lib/api';
@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
 import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile } from '../lib/horoscope';
 import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib/specialDays';
-import { getStatusMeta, type AttendanceLog, type AttendanceStatus, type TaskItem } from '../types';
+import { type AttendanceLog, type AttendanceStatus, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
 const cardStyle: React.CSSProperties = {
@@ -172,6 +172,11 @@ export function CantonModePage() {
 
   const rootTasks = useMemo(() => tasks.filter((task) => !task.parent_id), [tasks]);
   const focusTasks = useMemo(() => rootTasks.filter((task) => task.is_focus && !isDone(task)), [rootTasks]);
+  const selfFocusTasks = useMemo(() => {
+    const selfId = profile?.id ?? user?.id;
+    if (!selfId) return focusTasks;
+    return focusTasks.filter((task) => task.assignees.some((assignee) => assignee.id === selfId));
+  }, [focusTasks, profile?.id, user?.id]);
   const visibleTasks = useMemo(() => {
     const focus = focusTasks
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -308,8 +313,14 @@ export function CantonModePage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
                 <section style={{ ...cardStyle, padding: 16 }}>
-                  <SectionTitle icon={<Waves size={16} color="#7c3aed" />} title="Focus" count={focusTasks.length} />
-                  {focusTasks.length ? focusTasks.slice(0, 4).map((task) => <MiniTask key={task.id} task={task} onClick={() => navigate(`/tasks/${task.id}`)} />) : <EmptyText text="暫時未有 focus task。" />}
+                  <SectionTitle
+                    icon={<Waves size={16} color="#7c3aed" />}
+                    title={`${getPossessiveFocusLabel(profile?.name || user?.user_metadata?.name || user?.email || 'My')} Focus`}
+                    count={selfFocusTasks.length}
+                    actionLabel="View All"
+                    onAction={() => navigate('/tasks')}
+                  />
+                  {selfFocusTasks.length ? selfFocusTasks.slice(0, 4).map((task) => <MiniFocusTask key={task.id} task={task} onClick={() => navigate(`/tasks/${task.id}`)} />) : <EmptyText text="暫時未有你嘅 focus task。" />}
                 </section>
                 <section style={{ ...cardStyle, padding: 16 }}>
                   <SectionTitle icon={<AlertTriangle size={16} color="#f97316" />} title="唔好漏咗" count={riskItems.length} />
@@ -705,12 +716,23 @@ function TaskBubble({ task, index, total, allTasks, onClick }: { task: TaskItem;
   );
 }
 
-function SectionTitle({ icon, title, count }: { icon: React.ReactNode; title: string; count: number }) {
-  return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#0f172a', fontSize: 15, fontWeight: 900 }}>{icon}{title}</div><span style={{ fontSize: 12, fontWeight: 900, color: '#64748b', background: '#f1f5f9', padding: '5px 9px', borderRadius: 999 }}>{count}</span></div>;
+function SectionTitle({ icon, title, count, actionLabel, onAction }: { icon: React.ReactNode; title: string; count: number; actionLabel?: string; onAction?: () => void }) {
+  return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#0f172a', fontSize: 15, fontWeight: 900, minWidth: 0 }}>{icon}<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span></div><div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>{actionLabel && onAction ? <button onClick={onAction} style={{ border: 'none', background: 'transparent', color: '#7c3aed', fontSize: 12, fontWeight: 900, padding: 0, cursor: 'pointer' }}>{actionLabel}</button> : null}<span style={{ fontSize: 12, fontWeight: 900, color: '#64748b', background: '#f1f5f9', padding: '5px 9px', borderRadius: 999 }}>{count}</span></div></div>;
 }
 
-function MiniTask({ task, onClick }: { task: TaskItem; onClick: () => void }) {
-  return <button onClick={onClick} style={{ width: '100%', textAlign: 'left', padding: 13, borderRadius: 18, border: '1px solid #e5e7eb', background: isOverdue(task) ? '#fff7ed' : '#fff', marginBottom: 10, cursor: 'pointer' }}><div style={{ color: '#0f172a', fontSize: 14, fontWeight: 900, marginBottom: 5 }}>{task.title}</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#64748b', fontSize: 11, fontWeight: 700 }}><span><CalendarDays size={11} /> {dueLabel(task.due_date)}</span><span><UserRound size={11} /> {assigneeLabel(task)}</span><span style={{ color: getStatusMeta(task.status).color }}>{getStatusMeta(task.status).label}</span></div></button>;
+function getPossessiveFocusLabel(name: string) {
+  const first = name.trim().split(/\s+/).filter(Boolean)[0] || 'My';
+  return first.endsWith('s') ? `${first}'` : `${first}'s`;
+}
+
+function getTaskNumberLabel(task: TaskItem) {
+  const match = task.title.match(/^([A-Z]{2,6}-\d{2,6})/i);
+  if (match) return match[1].toUpperCase();
+  return `#${task.id.slice(0, 4).toUpperCase()}`;
+}
+
+function MiniFocusTask({ task, onClick }: { task: TaskItem; onClick: () => void }) {
+  return <button onClick={onClick} style={{ width: '100%', textAlign: 'left', padding: 13, borderRadius: 18, border: '1px solid #e5e7eb', background: isOverdue(task) ? '#fff7ed' : '#fff', marginBottom: 10, cursor: 'pointer' }}><div style={{ color: '#7c3aed', fontSize: 11, fontWeight: 900, marginBottom: 6 }}>Task no. {getTaskNumberLabel(task)}</div><div style={{ color: '#0f172a', fontSize: 14, fontWeight: 900, lineHeight: 1.4 }}>{task.title}</div></button>;
 }
 
 function RiskItem({ item, onClick }: { item: { label: string; detail: string; tone: 'danger' | 'warn' | 'info' }; onClick: () => void }) {
