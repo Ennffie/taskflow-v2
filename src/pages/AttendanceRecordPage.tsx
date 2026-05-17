@@ -104,6 +104,7 @@ export function AttendanceRecordPage() {
   }, [editingId]);
 
   const isSelf = targetUserId === (profile?.id ?? user?.id);
+  const pageTitle = isSelf ? '我的記錄' : (targetProfile?.name ?? 'User');
 
   return (
     <AppShell>
@@ -115,7 +116,7 @@ export function AttendanceRecordPage() {
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ fontSize: 24, fontWeight: 950, color: '#0f172a', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {targetProfile?.id === profile?.id ? '你的紀錄' : `${targetProfile?.name ?? 'User'} 的紀錄`}
+                  {pageTitle}
                 </div>
                 {isAdmin ? (
                   <div style={{ position: 'relative' }}>
@@ -148,7 +149,7 @@ export function AttendanceRecordPage() {
                   </div>
                 ) : null}
               </div>
-              <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatMonthLabel(month)}</div>
+              
             </div>
           </div>
         </section>
