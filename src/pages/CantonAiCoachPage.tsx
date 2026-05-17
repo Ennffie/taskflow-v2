@@ -2021,23 +2021,25 @@ export function CantonAiCoachPage() {
       <main style={{ overflow: 'hidden', padding: keyboardInset > 0 ? '6px 16px 0' : '14px 16px 0', paddingBottom: `${composerHeight + keyboardInset + 8}px`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', minHeight: 0 }}>
         <div style={{ maxWidth: 760, margin: '0 auto', width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: keyboardInset > 0 ? 6 : 10, overflowY: 'auto', justifyContent: isDesktopViewport ? 'flex-start' : 'flex-end', paddingBottom: keyboardInset > 0 ? 6 : 16, minHeight: 0, flex: 1, overscrollBehavior: 'contain' }}>
-          {visibleMessages.map((message, index) => (
+          {visibleMessages.map((message, index) => {
+            const isLinkOnlyTaskList = message.role === 'ai' && message._action === 'task_list';
+            return (
             <div key={message.id ?? index} style={{ 
               alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', 
               maxWidth: '90%', 
               minWidth: message.role === 'user' ? undefined : 'min(90%, 300px)',
               whiteSpace: 'pre-wrap', 
-              padding: message.role === 'user' ? '13px 15px' : '16px 17px', 
-              borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '20px 20px 20px 4px', 
-              background: message.role === 'user' ? '#111827' : '#fff', 
+              padding: isLinkOnlyTaskList ? 0 : (message.role === 'user' ? '13px 15px' : '16px 17px'), 
+              borderRadius: isLinkOnlyTaskList ? 0 : (message.role === 'user' ? '18px 18px 4px 18px' : '20px 20px 20px 4px'), 
+              background: isLinkOnlyTaskList ? 'transparent' : (message.role === 'user' ? '#111827' : '#fff'), 
               color: message.role === 'user' ? '#fff' : '#0f172a', 
               fontSize: message.role === 'user' ? 16 : 17, 
               lineHeight: 1.48, 
               fontWeight: message.role === 'user' ? 800 : 400, 
               letterSpacing: '-0.01em', 
-              boxShadow: message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)' 
+              boxShadow: isLinkOnlyTaskList ? 'none' : (message.role === 'user' ? 'none' : '0 8px 24px rgba(148,163,184,0.12)') 
             }}>
-              {renderMessage(message.text, message.role)}
+              {!isLinkOnlyTaskList && renderMessage(message.text, message.role)}
               {isTyping && typingMessageId && message.id === typingMessageId && (
                 <span style={{ 
                   display: 'inline-block', 
@@ -2539,7 +2541,7 @@ export function CantonAiCoachPage() {
                 );
               })()}
             </div>
-          ))}
+          );})}
           <style>{`@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
           @keyframes taskListRiseIn { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: translateY(0); } }
           @keyframes reportRiseIn { 0% { opacity: 0; transform: translateY(24px); } 100% { opacity: 1; transform: translateY(0); } }`}</style>
