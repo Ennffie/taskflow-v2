@@ -316,9 +316,9 @@ export function CantonModePage() {
                   <SectionTitle
                     icon={<Waves size={16} color="#7c3aed" />}
                     title={`${getPossessiveFocusLabel(profile?.name || user?.user_metadata?.name || user?.email || 'My')} Focus Task`}
-                    count={selfFocusTasks.length}
+                    count={rootTasks.filter((task) => task.is_focus).length}
                     actionLabel="View All"
-                    onAction={() => navigate('/tasks')}
+                    onAction={() => navigate('/all-tasks')}
                   />
                   {selfFocusTasks.length ? selfFocusTasks.slice(0, 4).map((task) => <MiniFocusTask key={task.id} task={task} onClick={() => navigate(`/tasks/${task.id}`)} />) : <EmptyText text="暫時未有你嘅 focus task。" />}
                 </section>
