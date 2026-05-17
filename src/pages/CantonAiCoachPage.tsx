@@ -1663,7 +1663,7 @@ export function CantonAiCoachPage() {
         return;
       }
 
-      if (matchedPerson && /(task|tasks|有咩做|有啲咩做|未做|手上|跟緊|負責|check)/.test(lower)) {
+      if (matchedPerson && /(task|tasks|有咩做|有啲咩做|做緊乜|做緊咩|做緊乜嘢|做緊啲乜|做乜|做咩|未做|手上|跟緊|負責|check)/.test(lower)) {
         const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && t.assignees.some(a => a.name === matchedPerson));
         const list = personTasks.map(t => ({
           id: t.id,
