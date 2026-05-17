@@ -44,6 +44,11 @@ function statusLabel(record: AttendanceLog) {
   return record.status.toUpperCase();
 }
 
+function shouldHideFromAttendancePicker(profile: Profile) {
+  const normalized = profile.name.trim().toLowerCase();
+  return normalized.includes('claire') || normalized.includes('shani');
+}
+
 export function AttendanceRecordPage() {
   const { profile, user } = useAuth();
   const isAdmin = profile?.role === 'admin';
@@ -73,7 +78,9 @@ export function AttendanceRecordPage() {
 
   useEffect(() => {
     if (isAdmin) {
-      void fetchProfiles().then(setProfiles).catch(() => {});
+      void fetchProfiles()
+        .then((items) => setProfiles(items.filter((item) => !shouldHideFromAttendancePicker(item))))
+        .catch(() => {});
     }
   }, [isAdmin]);
 
