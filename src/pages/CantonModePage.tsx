@@ -174,9 +174,9 @@ export function CantonModePage() {
   const focusTasks = useMemo(() => rootTasks.filter((task) => task.is_focus && !isDone(task)), [rootTasks]);
   const selfFocusTasks = useMemo(() => {
     const selfId = profile?.id ?? user?.id;
-    if (!selfId) return focusTasks;
-    return focusTasks.filter((task) => task.assignees.some((assignee) => assignee.id === selfId));
-  }, [focusTasks, profile?.id, user?.id]);
+    if (!selfId) return rootTasks.filter((task) => task.is_focus);
+    return rootTasks.filter((task) => task.is_focus && task.assignees.some((assignee) => assignee.id === selfId));
+  }, [rootTasks, profile?.id, user?.id]);
   const visibleTasks = useMemo(() => {
     const focus = focusTasks
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -315,7 +315,7 @@ export function CantonModePage() {
                 <section style={{ ...cardStyle, padding: 16 }}>
                   <SectionTitle
                     icon={<Waves size={16} color="#7c3aed" />}
-                    title={`${getPossessiveFocusLabel(profile?.name || user?.user_metadata?.name || user?.email || 'My')} Focus`}
+                    title={`${getPossessiveFocusLabel(profile?.name || user?.user_metadata?.name || user?.email || 'My')} Focus Task`}
                     count={selfFocusTasks.length}
                     actionLabel="View All"
                     onAction={() => navigate('/tasks')}
