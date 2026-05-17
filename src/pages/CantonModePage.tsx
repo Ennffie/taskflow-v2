@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CalendarDays, ChevronDown, ChevronUp, Clock3, RefreshCw, Sparkles, UserRound, Waves, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ChevronDown, ChevronUp, RefreshCw, Sparkles, UserRound, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
 import { checkInToday, clearTodayAttendance, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceTime } from '../lib/api';
@@ -37,13 +37,6 @@ function isOverdue(task: TaskItem) {
   const due = new Date(task.due_date);
   due.setHours(0, 0, 0, 0);
   return due < today;
-}
-
-function isToday(task: TaskItem) {
-  if (!task.due_date || isDone(task)) return false;
-  const today = new Date();
-  const due = new Date(task.due_date);
-  return today.toDateString() === due.toDateString();
 }
 
 function isStale(task: TaskItem) {
@@ -199,7 +192,6 @@ export function CantonModePage() {
     return [...focus, ...others];
   }, [rootTasks, focusTasks]);
 
-  const todayTasks = useMemo(() => rootTasks.filter(isToday).slice(0, 4), [rootTasks]);
   const riskItems = useMemo(() => {
     const items: { label: string; detail: string; task?: TaskItem; tone: 'danger' | 'warn' | 'info' }[] = [];
     rootTasks.filter(isOverdue).slice(0, 3).forEach((task) => items.push({ label: '已過 deadline', detail: task.title, task, tone: 'danger' }));
@@ -300,10 +292,6 @@ export function CantonModePage() {
               />
 
               <section style={{ ...cardStyle, padding: '16px 0 0', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(251,247,255,0.94))' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6d28d9', fontWeight: 900, fontSize: 14 }}><Waves size={17} /> Focus Tasks ({focusTasks.length})</div>
-                </div>
-
                 <div style={{ position: 'relative', height: 760, borderRadius: '30px 30px 0 0', overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '28px 8px 72px' }}>
                   <SunCenter />
                   {visibleTasks.length === 0 ? (
@@ -320,8 +308,8 @@ export function CantonModePage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
                 <section style={{ ...cardStyle, padding: 16 }}>
-                  <SectionTitle icon={<Clock3 size={16} color="#7c3aed" />} title="今日要搞" count={todayTasks.length} />
-                  {todayTasks.length ? todayTasks.map((task) => <MiniTask key={task.id} task={task} onClick={() => navigate(`/tasks/${task.id}`)} />) : <EmptyText text="今日未有 deadline task。" />}
+                  <SectionTitle icon={<Waves size={16} color="#7c3aed" />} title="Focus" count={focusTasks.length} />
+                  {focusTasks.length ? focusTasks.slice(0, 4).map((task) => <MiniTask key={task.id} task={task} onClick={() => navigate(`/tasks/${task.id}`)} />) : <EmptyText text="暫時未有 focus task。" />}
                 </section>
                 <section style={{ ...cardStyle, padding: 16 }}>
                   <SectionTitle icon={<AlertTriangle size={16} color="#f97316" />} title="唔好漏咗" count={riskItems.length} />
