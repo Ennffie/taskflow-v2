@@ -1196,14 +1196,15 @@ export function CantonAiCoachPage() {
     const normalizeTaskRef = (value: string) => value.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
     
     // CR/CRCE code must mean search/check first unless user explicitly says create/add.
-    const crMatch = userText.match(/^(?:ok[:：]\s*)?(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)/i) || userText.match(/\b(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)\b/i);
-    const hasPipe = userText.includes('|');
-    const lines = userText.split('\n').map(l => l.trim()).filter(Boolean);
+    const normalizedCreateText = userText.replace(/^(?:add\s+new|add\s+task|new\s+task|create\s+task|新增\s*task|加\s*task)\s*[:：-]?\s*/i, '').trim();
+    const crMatch = normalizedCreateText.match(/^(?:ok[:：]\s*)?(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)/i) || normalizedCreateText.match(/\b(CR\s*-?\s*\d+|CRCE\s*-?\s*\d+)\b/i);
+    const hasPipe = normalizedCreateText.includes('|');
+    const lines = normalizedCreateText.split('\n').map(l => l.trim()).filter(Boolean);
     const addSubtaskIntent = /add\s+subtask|加\s*subtask|新增\s*subtask|new\s+subtask/i.test(userText);
-    const explicitCreateIntent = /我要加\s*task|加\s*task|新增|create\s*task|new\s*task/i.test(userText);
+    const explicitCreateIntent = /我要加\s*task|加\s*task|新增|create\s*task|new\s*task|add\s*new/i.test(userText);
     const checkIntent = /check|查|搵|睇|點樣|status|進度|progress|咩情況/i.test(userText);
     const looksLikeMultilineTask = lines.length >= 3 && !checkIntent && !/^(check|查|搵|睇)\b/i.test(lines[0]);
-    const looksLikeCompactTaskSentence = !!crMatch && /,/.test(userText) && /\bby\b/i.test(userText) && !checkIntent;
+    const looksLikeCompactTaskSentence = !!crMatch && /,/.test(normalizedCreateText) && /\bby\b/i.test(normalizedCreateText) && !checkIntent;
     let parsedFields: any = null;
     
     // ── Subtask creation via AI text ──
@@ -1226,7 +1227,7 @@ export function CantonAiCoachPage() {
     }
 
     // ── Main Task creation via AI (quick help, not guided) ──
-    if (explicitCreateIntent) {
+    if (explicitCreateIntent && !hasPipe && !looksLikeMultilineTask && !looksLikeCompactTaskSentence) {
       setActiveQuickAction('add');
       createModeRef.current = 'main';
       setCreateMode('main');
@@ -1284,7 +1285,7 @@ export function CantonAiCoachPage() {
       };
 
       const crCode = crMatch?.[1] ?? '';
-      const compactChunks = userText.split(',').map(part => part.trim()).filter(Boolean);
+      const compactChunks = normalizedCreateText.split(',').map(part => part.trim()).filter(Boolean);
       const looksLikeActionChunk = (value: string) => /\b(need|confirm|update|prepare|create|revise|send|check|follow|discuss|arrange|draft|review|fix|handle)\b|需要|確認|跟進|處理|預備|修改|更新/i.test(value);
       const looksLikeAssigneeChunk = (value: string) => /^by\s+[a-z][a-z\s.'-]*$/i.test(value.trim());
       const looksLikeDueChunk = (value: string) => /^by\s+(today|tomorrow|\d{1,2}[/-]\d{1,2}|\d{1,2}\s+[a-z]{3,9}|[a-z]{3,9}\s+\d{1,2}|下星期[一二三四五六日]|今日|明天|聽日)/i.test(value.trim());
@@ -1310,7 +1311,7 @@ export function CantonAiCoachPage() {
         });
       }
       const parts = hasPipe
-        ? userText.split('|').map(part => part.trim()).filter(Boolean)
+        ? normalizedCreateText.split('|').map(part => part.trim()).filter(Boolean)
         : (looksLikeCompactTaskSentence ? compactChunks : lines);
       const title = looksLikeCompactTaskSentence
         ? (compactTitleChunks.join(', ') || crCode || compactChunks[0] || '未命名 task')
@@ -1321,7 +1322,7 @@ export function CantonAiCoachPage() {
       const dueRaw = looksLikeCompactTaskSentence ? compactDueRaw : (parts[2] || '');
       const assigneeRaw = looksLikeCompactTaskSentence ? compactAssigneeRaw : (parts[3] || '');
       const statusRaw = looksLikeCompactTaskSentence ? '' : (parts[4] || '');
-      const parsedDue = parseDueDate(dueRaw || userText);
+      const parsedDue = parseDueDate(dueRaw || normalizedCreateText);
       const normalizedAssignee = assigneeRaw.trim().toLowerCase();
       const assigneeTarget = ['me', 'myself', '我', '自己'].includes(normalizedAssignee)
         ? currentUserName
@@ -1329,7 +1330,7 @@ export function CantonAiCoachPage() {
       const assignee = profiles.find(p => {
         const fullName = p.name.toLowerCase();
         const firstName = fullName.split(' ')[0];
-        const target = assigneeTarget.toLowerCase() || userText.toLowerCase();
+        const target = assigneeTarget.toLowerCase() || normalizedCreateText.toLowerCase();
         return fullName === target || target.includes(firstName);
       })?.name || (assigneeTarget || currentUserName);
 
@@ -1350,7 +1351,7 @@ export function CantonAiCoachPage() {
         statusLabel = '待辦';
       }
       
-      const subtaskMatch = userText.match(/Sub task[s]?[：:]\s*(.+)/i);
+      const subtaskMatch = normalizedCreateText.match(/Sub task[s]?[：:]\s*(.+)/i);
       const subtasks = subtaskMatch 
         ? subtaskMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean)
         : [];
@@ -1375,7 +1376,7 @@ export function CantonAiCoachPage() {
           text: `📋 **確認新增 Task**\n\n` +
             `**Task 名稱：** ${title}\n` +
             `${description ? `**Description：** ${description}\n` : ''}` +
-            `${parsedFields.dueDateLabel ? `**到期：** ${parsedFields.dueDateLabel}\n` : ''}` +
+            `${parsedFields.dueDate ? `**到期：** ${parsedFields.dueDateLabel}\n` : `**到期：** 未設定（要補）\n`}` +
             `**負責人：** ${assignee}\n` +
             `**Status：** ${statusLabel}\n` +
             `${subtasks.length ? `**Subtasks：** ${subtasks.join('、')}\n` : ''}` +
