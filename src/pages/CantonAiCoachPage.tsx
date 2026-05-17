@@ -1626,6 +1626,33 @@ export function CantonAiCoachPage() {
         return Array.from(aliases).map((alias) => ({ alias, name }));
       }).sort((a, b) => b.alias.length - a.alias.length);
       const matchedPerson = personAliases.find((item) => lower.includes(item.alias))?.name;
+      if (matchedPerson && /(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(lower)) {
+        setActiveQuickAction('focus');
+        const personFocusTasks = tasks
+          .filter(t => !t.parent_id && t.is_focus === true && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && t.assignees.some(a => a.name === matchedPerson))
+          .sort((a, b) => (a.due_date || '9999-99-99').localeCompare(b.due_date || '9999-99-99'));
+        const list = personFocusTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          assignees: t.assignees.map(a => a.name),
+        }));
+        startTypingMessage(
+          personFocusTasks.length
+            ? `${matchedPerson} 而家有 ${personFocusTasks.length} 個 Focus main task。撳 task 名可以即刻開新對話睇 detail。`
+            : `${matchedPerson} 而家暫時未有標記做 Focus 嘅 main task。`,
+          personFocusTasks.length
+            ? {
+                _action: 'task_list',
+                _data: { tasks: list }
+              }
+            : undefined
+        );
+        setIsReplying(false);
+        return;
+      }
+
       if (matchedPerson && /(task|tasks|有咩做|有啲咩做|未做|手上|跟緊|負責|check)/.test(lower)) {
         const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && t.assignees.some(a => a.name === matchedPerson));
         const list = personTasks.map(t => ({
