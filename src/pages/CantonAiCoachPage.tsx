@@ -1203,6 +1203,7 @@ export function CantonAiCoachPage() {
     const explicitCreateIntent = /我要加\s*task|加\s*task|新增|create\s*task|new\s*task/i.test(userText);
     const checkIntent = /check|查|搵|睇|點樣|status|進度|progress|咩情況/i.test(userText);
     const looksLikeMultilineTask = lines.length >= 3 && !checkIntent && !/^(check|查|搵|睇)\b/i.test(lines[0]);
+    const looksLikeCompactTaskSentence = !!crMatch && /,/.test(userText) && /\bby\b/i.test(userText) && !checkIntent;
     let parsedFields: any = null;
     
     // ── Subtask creation via AI text ──
@@ -1236,8 +1237,8 @@ export function CantonAiCoachPage() {
       return;
     }
 
-    // Expert mode: pipe-separated or multiline bypasses guided flow
-    if (hasPipe || looksLikeMultilineTask) {
+    // Expert mode: pipe-separated / multiline / compact natural sentence bypasses guided flow
+    if (hasPipe || looksLikeMultilineTask || looksLikeCompactTaskSentence) {
       const today = new Date();
       const isoToday = today.toISOString().split('T')[0];
       const tomorrow = new Date(today);
@@ -1282,15 +1283,44 @@ export function CantonAiCoachPage() {
         return { iso: '', label: value || '未設定' };
       };
 
+      const crCode = crMatch?.[1] ?? '';
+      const compactChunks = userText.split(',').map(part => part.trim()).filter(Boolean);
+      const looksLikeActionChunk = (value: string) => /\b(need|confirm|update|prepare|create|revise|send|check|follow|discuss|arrange|draft|review|fix|handle)\b|需要|確認|跟進|處理|預備|修改|更新/i.test(value);
+      const looksLikeAssigneeChunk = (value: string) => /^by\s+[a-z][a-z\s.'-]*$/i.test(value.trim());
+      const looksLikeDueChunk = (value: string) => /^by\s+(today|tomorrow|\d{1,2}[/-]\d{1,2}|\d{1,2}\s+[a-z]{3,9}|[a-z]{3,9}\s+\d{1,2}|下星期[一二三四五六日]|今日|明天|聽日)/i.test(value.trim());
+      const compactTitleChunks: string[] = [];
+      const compactDescriptionChunks: string[] = [];
+      let compactAssigneeRaw = '';
+      let compactDueRaw = '';
+      if (looksLikeCompactTaskSentence) {
+        compactChunks.forEach((chunk) => {
+          if (!compactDueRaw && looksLikeDueChunk(chunk)) {
+            compactDueRaw = chunk.replace(/^by\s+/i, '').trim();
+            return;
+          }
+          if (!compactAssigneeRaw && looksLikeAssigneeChunk(chunk)) {
+            compactAssigneeRaw = chunk.replace(/^by\s+/i, '').trim();
+            return;
+          }
+          if (compactDescriptionChunks.length > 0 || looksLikeActionChunk(chunk)) {
+            compactDescriptionChunks.push(chunk);
+            return;
+          }
+          compactTitleChunks.push(chunk);
+        });
+      }
       const parts = hasPipe
         ? userText.split('|').map(part => part.trim()).filter(Boolean)
-        : lines;
-      const crCode = crMatch?.[1] ?? '';
-      const title = parts[0] || crCode || '未命名 task';
-      const description = parts[1] || '';
-      const dueRaw = parts[2] || '';
-      const assigneeRaw = parts[3] || '';
-      const statusRaw = parts[4] || '';
+        : (looksLikeCompactTaskSentence ? compactChunks : lines);
+      const title = looksLikeCompactTaskSentence
+        ? (compactTitleChunks.join(', ') || crCode || compactChunks[0] || '未命名 task')
+        : (parts[0] || crCode || '未命名 task');
+      const description = looksLikeCompactTaskSentence
+        ? compactDescriptionChunks.join(', ')
+        : (parts[1] || '');
+      const dueRaw = looksLikeCompactTaskSentence ? compactDueRaw : (parts[2] || '');
+      const assigneeRaw = looksLikeCompactTaskSentence ? compactAssigneeRaw : (parts[3] || '');
+      const statusRaw = looksLikeCompactTaskSentence ? '' : (parts[4] || '');
       const parsedDue = parseDueDate(dueRaw || userText);
       const normalizedAssignee = assigneeRaw.trim().toLowerCase();
       const assigneeTarget = ['me', 'myself', '我', '自己'].includes(normalizedAssignee)
