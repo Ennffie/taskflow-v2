@@ -5,8 +5,9 @@ export const SY_LATE_THRESHOLD_MINUTES = 9 * 60 + 15;
 
 export function getLateThresholdMinutes(profile?: Profile | null) {
   if (!profile) return DEFAULT_LATE_THRESHOLD_MINUTES;
-  const haystack = `${profile.name} ${profile.email}`.trim().toLowerCase();
-  if (haystack.includes('silvie') || haystack.includes('sy')) {
+  const normalizedName = profile.name.trim().toLowerCase();
+  const normalizedEmail = profile.email.trim().toLowerCase();
+  if (normalizedName.includes('silvie') || normalizedEmail.startsWith('silvie.')) {
     return SY_LATE_THRESHOLD_MINUTES;
   }
   return DEFAULT_LATE_THRESHOLD_MINUTES;
