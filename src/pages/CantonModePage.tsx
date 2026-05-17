@@ -360,11 +360,14 @@ function AttendanceCheckInCard({
   const funDay = getFunDayInfo(today);
   const isWeekend = isWeekendInHongKong(today);
   const isNonWorkingDay = Boolean(publicHoliday || isWeekend);
+  const blessingTitle = isNonWorkingDay ? 'Silly 提提你' : '今天運程';
   const blessingMessage = publicHoliday
-    ? publicHoliday.greeting
-    : funDay
-      ? `${funDay.title}\n${funDay.message}`
-      : getAttendanceBlessing(profileName, attendance, horoscope.message);
+    ? '今日係放假日子呀，唔使太趕。留返少少空白俾自己，好好休息、慢慢叉電，等心同腦都輕返啲。'
+    : isWeekend
+      ? '週末到啦，今日最重要嘅任務係好好休息。放鬆一下、做啲令自己開心嘅小事，靜靜整理心情都已經好足夠。'
+      : funDay
+        ? `${funDay.title}\n${funDay.message}`
+        : getAttendanceBlessing(profileName, attendance, horoscope.message);
   const dateLabel = formatHongKongDateLabel(today);
   const timeLabel = attendance?.check_in_at ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
   const leaveLabel = getLeaveLabel(attendance?.status);
@@ -410,7 +413,7 @@ function AttendanceCheckInCard({
         </div>
 
         <div style={{ borderRadius: 22, padding: '16px 16px 18px', background: 'linear-gradient(135deg, #fff1f2 0%, #fefce8 48%, #eff6ff 100%)', border: '1px solid rgba(251,146,60,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9a3412', fontSize: 13, fontWeight: 900 }}><Sparkles size={14} /> 今天運程</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9a3412', fontSize: 13, fontWeight: 900 }}><Sparkles size={14} /> {blessingTitle}</div>
           <div style={{ marginTop: 10, fontSize: 20, lineHeight: 1.45, fontWeight: 900, color: '#7c2d12', letterSpacing: '-0.02em', whiteSpace: 'pre-line' }}>{blessingMessage}</div>
         </div>
 
