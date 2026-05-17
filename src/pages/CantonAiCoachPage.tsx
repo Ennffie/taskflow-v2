@@ -1542,11 +1542,12 @@ export function CantonAiCoachPage() {
       return;
     }
 
-    // ── Universal Task Search ──
-    // Any user input that doesn't match other patterns is treated as a search
+    // ── Explicit / Search-mode Task Search ──
+    // Only search when user explicitly asks to search, or when search quick-action is active.
+    const isExplicitSearch = /^(搵|查|睇|search|find|check)\s*/i.test(userText.trim()) || activeQuickAction === 'search';
     const searchKeywords = userText.trim().toLowerCase().replace(/^(搵|查|睇|search|find|check)\s*/i, '').replace(/^#/, '');
     const isKnownQuery = /^(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩|my task|my tasks|有咩未交|overdue|risk|風險|過期|今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)$/.test(userText.trim().toLowerCase());
-    if (searchKeywords && !parsedFields && !explicitCreateIntent && !addSubtaskIntent && !isKnownQuery) {
+    if (isExplicitSearch && searchKeywords && !parsedFields && !explicitCreateIntent && !addSubtaskIntent && !isKnownQuery) {
       console.log(`[Frontend Search] Searching for: "${searchKeywords}"`);
       
       // Search in all tasks (both title and ID)
