@@ -1635,7 +1635,7 @@ export function CantonAiCoachPage() {
         return Array.from(aliases).map((alias) => ({ alias, name }));
       }).sort((a, b) => b.alias.length - a.alias.length);
       const matchedPerson = personAliases.find((item) => lower.includes(item.alias))?.name;
-      if (matchedPerson && /(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩)/.test(lower)) {
+      if (matchedPerson && /(focus|foucs|今日focus|show focus|focus task|focus tasks|focus有啲咩|focus有d咩|有冇focus|有無focus|有冇\s*focus|有無\s*focus)/.test(lower)) {
         setActiveQuickAction('focus');
         const personFocusTasks = tasks
           .filter(t => !t.parent_id && t.is_focus === true && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && t.assignees.some(a => a.name === matchedPerson))
@@ -1663,7 +1663,7 @@ export function CantonAiCoachPage() {
         return;
       }
 
-      if (matchedPerson && /(task|tasks|有咩做|有啲咩做|做緊乜|做緊咩|做緊乜嘢|做緊啲乜|做乜|做咩|未做|手上|跟緊|負責|check)/.test(lower)) {
+      if (matchedPerson && /(task|tasks|有咩做|有啲咩做|有冇做|有無做|而家做緊乜|而家做緊咩|做緊乜|做緊咩|做緊乜嘢|做緊啲乜|做乜|做咩|未做|手上|跟緊|負責|check)/.test(lower)) {
         const personTasks = tasks.filter(t => !t.parent_id && !t.is_finished && t.status !== 'finished' && t.status !== 'archived' && t.assignees.some(a => a.name === matchedPerson));
         const list = personTasks.map(t => ({
           id: t.id,
