@@ -1638,9 +1638,10 @@ export function CantonAiCoachPage() {
           status: t.status,
           assignees: t.assignees.map(a => a.name),
         }));
+        const focusPreview = personFocusTasks.slice(0, 5).map((task, index) => `${index + 1}. ${task.title}`).join('\n');
         startTypingMessage(
           personFocusTasks.length
-            ? `${matchedPerson} 而家有 ${personFocusTasks.length} 個 Focus main task。撳 task 名可以即刻開新對話睇 detail。`
+            ? `${matchedPerson} 而家有 ${personFocusTasks.length} 個 Focus main task：\n\n${focusPreview}${personFocusTasks.length > 5 ? `\n...仲有 ${personFocusTasks.length - 5} 個` : ''}\n\n撳 task 名可以即刻開新對話睇 detail。`
             : `${matchedPerson} 而家暫時未有標記做 Focus 嘅 main task。`,
           personFocusTasks.length
             ? {
@@ -1662,7 +1663,8 @@ export function CantonAiCoachPage() {
           status: t.status,
           assignees: t.assignees.map(a => a.name),
         }));
-        startTypingMessage(`${matchedPerson} 大人而家手上未完成 main task 有 ${personTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
+        const taskPreview = personTasks.slice(0, 5).map((task, index) => `${index + 1}. ${task.title}`).join('\n');
+        startTypingMessage(`${matchedPerson} 大人而家手上未完成 main task 有 ${personTasks.length} 個：\n\n${taskPreview}${personTasks.length > 5 ? `\n...仲有 ${personTasks.length - 5} 個` : ''}\n\n撳 task 可以睇 details。`, {
           _action: 'task_list',
           _data: { tasks: list }
         });
@@ -1679,7 +1681,8 @@ export function CantonAiCoachPage() {
           status: t.status,
           assignees: t.assignees.map(a => a.name),
         }));
-        startTypingMessage(`小人稟報恩公，而家 Focus task 總共有 ${focusTasks.length} 個。先顯示 10 個，撳 task 可以睇 details。`, {
+        const focusPreview = focusTasks.slice(0, 5).map((task, index) => `${index + 1}. ${task.title}`).join('\n');
+        startTypingMessage(`小人稟報恩公，而家 Focus task 總共有 ${focusTasks.length} 個：\n\n${focusPreview}${focusTasks.length > 5 ? `\n...仲有 ${focusTasks.length - 5} 個` : ''}\n\n撳 task 可以睇 details。`, {
           _action: 'task_list',
           _data: { tasks: focusTasks }
         });
@@ -1753,9 +1756,10 @@ export function CantonAiCoachPage() {
           assignees: t.assignees.map(a => a.name),
         }));
 
+        const focusPreview = focusTasks.slice(0, 5).map((task, index) => `${index + 1}. ${task.title}`).join('\n');
         startTypingMessage(
           focusTasks.length
-            ? `小人稟報恩公，今日 Focus 係而家 database 入面標記咗 Focus 嘅 main task，共 ${focusTasks.length} 個。口徑同 landing page 一樣。撳 task 名可以即刻開新對話睇 detail。`
+            ? `小人稟報恩公，今日 Focus 係而家 database 入面標記咗 Focus 嘅 main task，共 ${focusTasks.length} 個：\n\n${focusPreview}${focusTasks.length > 5 ? `\n...仲有 ${focusTasks.length - 5} 個` : ''}\n\n口徑同 landing page 一樣。撳 task 名可以即刻開新對話睇 detail。`
             : '小人稟報恩公，而家 database 入面暫時未有標記做 Focus 嘅 main task。',
           focusTasks.length
             ? {
