@@ -5,6 +5,7 @@ import { AdminAttendanceMultiTrendChart } from '../components/AdminAttendanceMul
 import { fetchAttendanceRecords, fetchProfiles } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfileBorderColor, getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
+import { getLateThresholdMinutes } from '../lib/attendanceRules';
 import type { AttendanceLog, Profile } from '../types';
 import { Users } from 'lucide-react';
 
@@ -47,7 +48,8 @@ export function AdminAttendancePage() {
     const mine = records.filter((r) => r.user_id === member.id).sort((a, b) => a.date.localeCompare(b.date));
     const present = mine.filter((r) => r.status === 'present' && r.check_in_at);
     const minutes = present.map((r) => getMinutes(r.check_in_at)).filter((v): v is number => v !== null);
-    const lateCount = minutes.filter((m) => m > 570).length;
+    const lateThreshold = getLateThresholdMinutes(member);
+    const lateCount = minutes.filter((m) => m > lateThreshold).length;
     return {
       member,
       records: mine,

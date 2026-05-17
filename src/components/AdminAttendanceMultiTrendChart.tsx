@@ -1,4 +1,5 @@
 import type { AttendanceLog, Profile } from '../types';
+import { formatThresholdLabel, getLateThresholdMinutes, isLateCheckIn } from '../lib/attendanceRules';
 import { getProfileColor } from '../lib/profileAppearance';
 
 interface AdminAttendanceMultiTrendChartProps {
@@ -74,6 +75,7 @@ function buildSmoothPath(points: Array<{ x: number; y: number }>) {
 }
 
 export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUserId = null, baselineMinutes = 570, height = 320 }: AdminAttendanceMultiTrendChartProps) {
+  const singleProfileThreshold = selectedUserId ? getLateThresholdMinutes(profiles.find((profile) => profile.id === selectedUserId) ?? null) : baselineMinutes;
   const activeProfiles = selectedUserId ? profiles.filter((profile) => profile.id === selectedUserId) : profiles;
   const dates = Array.from(new Set(records.map((record) => record.date))).sort();
   const presentRecords = records.filter((record) => record.status === 'present' && record.check_in_at && activeProfiles.some((profile) => profile.id === record.user_id));
@@ -82,7 +84,7 @@ export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUser
     return <div style={{ height, display: 'grid', placeItems: 'center', color: '#94a3b8', fontSize: 13, borderRadius: 20, background: '#fff', border: '1px solid #e2e8f0' }}>No attendance record yet.</div>;
   }
 
-  const domain = buildTimeDomain(presentRecords.map((record) => toMinutes(record.check_in_at) ?? baselineMinutes), baselineMinutes);
+  const domain = buildTimeDomain(presentRecords.map((record) => toMinutes(record.check_in_at) ?? singleProfileThreshold), singleProfileThreshold);
   const tickStep = getTickStep(domain.span);
   const ticks: number[] = [];
   for (let value = domain.min; value <= domain.max; value += tickStep) ticks.push(value);
@@ -100,7 +102,7 @@ export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUser
   const step = dates.length === 1 ? 0 : innerWidth / Math.max(1, dates.length - 1);
   const xFor = (index: number) => padLeft + index * step;
   const yFor = (minutes: number) => padTop + (1 - ((minutes - domain.min) / Math.max(1, domain.max - domain.min))) * innerHeight;
-  const baselineY = yFor(baselineMinutes);
+  const baselineY = yFor(singleProfileThreshold);
 
   const lines = activeProfiles.map((profile) => {
     const myRecords = records.filter((record) => record.user_id === profile.id);
@@ -138,7 +140,7 @@ export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUser
               })}
 
               <line x1={padLeft} x2={svgWidth - padRight} y1={baselineY} y2={baselineY} stroke="#94a3b8" strokeDasharray="5 4" strokeWidth="1.2" />
-              <text x={svgWidth - padRight} y={baselineY - 6} textAnchor="end" fontSize="12" fill="#94a3b8">09:30</text>
+              <text x={svgWidth - padRight} y={baselineY - 6} textAnchor="end" fontSize="12" fill="#94a3b8">{formatThresholdLabel(singleProfileThreshold)}</text>
 
               {dates.map((date, index) => {
                 const x = xFor(index);
@@ -162,9 +164,12 @@ export function AdminAttendanceMultiTrendChart({ profiles, records, selectedUser
                 return (
                   <g key={line.profile.id}>
                     <path d={line.path} fill="none" stroke={line.color} strokeWidth={isFocused ? 3.5 : 2.2} strokeLinejoin="round" strokeLinecap="round" opacity={selectedUserId && !isFocused ? 0.22 : 0.96} />
-                    {line.points.map((point) => (
-                      <circle key={point.key} cx={point.x} cy={point.y} r={isFocused ? 4.4 : 3.4} fill={line.color} stroke="#fff" strokeWidth={isFocused ? 2 : 1.4} opacity={selectedUserId && !isFocused ? 0.22 : 0.96} />
-                    ))}
+                    {line.points.map((point) => {
+                      const late = isLateCheckIn(point.minutes, line.profile);
+                      return (
+                        <circle key={point.key} cx={point.x} cy={point.y} r={isFocused ? 4.4 : 3.4} fill={late ? '#f97316' : line.color} stroke="#fff" strokeWidth={isFocused ? 2 : 1.4} opacity={selectedUserId && !isFocused ? 0.22 : 0.96} />
+                      );
+                    })}
                   </g>
                 );
               })}

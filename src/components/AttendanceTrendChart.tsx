@@ -1,4 +1,5 @@
 import type { AttendanceLog, Profile } from '../types';
+import { formatThresholdLabel, getLateThresholdMinutes, isLateCheckIn } from '../lib/attendanceRules';
 import { getProfileColor } from '../lib/profileAppearance';
 
 interface AttendanceTrendChartProps {
@@ -82,6 +83,7 @@ function buildSmoothPath(points: Array<{ x: number; y: number }>) {
 }
 
 export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, height = 300 }: AttendanceTrendChartProps) {
+  const lateThresholdMinutes = profile ? getLateThresholdMinutes(profile) : baselineMinutes;
   const monthRecords = [...records].sort((a, b) => a.date.localeCompare(b.date));
   const presentRecords = monthRecords.filter((record) => record.status === 'present' && record.check_in_at);
 
@@ -102,7 +104,7 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
     minutes: record.status === 'present' ? (toMinutes(record.check_in_at) ?? baselineMinutes) : null,
   }));
 
-  const domain = buildTimeDomain(presentRecords.map((record) => toMinutes(record.check_in_at) ?? baselineMinutes), baselineMinutes);
+  const domain = buildTimeDomain(presentRecords.map((record) => toMinutes(record.check_in_at) ?? lateThresholdMinutes), lateThresholdMinutes);
   const tickStep = getTickStep(domain.span);
   const ticks: number[] = [];
   for (let value = domain.min; value <= domain.max; value += tickStep) ticks.push(value);
@@ -120,7 +122,7 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
   const step = items.length === 1 ? 0 : innerWidth / Math.max(1, items.length - 1);
   const xFor = (index: number) => padLeft + index * step;
   const yFor = (minutes: number) => padTop + (1 - ((minutes - domain.min) / Math.max(1, domain.max - domain.min))) * innerHeight;
-  const baselineY = yFor(baselineMinutes);
+  const baselineY = yFor(lateThresholdMinutes);
   const presentPoints = items.filter((item) => item.minutes !== null).map((item) => ({ x: xFor(item.index), y: yFor(item.minutes as number), key: item.fullDate, minutes: item.minutes as number }));
   const pathD = buildSmoothPath(presentPoints.map((point) => ({ x: point.x, y: point.y })));
   const lineColor = getProfileColor(profile);
@@ -143,7 +145,7 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
           })}
 
           <line x1={padLeft} x2={svgWidth - padRight} y1={baselineY} y2={baselineY} stroke="#94a3b8" strokeDasharray="5 4" strokeWidth="1.2" />
-          <text x={svgWidth - padRight} y={baselineY - 6} textAnchor="end" fontSize="12" fill="#94a3b8">09:30</text>
+          <text x={svgWidth - padRight} y={baselineY - 6} textAnchor="end" fontSize="12" fill="#94a3b8">{formatThresholdLabel(lateThresholdMinutes)}</text>
 
           {items.map((item) => {
             const x = xFor(item.index);
@@ -168,7 +170,7 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
           <path d={pathD} fill="none" stroke={lineColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
 
           {presentPoints.map((point) => {
-            const late = point.minutes > baselineMinutes;
+            const late = isLateCheckIn(point.minutes, profile);
             return (
               <g key={`dot-${point.key}`}>
                 <circle cx={point.x} cy={point.y} r="4.5" fill={late ? '#f97316' : lineColor} stroke="#fff" strokeWidth="2" />
