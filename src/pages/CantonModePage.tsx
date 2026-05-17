@@ -8,6 +8,7 @@ import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
 import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile } from '../lib/horoscope';
+import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib/specialDays';
 import { getStatusMeta, type AttendanceLog, type AttendanceStatus, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
@@ -353,13 +354,30 @@ function AttendanceCheckInCard({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showLeaveOptions, setShowLeaveOptions] = useState(false);
   const [selectedTime, setSelectedTime] = useState(() => getTimeValueFromAttendance(attendance));
-  const horoscope = getDailyHoroscopeForProfile({ name: profileName, email: profileEmail });
-  const blessingMessage = getAttendanceBlessing(profileName, attendance, horoscope.message);
-  const dateLabel = formatHongKongDateLabel(new Date());
+  const today = new Date();
+  const horoscope = getDailyHoroscopeForProfile({ name: profileName, email: profileEmail }, today);
+  const publicHoliday = getPublicHolidayInfo(today);
+  const funDay = getFunDayInfo(today);
+  const isWeekend = isWeekendInHongKong(today);
+  const isNonWorkingDay = Boolean(publicHoliday || isWeekend);
+  const blessingMessage = publicHoliday
+    ? publicHoliday.greeting
+    : funDay
+      ? `${funDay.title}\n${funDay.message}`
+      : getAttendanceBlessing(profileName, attendance, horoscope.message);
+  const dateLabel = formatHongKongDateLabel(today);
   const timeLabel = attendance?.check_in_at ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
   const leaveLabel = getLeaveLabel(attendance?.status);
-  const displayLabel = attendance?.status === 'present' ? timeLabel : leaveLabel || '—:—';
-  const helperText = attendance?.note || (attendance && attendance.status !== 'present' ? `今日：${leaveLabel}` : '');
+  const displayLabel = publicHoliday
+    ? publicHoliday.greeting
+    : isWeekend
+      ? '今日唔駛上班哦～'
+      : attendance?.status === 'present'
+        ? timeLabel
+        : leaveLabel || '—:—';
+  const helperText = publicHoliday
+    ? `今日係公眾假期：${publicHoliday.name}`
+    : attendance?.note || (attendance && attendance.status !== 'present' ? `今日：${leaveLabel}` : '');
 
   useEffect(() => {
     setSelectedTime(getTimeValueFromAttendance(attendance));
@@ -393,60 +411,64 @@ function AttendanceCheckInCard({
 
         <div style={{ borderRadius: 22, padding: '16px 16px 18px', background: 'linear-gradient(135deg, #fff1f2 0%, #fefce8 48%, #eff6ff 100%)', border: '1px solid rgba(251,146,60,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9a3412', fontSize: 13, fontWeight: 900 }}><Sparkles size={14} /> 今天運程</div>
-          <div style={{ marginTop: 10, fontSize: 20, lineHeight: 1.45, fontWeight: 900, color: '#7c2d12', letterSpacing: '-0.02em' }}>{blessingMessage}</div>
+          <div style={{ marginTop: 10, fontSize: 20, lineHeight: 1.45, fontWeight: 900, color: '#7c2d12', letterSpacing: '-0.02em', whiteSpace: 'pre-line' }}>{blessingMessage}</div>
         </div>
 
         <div style={{ borderRadius: 24, padding: '16px 16px 18px', background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 14px 30px rgba(148,163,184,0.08)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(88px, 1fr)', gap: 12, alignItems: 'start' }}>
             <div>
-              <div style={{ fontSize: attendance?.status === 'present' || !attendance ? 52 : 34, lineHeight: 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : displayLabel}</div>
+              <div style={{ fontSize: isNonWorkingDay ? 30 : (attendance?.status === 'present' || !attendance ? 52 : 34), lineHeight: isNonWorkingDay ? 1.15 : 0.95, fontWeight: 950, letterSpacing: '-0.05em', color: '#0f172a' }}>{loading ? '…' : displayLabel}</div>
               {helperText ? <div style={{ marginTop: 10, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{helperText}</div> : null}
-              <button
-                onClick={() => {
-                  if (attendance?.status === 'present') {
-                    setShowTimePicker((current) => !current);
-                    return;
-                  }
-                  void onCheckIn();
-                }}
-                disabled={loading || checkingIn}
-                style={{
-                  marginTop: 16,
-                  width: '100%',
-                  border: 'none',
-                  borderRadius: 18,
-                  padding: '15px 18px',
-                  background: attendance ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
-                  color: attendance ? '#c2410c' : '#fff',
-                  fontSize: 16,
-                  fontWeight: 900,
-                  boxShadow: attendance ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
-                  cursor: loading || checkingIn ? 'default' : 'pointer',
-                  opacity: checkingIn ? 0.82 : 1,
-                }}
-              >
-                {checkingIn ? '處理中…' : attendance ? '唔好意思我想改' : '簽到'}
-              </button>
+              {!isNonWorkingDay ? (
+                <>
+                  <button
+                    onClick={() => {
+                      if (attendance?.status === 'present') {
+                        setShowTimePicker((current) => !current);
+                        return;
+                      }
+                      void onCheckIn();
+                    }}
+                    disabled={loading || checkingIn}
+                    style={{
+                      marginTop: 16,
+                      width: '100%',
+                      border: 'none',
+                      borderRadius: 18,
+                      padding: '15px 18px',
+                      background: attendance ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
+                      color: attendance ? '#c2410c' : '#fff',
+                      fontSize: 16,
+                      fontWeight: 900,
+                      boxShadow: attendance ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
+                      cursor: loading || checkingIn ? 'default' : 'pointer',
+                      opacity: checkingIn ? 0.82 : 1,
+                    }}
+                  >
+                    {checkingIn ? '處理中…' : attendance ? '唔好意思我想改' : '簽到'}
+                  </button>
 
-              {attendance?.status === 'present' && showTimePicker ? (
-                <div style={{ marginTop: 12, display: 'grid', gap: 10, padding: 12, borderRadius: 18, background: '#fff7ed', border: '1px solid #fed7aa' }}>
-                  <div style={{ color: '#9a3412', fontSize: 13, fontWeight: 900 }}>重新揀今日簽到時間</div>
-                  <input
-                    ref={timePickerRef}
-                    type="time"
-                    value={selectedTime}
-                    onChange={(event) => setSelectedTime(event.target.value)}
-                    style={{ width: '100%', borderRadius: 14, border: '1px solid #fdba74', padding: '12px 14px', fontSize: 16, fontWeight: 800, color: '#7c2d12', background: '#fff' }}
-                  />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setShowTimePicker(false)} style={{ flex: 1, borderRadius: 14, border: '1px solid #fed7aa', background: '#fff', color: '#9a3412', padding: '11px 12px', fontSize: 13, fontWeight: 900 }}>算啦</button>
-                    <button onClick={() => { void onUpdateTime(selectedTime); setShowTimePicker(false); }} disabled={checkingIn} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#f97316', color: '#fff', padding: '11px 12px', fontSize: 13, fontWeight: 900, opacity: checkingIn ? 0.7 : 1 }}>改時間</button>
-                  </div>
-                </div>
+                  {attendance?.status === 'present' && showTimePicker ? (
+                    <div style={{ marginTop: 12, display: 'grid', gap: 10, padding: 12, borderRadius: 18, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                      <div style={{ color: '#9a3412', fontSize: 13, fontWeight: 900 }}>重新揀今日簽到時間</div>
+                      <input
+                        ref={timePickerRef}
+                        type="time"
+                        value={selectedTime}
+                        onChange={(event) => setSelectedTime(event.target.value)}
+                        style={{ width: '100%', borderRadius: 14, border: '1px solid #fdba74', padding: '12px 14px', fontSize: 16, fontWeight: 800, color: '#7c2d12', background: '#fff' }}
+                      />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => setShowTimePicker(false)} style={{ flex: 1, borderRadius: 14, border: '1px solid #fed7aa', background: '#fff', color: '#9a3412', padding: '11px 12px', fontSize: 13, fontWeight: 900 }}>算啦</button>
+                        <button onClick={() => { void onUpdateTime(selectedTime); setShowTimePicker(false); }} disabled={checkingIn} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#f97316', color: '#fff', padding: '11px 12px', fontSize: 13, fontWeight: 900, opacity: checkingIn ? 0.7 : 1 }}>改時間</button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
               ) : null}
             </div>
 
-            <div style={{ borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', padding: 10 }}>
+            {!isNonWorkingDay ? <div style={{ borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', padding: 10 }}>
               <button
                 onClick={() => setShowLeaveOptions((current) => !current)}
                 disabled={checkingIn || loading}
@@ -468,7 +490,7 @@ function AttendanceCheckInCard({
                   </div>
                 </div>
               </div>
-            </div>
+            </div> : null}
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
