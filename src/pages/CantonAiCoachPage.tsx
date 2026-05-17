@@ -1543,10 +1543,17 @@ export function CantonAiCoachPage() {
     }
 
     // ── Explicit / Search-mode Task Search ──
-    // Only search when user explicitly asks to search, or when search quick-action is active.
-    const isExplicitSearch = /^(搵|查|睇|search|find|check)\s*/i.test(userText.trim()) || activeQuickAction === 'search';
-    const searchKeywords = userText.trim().toLowerCase().replace(/^(搵|查|睇|search|find|check)\s*/i, '').replace(/^#/, '');
-    const isKnownQuery = /^(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩|my task|my tasks|有咩未交|overdue|risk|風險|過期|今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)$/.test(userText.trim().toLowerCase());
+    // Search mode should be one-shot, and must not hijack normal task-intent questions.
+    const lowerTrimmedUserText = userText.trim().toLowerCase();
+    const hasExplicitSearchPrefix = /^(搵|查|睇|search|find|check)\s*/i.test(userText.trim());
+    const looksLikeStructuredTaskIntent = /(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩|my task|my tasks|有咩未交|overdue|risk|風險|過期|今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做|report\s*log|reportlog|report|加task|新增|create|add task)/.test(lowerTrimmedUserText);
+    const isSearchModeQuery = activeQuickAction === 'search' && !looksLikeStructuredTaskIntent;
+    if (activeQuickAction === 'search' && !hasExplicitSearchPrefix && looksLikeStructuredTaskIntent) {
+      setActiveQuickAction(null);
+    }
+    const isExplicitSearch = hasExplicitSearchPrefix || isSearchModeQuery;
+    const searchKeywords = lowerTrimmedUserText.replace(/^(搵|查|睇|search|find|check)\s*/i, '').replace(/^#/, '');
+    const isKnownQuery = /^(focus|foucs|今日focus|show focus|focus有啲咩|focus有d咩|my task|my tasks|有咩未交|overdue|risk|風險|過期|今日有咩做|今日做咩|我今日有啲乜嘢做|今日重點|today|而家我有啲乜嘢做|有乜嘢我可以做|我依家有咩做)$/.test(lowerTrimmedUserText);
     if (isExplicitSearch && searchKeywords && !parsedFields && !explicitCreateIntent && !addSubtaskIntent && !isKnownQuery) {
       console.log(`[Frontend Search] Searching for: "${searchKeywords}"`);
       
@@ -1580,6 +1587,7 @@ export function CantonAiCoachPage() {
         
         if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
         setInput('');
+        setActiveQuickAction(null);
         setIsReplying(true);
         
         const statusMeta2 = getStatusMeta((searchResult as any).status);
@@ -1602,6 +1610,7 @@ export function CantonAiCoachPage() {
         
         if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
         setInput('');
+        setActiveQuickAction(null);
           
         startTypingMessage(`小人該死，搵唔到「${userText}」相關嘅 task。\n\n還請恩公過目全部 task 列表，或再試其他關鍵字：\n\n${allTasksList}\n\n...共 ${tasks.filter(t => !t.parent_id).length} 個 task`, {
           _action: 'task_list',
