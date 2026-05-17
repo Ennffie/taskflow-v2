@@ -1533,6 +1533,15 @@ export function CantonAiCoachPage() {
       return;
     }
 
+    const greetingIntent = /^(hi+|hello+|hey+|halo+|哈囉|你好|嗨|hey there|早晨|午安|晚安)\b/i.test(userText.trim());
+    if (greetingIntent) {
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
+      setInput('');
+      setActiveQuickAction(null);
+      startTypingMessage('小人喺度 ✨ 想我幫你睇 task、加 task，定係陪你傾兩句都可以。');
+      return;
+    }
+
     // ── Universal Task Search ──
     // Any user input that doesn't match other patterns is treated as a search
     const searchKeywords = userText.trim().toLowerCase().replace(/^(搵|查|睇|search|find|check)\s*/i, '').replace(/^#/, '');
