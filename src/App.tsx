@@ -1,25 +1,45 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, type ComponentType } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-const LoginPage = lazy(() => import('./pages/LoginPage').then((mod) => ({ default: mod.LoginPage })));
-const MyTasksPage = lazy(() => import('./pages/MyTasksPage').then((mod) => ({ default: mod.MyTasksPage })));
-const TaskListPage = lazy(() => import('./pages/TaskListPage').then((mod) => ({ default: mod.TaskListPage })));
-const LogBookPage = lazy(() => import('./pages/LogBookPage').then((mod) => ({ default: mod.LogBookPage })));
-const MyLogPage = lazy(() => import('./pages/MyLogPage').then((mod) => ({ default: mod.MyLogPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then((mod) => ({ default: mod.SettingsPage })));
-const ImportReviewPage = lazy(() => import('./pages/ImportReviewPage').then((mod) => ({ default: mod.ImportReviewPage })));
-const TrackerByMemberPage = lazy(() => import('./pages/TrackerByMemberPage').then((mod) => ({ default: mod.TrackerByMemberPage })));
-const TrackerByTaskPage = lazy(() => import('./pages/TrackerByTaskPage').then((mod) => ({ default: mod.TrackerByTaskPage })));
-const ReviewBeforeExportPage = lazy(() => import('./pages/ReviewBeforeExportPage').then((mod) => ({ default: mod.ReviewBeforeExportPage })));
-const AdminLogsPage = lazy(() => import('./pages/AdminLogsPage').then((mod) => ({ default: mod.AdminLogsPage })));
-const AttendanceRecordPage = lazy(() => import('./pages/AttendanceRecordPage').then((mod) => ({ default: mod.AttendanceRecordPage })));
-const AdminAttendancePage = lazy(() => import('./pages/AdminAttendancePage').then((mod) => ({ default: mod.AdminAttendancePage })));
-const CantonModeMockupPage = lazy(() => import('./pages/CantonModeMockupPage').then((mod) => ({ default: mod.CantonModeMockupPage })));
-const CantonModePage = lazy(() => import('./pages/CantonModePage').then((mod) => ({ default: mod.CantonModePage })));
-const CantonAiCoachPage = lazy(() => import('./pages/CantonAiCoachPage').then((mod) => ({ default: mod.CantonAiCoachPage }))); // lazy route v2
-const AiParseDemoPage = lazy(() => import('./pages/AiParseDemoPage').then((mod) => ({ default: mod.AiParseDemoPage })));
+const CHUNK_RELOAD_KEY = 'taskflow:chunk-reload-once';
+
+function lazyWithReload(loader: () => Promise<{ default: ComponentType<any> }>) {
+  return lazy(async () => {
+    try {
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      return await loader();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const shouldReload = /Failed to fetch dynamically imported module|Importing a module script failed|Load failed|fetch dynamically imported/i.test(message);
+      if (shouldReload && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+        sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+        window.location.reload();
+        return new Promise<never>(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
+const LoginPage = lazyWithReload(() => import('./pages/LoginPage').then((mod) => ({ default: mod.LoginPage })));
+const MyTasksPage = lazyWithReload(() => import('./pages/MyTasksPage').then((mod) => ({ default: mod.MyTasksPage })));
+const TaskListPage = lazyWithReload(() => import('./pages/TaskListPage').then((mod) => ({ default: mod.TaskListPage })));
+const LogBookPage = lazyWithReload(() => import('./pages/LogBookPage').then((mod) => ({ default: mod.LogBookPage })));
+const MyLogPage = lazyWithReload(() => import('./pages/MyLogPage').then((mod) => ({ default: mod.MyLogPage })));
+const SettingsPage = lazyWithReload(() => import('./pages/SettingsPage').then((mod) => ({ default: mod.SettingsPage })));
+const ImportReviewPage = lazyWithReload(() => import('./pages/ImportReviewPage').then((mod) => ({ default: mod.ImportReviewPage })));
+const TrackerByMemberPage = lazyWithReload(() => import('./pages/TrackerByMemberPage').then((mod) => ({ default: mod.TrackerByMemberPage })));
+const TrackerByTaskPage = lazyWithReload(() => import('./pages/TrackerByTaskPage').then((mod) => ({ default: mod.TrackerByTaskPage })));
+const ReviewBeforeExportPage = lazyWithReload(() => import('./pages/ReviewBeforeExportPage').then((mod) => ({ default: mod.ReviewBeforeExportPage })));
+const AdminLogsPage = lazyWithReload(() => import('./pages/AdminLogsPage').then((mod) => ({ default: mod.AdminLogsPage })));
+const AttendanceRecordPage = lazyWithReload(() => import('./pages/AttendanceRecordPage').then((mod) => ({ default: mod.AttendanceRecordPage })));
+const AdminAttendancePage = lazyWithReload(() => import('./pages/AdminAttendancePage').then((mod) => ({ default: mod.AdminAttendancePage })));
+const CantonModeMockupPage = lazyWithReload(() => import('./pages/CantonModeMockupPage').then((mod) => ({ default: mod.CantonModeMockupPage })));
+const CantonModePage = lazyWithReload(() => import('./pages/CantonModePage').then((mod) => ({ default: mod.CantonModePage })));
+const CantonAiCoachPage = lazyWithReload(() => import('./pages/CantonAiCoachPage').then((mod) => ({ default: mod.CantonAiCoachPage })));
+const AiParseDemoPage = lazyWithReload(() => import('./pages/AiParseDemoPage').then((mod) => ({ default: mod.AiParseDemoPage })));
 
 function PageFallback() {
   return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '16px', background: '#f8fafc' }}>Loading…</div>;
