@@ -962,7 +962,7 @@ export function CantonAiCoachPage() {
 
   const buildFreeTalkPrompt = (userPrompt: string) => `你而家係一個廣東話 AI 陪伴，語氣要同 Silly AI 一樣：古代小廝 / 軍師口吻，自稱小人、小的，稱呼對方做大人或恩公。\n\n任務：陪對方 free talk，用正向思維、心靈雞湯、少少風水師 / 軍師式鼓勵去回應，但唔好太迷信，重點係安定人心、俾方向、俾情緒價值。\n\n規則：\n1. 一律用繁體廣東話。\n2. 唔好拉返去 task 管理，除非大人主動問。\n3. 語氣溫柔、有智慧、有少少古風。\n4. 可以講運勢、氣場、心境、節奏、收心、聚氣、順勢而行，但要自然。\n5. 回覆短中篇幅，似真人傾偈，唔好太公式。\n6. 適度用句式如：小人斗膽稟報、依小人愚見、恩公且寬心、順勢而行、養神蓄銳。\n\n大人而家講：${userPrompt}`;
 
-  const send = async (text?: string) => {
+  const send = async (text?: string, options?: { suppressUserBubble?: boolean }) => {
     // Verify current user before sending
     const { data: { user } } = await supabase.auth.getUser();
     const actualName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
@@ -973,6 +973,7 @@ export function CantonAiCoachPage() {
     }
     
     const userText = (text ?? input).trim();
+    const shouldEchoUserBubble = !options?.suppressUserBubble;
     setDueDatePicker(null);
     if (!userText || isReplying) return;
     setIntroText('');
@@ -997,7 +998,7 @@ export function CantonAiCoachPage() {
       if (pendingTask) {
         const isReportEditing = !!reportEditorState && reportEditorState.taskId === pendingTask.id && reportEditorState.field === pendingTaskAction.kind;
         if (!isReportEditing) {
-          setMessages(current => [...current, { role: 'user', text: userText }]);
+          if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
         }
         setInput('');
         setIsReplying(true);
@@ -1065,7 +1066,7 @@ export function CantonAiCoachPage() {
     if (createModeRef.current !== 'idle') {
       const activeCreateMode = createModeRef.current;
       setActiveQuickAction(activeCreateMode === 'subtask' || activeCreateMode === 'main' ? 'add' : null);
-      setMessages(current => [...current, { role: 'user', text: userText }]);
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       const userVal = userText.trim();
 
@@ -1362,7 +1363,7 @@ export function CantonAiCoachPage() {
       const today = new Date().toISOString().slice(0, 10);
       const todayTasks = tasks.filter(t => !t.parent_id && t.due_date === today && !t.is_finished && t.status !== 'finished' && t.status !== 'archived');
       
-      setMessages(current => [...current, { role: 'user', text: userText }]);
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       
       if (todayTasks.length > 0) {
@@ -1389,7 +1390,7 @@ export function CantonAiCoachPage() {
       const today = new Date().toISOString().slice(0, 10);
       const overdueTasks = tasks.filter(t => !t.parent_id && t.due_date && t.due_date < today && !t.is_finished && t.status !== 'finished' && t.status !== 'archived');
       
-      setMessages(current => [...current, { role: 'user', text: userText }]);
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       
       if (overdueTasks.length > 0) {
@@ -1426,7 +1427,7 @@ export function CantonAiCoachPage() {
         return due >= startOfWeek && due <= endOfWeek;
       });
       
-      setMessages(current => [...current, { role: 'user', text: userText }]);
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       
       if (weekTasks.length > 0) {
@@ -1452,7 +1453,7 @@ export function CantonAiCoachPage() {
     if (highPriorityIntent && !parsedFields && !explicitCreateIntent && !addSubtaskIntent) {
       const urgentTasks = tasks.filter(t => !t.parent_id && (t.priority === 'urgent' || t.priority === 'high') && !t.is_finished && t.status !== 'finished' && t.status !== 'archived');
       
-      setMessages(current => [...current, { role: 'user', text: userText }]);
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       
       if (urgentTasks.length > 0) {
@@ -1484,7 +1485,7 @@ export function CantonAiCoachPage() {
         return created >= sevenDaysAgo;
       }).slice(0, 10);
       
-      setMessages(current => [...current, { role: 'user', text: userText }]);
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       
       if (recentTasks.length > 0) {
@@ -1511,7 +1512,7 @@ export function CantonAiCoachPage() {
       const tomorrowStr = tomorrow.toISOString().slice(0, 10);
       const tomorrowTasks = tasks.filter(t => !t.parent_id && t.due_date === tomorrowStr && !t.is_finished && t.status !== 'finished' && t.status !== 'archived');
       
-      setMessages(current => [...current, { role: 'user', text: userText }]);
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       
       if (tomorrowTasks.length > 0) {
@@ -1567,7 +1568,7 @@ export function CantonAiCoachPage() {
           })) || [],
         };
         
-        setMessages(current => [...current, { role: 'user', text: userText }]);
+        if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
         setInput('');
         setIsReplying(true);
         
@@ -1589,7 +1590,7 @@ export function CantonAiCoachPage() {
           .map((t, i) => `${i+1}. ${t.title} (${getStatusMeta(t.status).label})`)
           .join('\n');
         
-        setMessages(current => [...current, { role: 'user', text: userText }]);
+        if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
         setInput('');
           
         startTypingMessage(`小人該死，搵唔到「${userText}」相關嘅 task。\n\n還請恩公過目全部 task 列表，或再試其他關鍵字：\n\n${allTasksList}\n\n...共 ${tasks.filter(t => !t.parent_id).length} 個 task`, {
@@ -1600,7 +1601,7 @@ export function CantonAiCoachPage() {
       }
     }
     if (LOCAL_ONLY_MODE) {
-      setMessages(current => [...current, { role: 'user', text: userText }]);
+      if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
       setInput('');
       setIsReplying(true);
 
@@ -1853,7 +1854,7 @@ export function CantonAiCoachPage() {
     }
 
     // Show user message immediately
-    setMessages(current => [...current, { role: 'user', text: userText }]);
+    if (shouldEchoUserBubble) setMessages(current => [...current, { role: 'user', text: userText }]);
     setInput('');
     setIsReplying(true);
 
@@ -2591,7 +2592,7 @@ export function CantonAiCoachPage() {
                     return;
                   }
                   setIntroText('');
-                  setMessages(current => [...current, { role: 'user', text: '搵Task' }]);
+                  
                   startTypingMessage('小人遵命，斗膽一問，大人想搵邊個Task呢？');
                   setInput('');
                   window.setTimeout(() => {
@@ -2608,14 +2609,14 @@ export function CantonAiCoachPage() {
                   setGuidedStep(0);
                   setGuidedDraft({ title:'',description:'',assignee:'',dueDate:'',dueLabel:'',parentTaskId: null });
                   setIntroText('');
-                  setMessages(current => [...current, { role: 'user', text: preset }]);
+                  
                   startTypingMessage('小人遵命～\n\n想加咩 task？先俾我 task name。');
                   return;
                 }
 
                 if (preset === 'Report Log') {
                   setIntroText('');
-                  setMessages(current => [...current, { role: 'user', text: preset }]);
+                  
                   openReportLogMode();
                   return;
                 }
@@ -2623,7 +2624,7 @@ export function CantonAiCoachPage() {
                 if (preset === 'Free talk') {
                   setActiveQuickAction('free-talk');
                   setIntroText('');
-                  setMessages(current => [...current, { role: 'user', text: preset }]);
+                  
                   startTypingMessage('小人遵命。恩公若想隨意傾兩句、聽下寬心之言，儘管開口，小人願作軍師，亦可略談氣場風水，為恩公解悶寬心。');
                   setInput('');
                   window.setTimeout(() => {
@@ -2644,7 +2645,7 @@ export function CantonAiCoachPage() {
                 }
 
                 setIntroText('');
-                void send(preset);
+                void send(preset, { suppressUserBubble: true });
               }} style={getQuickActionButtonStyle(preset)}>
                 {preset}
               </button>
