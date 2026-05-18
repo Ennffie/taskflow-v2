@@ -95,12 +95,45 @@ function hexToRgba(hex: string, alpha: number) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+type LeavePeriod = 'full_day' | 'am' | 'pm';
+
 function getLeaveLabel(status: AttendanceStatus | null | undefined) {
   if (status === 'al') return '年假';
   if (status === 'sl') return '病假';
   if (status === 'bl') return '生日假';
   if (status === 'other') return '其他假';
   return '';
+}
+
+function getLeavePeriodLabel(period: LeavePeriod | null | undefined) {
+  if (period === 'am') return '上午';
+  if (period === 'pm') return '下午';
+  return '全日';
+}
+
+function parseLeaveNote(note: string | null | undefined): { period: LeavePeriod | null; detail: string } {
+  const value = (note ?? '').trim();
+  if (!value) return { period: null, detail: '' };
+  if (value === '全日') return { period: 'full_day', detail: '' };
+  if (value === '上午') return { period: 'am', detail: '' };
+  if (value === '下午') return { period: 'pm', detail: '' };
+  if (value.startsWith('全日｜')) return { period: 'full_day', detail: value.slice(3) };
+  if (value.startsWith('上午｜')) return { period: 'am', detail: value.slice(3) };
+  if (value.startsWith('下午｜')) return { period: 'pm', detail: value.slice(3) };
+  return { period: null, detail: value };
+}
+
+function buildLeaveNote(period: LeavePeriod, detail?: string | null) {
+  const periodLabel = getLeavePeriodLabel(period);
+  const trimmed = detail?.trim();
+  return trimmed ? `${periodLabel}｜${trimmed}` : periodLabel;
+}
+
+function getLeaveDisplayLabel(status: AttendanceStatus | null | undefined, note?: string | null) {
+  const leaveLabel = getLeaveLabel(status);
+  if (!leaveLabel) return '';
+  const { period } = parseLeaveNote(note);
+  return period ? `${leaveLabel}（${getLeavePeriodLabel(period)}）` : leaveLabel;
 }
 
 function getAttendanceBlessing(profileName: string, attendance: AttendanceLog | null, fallbackMessage: string) {
@@ -243,9 +276,10 @@ export function CantonModePage() {
                     setCheckInLoading(false);
                   }
                 }}
-                onMarkOff={async (status) => {
+                onMarkOff={async (status, period) => {
                   if (checkInLoading) return;
-                  if (attendance?.status === status) {
+                  const currentPeriod = parseLeaveNote(attendance?.note).period ?? 'full_day';
+                  if (attendance?.status === status && currentPeriod === period) {
                     setCheckInLoading(true);
                     try {
                       await clearTodayAttendance();
@@ -258,7 +292,8 @@ export function CantonModePage() {
                     return;
                   }
 
-                  const note = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
+                  const detail = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
+                  const note = buildLeaveNote(period, detail);
                   setCheckInLoading(true);
                   try {
                     const next = await markOffToday(status, note, 'canton_mode');
@@ -357,7 +392,7 @@ function AttendanceCheckInCard({
   checkingIn: boolean;
   isAdmin?: boolean;
   onCheckIn: () => void | Promise<void>;
-  onMarkOff: (status: Exclude<AttendanceStatus, 'present'>) => void | Promise<void>;
+  onMarkOff: (status: Exclude<AttendanceStatus, 'present'>, period: LeavePeriod) => void | Promise<void>;
   onUpdateTime: (time: string) => void | Promise<void>;
   onOpenRecords: () => void;
   onOpenAdminRecords?: () => void;
@@ -366,6 +401,7 @@ function AttendanceCheckInCard({
   const timePickerRef = useRef<HTMLInputElement | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showLeaveOptions, setShowLeaveOptions] = useState(false);
+  const [pendingLeaveStatus, setPendingLeaveStatus] = useState<Exclude<AttendanceStatus, 'present'> | null>(null);
   const [selectedTime, setSelectedTime] = useState(() => getTimeValueFromAttendance(attendance));
   const today = new Date();
   const horoscope = getDailyHoroscopeForProfile({ name: profileName, email: profileEmail }, today);
@@ -384,16 +420,20 @@ function AttendanceCheckInCard({
   const dateLabel = formatHongKongDateLabel(today);
   const timeLabel = attendance?.check_in_at ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
   const leaveLabel = getLeaveLabel(attendance?.status);
+  const leaveDisplayLabel = getLeaveDisplayLabel(attendance?.status, attendance?.note);
+  const leaveMeta = parseLeaveNote(attendance?.note);
   const displayLabel = publicHoliday
     ? publicHoliday.greeting
     : isWeekend
       ? '今日唔駛上班哦～'
       : attendance?.status === 'present'
         ? timeLabel
-        : leaveLabel || '—:—';
+        : leaveDisplayLabel || leaveLabel || '—:—';
   const helperText = publicHoliday
     ? `今日係公眾假期：${publicHoliday.name}`
-    : attendance?.note || (attendance && attendance.status !== 'present' ? `今日：${leaveLabel}` : '');
+    : attendance && attendance.status !== 'present'
+      ? `今日：${leaveDisplayLabel || leaveLabel}${leaveMeta.detail ? ` · ${leaveMeta.detail}` : ''}`
+      : '';
 
   useEffect(() => {
     setSelectedTime(getTimeValueFromAttendance(attendance));
@@ -404,6 +444,7 @@ function AttendanceCheckInCard({
 
   useEffect(() => {
     setShowLeaveOptions(false);
+    setPendingLeaveStatus(null);
   }, [attendance?.status]);
 
   useEffect(() => {
@@ -522,12 +563,38 @@ function AttendanceCheckInCard({
                   <div style={{ display: 'grid', gap: 8, paddingTop: showLeaveOptions ? 8 : 0, transform: showLeaveOptions ? 'translateY(0)' : 'translateY(-6px)', transition: 'transform 220ms ease, padding-top 220ms ease' }}>
                     {(['al', 'sl', 'bl', 'other'] as const).map((status) => {
                       const active = attendance?.status === status;
+                      const selecting = pendingLeaveStatus === status;
                       return (
-                        <button key={status} onClick={() => void onMarkOff(status)} disabled={checkingIn || loading} style={{ borderRadius: 12, border: active ? '1px solid #111827' : '1px solid #e2e8f0', background: active ? '#111827' : '#fff', color: active ? '#fff' : '#475569', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}>
+                        <button
+                          key={status}
+                          onClick={() => setPendingLeaveStatus((current) => current === status ? null : status)}
+                          disabled={checkingIn || loading}
+                          style={{ borderRadius: 12, border: active || selecting ? '1px solid #111827' : '1px solid #e2e8f0', background: active || selecting ? '#111827' : '#fff', color: active || selecting ? '#fff' : '#475569', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}
+                        >
                           {status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}
                         </button>
                       );
                     })}
+                    {pendingLeaveStatus ? (
+                      <div style={{ display: 'grid', gap: 8, paddingTop: 4 }}>
+                        <div style={{ fontSize: 11, fontWeight: 900, color: '#94a3b8', textAlign: 'center' }}>時段</div>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {(['full_day', 'am', 'pm'] as const).map((period) => {
+                            const active = attendance?.status === pendingLeaveStatus && (parseLeaveNote(attendance?.note).period ?? 'full_day') === period;
+                            return (
+                              <button
+                                key={period}
+                                onClick={() => void onMarkOff(pendingLeaveStatus, period)}
+                                disabled={checkingIn || loading}
+                                style={{ borderRadius: 12, border: active ? '1px solid #fb923c' : '1px solid #fed7aa', background: active ? '#f97316' : '#fff7ed', color: active ? '#fff' : '#9a3412', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkingIn ? 'default' : 'pointer' }}
+                              >
+                                {getLeavePeriodLabel(period)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
