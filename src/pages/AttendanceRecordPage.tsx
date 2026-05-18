@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
-import { fetchAttendanceRecords, fetchProfiles, updateAttendanceTime, updateTodayAttendanceTime } from '../lib/api';
+import { deleteAttendanceRecord, fetchAttendanceRecords, fetchProfiles, updateAttendanceTime, updateTodayAttendanceTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getHongKongDateString } from '../lib/horoscope';
 import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
@@ -249,6 +249,23 @@ export function AttendanceRecordPage() {
                       />
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => setEditingId(null)} style={{ flex: 1, borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '10px 12px', fontSize: 13, fontWeight: 900 }}>算啦</button>
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm(`Delete ${formatDay(record.date)} attendance record?`)) return;
+                            setSavingId(record.id);
+                            try {
+                              await deleteAttendanceRecord(record);
+                              setRecords((current) => current.filter((item) => item.id !== record.id));
+                              setEditingId(null);
+                            } catch (error: any) {
+                              alert(`Delete record failed: ${error?.message || 'Unknown error'}`);
+                            } finally {
+                              setSavingId(null);
+                            }
+                          }}
+                          disabled={savingId === record.id}
+                          style={{ flex: 1, borderRadius: 14, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '10px 12px', fontSize: 13, fontWeight: 900, opacity: savingId === record.id ? 0.7 : 1 }}
+                        >删除</button>
                         <button onClick={async () => {
                           if (!draftTime || draftTime === currentTime) {
                             setEditingId(null);

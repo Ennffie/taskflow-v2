@@ -126,6 +126,18 @@ function writeAttendanceFallback(entry: AttendanceLog | null) {
   }
 }
 
+function deleteAttendanceFallback(userId: string, date: string) {
+  try {
+    const raw = localStorage.getItem(ATTENDANCE_FALLBACK_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, AttendanceLog>;
+    delete parsed[`${userId}:${date}`];
+    localStorage.setItem(ATTENDANCE_FALLBACK_STORAGE_KEY, JSON.stringify(parsed));
+  } catch {
+    // ignore storage failure
+  }
+}
+
 const attendanceNotifyUrl = (() => {
   const base = import.meta.env.VITE_SUPABASE_URL;
   if (!base) return null;
@@ -1278,6 +1290,30 @@ export async function updateAttendanceTime(date: string, timeHHMM: string): Prom
   const record = data as AttendanceLog;
   void sendAttendanceNotification({ kind: 'status', record, previous: existing });
   return record;
+}
+
+export async function deleteAttendanceRecord(record: AttendanceLog): Promise<void> {
+  const currentUserId = await getCurrentUserId();
+  if (!currentUserId) throw new Error('User not authenticated');
+
+  const { error } = await supabase
+    .from('attendance_logs')
+    .delete()
+    .eq('id', record.id)
+    .eq('user_id', record.user_id)
+    .eq('date', record.date);
+
+  if (error) {
+    if (isMissingAttendanceTableError(error)) {
+      deleteAttendanceFallback(record.user_id, record.date);
+      void sendAttendanceNotification({ kind: 'clear', record, previous: record });
+      return;
+    }
+    throw error;
+  }
+
+  deleteAttendanceFallback(record.user_id, record.date);
+  void sendAttendanceNotification({ kind: 'clear', record, previous: record });
 }
 
 export async function fetchAttendanceRecords(options?: {
