@@ -922,7 +922,17 @@ export async function updateTask(
 
 export async function fetchSubtasks(parentTaskId: string): Promise<TaskItem[]> {
   const allTasks = await fetchTasks();
-  return allTasks.filter(task => task.parent_id === parentTaskId);
+  return allTasks
+    .filter(task => task.parent_id === parentTaskId)
+    .sort((a, b) => {
+      const roundDiff = (a.round_number ?? 1) - (b.round_number ?? 1);
+      if (roundDiff !== 0) return roundDiff;
+
+      const createdDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      if (createdDiff !== 0) return createdDiff;
+
+      return a.id.localeCompare(b.id);
+    });
 }
 
 // Update subtask independently (does not affect parent task status)
