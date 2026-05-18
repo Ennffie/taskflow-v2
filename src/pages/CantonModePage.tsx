@@ -463,34 +463,35 @@ function AttendanceCheckInCard({
                     >
                       {checkingIn ? '處理中…' : attendance ? '唔好意思我想改' : '簽到'}
                     </button>
-                    {attendance ? (
-                      <button
-                        onClick={() => void onReset()}
-                        disabled={loading || checkingIn}
-                        aria-label="Reset attendance record"
-                        title="Reset record"
-                        style={{
-                          width: 52,
-                          flex: '0 0 52px',
-                          border: '1px solid #fecaca',
-                          borderRadius: 18,
-                          background: '#fff1f2',
-                          color: '#e11d48',
-                          display: 'grid',
-                          placeItems: 'center',
-                          boxShadow: '0 10px 22px rgba(244,63,94,0.10)',
-                          cursor: loading || checkingIn ? 'default' : 'pointer',
-                          opacity: checkingIn ? 0.72 : 1,
-                        }}
-                      >
-                        <X size={20} />
-                      </button>
-                    ) : null}
                   </div>
 
                   {attendance?.status === 'present' && showTimePicker ? (
                     <div style={{ marginTop: 12, display: 'grid', gap: 10, padding: 12, borderRadius: 18, background: '#fff7ed', border: '1px solid #fed7aa' }}>
-                      <div style={{ color: '#9a3412', fontSize: 13, fontWeight: 900 }}>重新揀今日簽到時間</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ color: '#9a3412', fontSize: 13, fontWeight: 900 }}>重新揀今日簽到時間</div>
+                        <button
+                          onClick={() => void onReset()}
+                          disabled={loading || checkingIn}
+                          aria-label="Reset attendance record"
+                          title="Reset record"
+                          style={{
+                            width: 40,
+                            height: 40,
+                            flex: '0 0 40px',
+                            border: '1px solid #fecaca',
+                            borderRadius: 12,
+                            background: '#fff1f2',
+                            color: '#e11d48',
+                            display: 'grid',
+                            placeItems: 'center',
+                            boxShadow: '0 8px 18px rgba(244,63,94,0.10)',
+                            cursor: loading || checkingIn ? 'default' : 'pointer',
+                            opacity: checkingIn ? 0.72 : 1,
+                          }}
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
                       <input
                         ref={timePickerRef}
                         type="time"
