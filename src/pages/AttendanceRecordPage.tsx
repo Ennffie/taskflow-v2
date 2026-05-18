@@ -6,8 +6,9 @@ import { deleteAttendanceRecord, fetchAttendanceRecords, fetchProfiles, updateAt
 import { useAuth } from '../contexts/AuthContext';
 import { getHongKongDateString } from '../lib/horoscope';
 import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
+import { getPublicHolidayInfo } from '../lib/specialDays';
 import type { AttendanceLog, Profile } from '../types';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Users } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, List, Users } from 'lucide-react';
 
 function formatMinutes(total: number | null) {
   if (total === null) return '—';
@@ -49,6 +50,31 @@ function shouldHideFromAttendancePicker(profile: Profile) {
   return normalized.includes('claire') || normalized.includes('shani');
 }
 
+function getRecordDisplayLabel(record: AttendanceLog | null | undefined) {
+  if (!record) return '';
+  if (record.status === 'present') return statusLabel(record);
+  if (record.status === 'al') return 'AL';
+  if (record.status === 'sl') return 'SL';
+  if (record.status === 'bl') return 'BL';
+  return 'OFF';
+}
+
+function buildMonthCalendar(month: string) {
+  const [year, mm] = month.split('-').map(Number);
+  const firstDay = new Date(year, mm - 1, 1);
+  const firstWeekday = firstDay.getDay();
+  const daysInMonth = new Date(year, mm, 0).getDate();
+  const cells: Array<{ date: string | null; day: number | null }> = [];
+
+  for (let i = 0; i < firstWeekday; i++) cells.push({ date: null, day: null });
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = `${year}-${String(mm).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    cells.push({ date, day });
+  }
+  while (cells.length % 7 !== 0) cells.push({ date: null, day: null });
+  return cells;
+}
+
 export function AttendanceRecordPage() {
   const { profile, user } = useAuth();
   const isAdmin = profile?.role === 'admin';
@@ -62,6 +88,7 @@ export function AttendanceRecordPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showUserPicker, setShowUserPicker] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const targetUserId = selectedUserId ?? profile?.id ?? user?.id ?? null;
   const targetProfile = profiles.find((p) => p.id === targetUserId) ?? profile;
@@ -104,6 +131,8 @@ export function AttendanceRecordPage() {
   const color = getProfileColor(targetProfile);
   const soft = getProfileSoftColor(targetProfile);
   const today = getHongKongDateString();
+  const recordMap = useMemo(() => new Map(records.map((record) => [record.date, record])), [records]);
+  const calendarCells = useMemo(() => buildMonthCalendar(month), [month]);
 
   useEffect(() => {
     if (!editingId) return;
@@ -191,8 +220,14 @@ export function AttendanceRecordPage() {
         </section>
 
         <section style={{ borderRadius: 24, background: '#fff', border: '1px solid #e2e8f0', padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontWeight: 900, marginBottom: 14 }}><CalendarDays size={16} /> Daily record</div>
-          {loading ? <div style={{ color: '#64748b', fontWeight: 700 }}>Loading…</div> : records.length === 0 ? <div style={{ color: '#94a3b8' }}>No attendance record yet.</div> : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontWeight: 900 }}><CalendarDays size={16} /> Daily record</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: 4, borderRadius: 999, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <button onClick={() => setViewMode('list')} style={{ borderRadius: 999, border: 'none', background: viewMode === 'list' ? '#0f172a' : 'transparent', color: viewMode === 'list' ? '#fff' : '#64748b', padding: '8px 12px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><List size={13} /> List</button>
+              <button onClick={() => setViewMode('calendar')} style={{ borderRadius: 999, border: 'none', background: viewMode === 'calendar' ? '#0f172a' : 'transparent', color: viewMode === 'calendar' ? '#fff' : '#64748b', padding: '8px 12px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><CalendarDays size={13} /> Calendar</button>
+            </div>
+          </div>
+          {loading ? <div style={{ color: '#64748b', fontWeight: 700 }}>Loading…</div> : records.length === 0 && viewMode === 'list' ? <div style={{ color: '#94a3b8' }}>No attendance record yet.</div> : viewMode === 'list' ? (
             <div style={{ display: 'grid', gap: 10 }}>
               {records.map((record) => {
                 const canEditTime = (isAdmin || (isSelf && record.date === today)) && record.status === 'present';
@@ -290,6 +325,34 @@ export function AttendanceRecordPage() {
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
+                  <div key={label} style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#94a3b8', padding: '4px 0' }}>{label}</div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
+                {calendarCells.map((cell, index) => {
+                  if (!cell.date || !cell.day) return <div key={`empty-${index}`} style={{ minHeight: 88, borderRadius: 16, background: '#f8fafc' }} />;
+                  const record = recordMap.get(cell.date);
+                  const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
+                  const isToday = cell.date === today;
+                  return (
+                    <div key={cell.date} style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
+                        {record ? <div style={{ fontSize: 11, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412' }}>{getRecordDisplayLabel(record)}</div> : null}
+                      </div>
+                      <div style={{ display: 'grid', gap: 4 }}>
+                        {holiday ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
+                        {!holiday && record?.note ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </section>
