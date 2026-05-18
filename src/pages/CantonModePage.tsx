@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, Sparkles, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
-import { checkInToday, clearTodayAttendance, fetchAttendanceRecords, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceTime } from '../lib/api';
+import { checkInToday, clearAttendanceByDate, clearTodayAttendance, fetchAttendanceRecords, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceTime } from '../lib/api';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -212,6 +212,7 @@ export function CantonModePage() {
   const [attendanceLoading, setAttendanceLoading] = useState(true);
   const [monthAttendanceRecords, setMonthAttendanceRecords] = useState<AttendanceLog[]>([]);
   const [attendanceMonth, setAttendanceMonth] = useState(() => getHongKongDateString().slice(0, 7));
+  const [calendarActionDate, setCalendarActionDate] = useState<string | null>(null);
   const [checkInLoading, setCheckInLoading] = useState(false);
 
   const loadTasks = async () => {
@@ -292,6 +293,7 @@ export function CantonModePage() {
 
   const attendanceRecordMap = useMemo(() => new Map(monthAttendanceRecords.map((record) => [record.date, record])), [monthAttendanceRecords]);
   const attendanceCalendarCells = useMemo(() => buildMonthCalendar(attendanceMonth), [attendanceMonth]);
+  const todayDate = getHongKongDateString();
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -410,21 +412,86 @@ export function CantonModePage() {
                       if (!cell.date || !cell.day) return <div key={`empty-${index}`} style={{ minHeight: 88, borderRadius: 16, background: '#f8fafc' }} />;
                       const record = attendanceRecordMap.get(cell.date);
                       const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
-                      const isToday = cell.date === getHongKongDateString();
+                      const isToday = cell.date === todayDate;
+                      const isSelected = cell.date === calendarActionDate;
                       return (
-                        <div key={cell.date} style={{ minHeight: 88, borderRadius: 16, border: isToday ? '1.5px solid #f97316' : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                            <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
-                            {record ? <div style={{ fontSize: 11, fontWeight: 900, color: record.status === 'present' ? '#f97316' : '#9a3412' }}>{getRecordDisplayLabel(record)}</div> : null}
+                        <button
+                          key={cell.date}
+                          onClick={() => setCalendarActionDate(cell.date)}
+                          style={{ minHeight: 88, borderRadius: 16, border: isSelected ? '1.5px solid #7c3aed' : isToday ? '1.5px solid #f97316' : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: 6, textAlign: 'left', cursor: 'pointer', boxShadow: isSelected ? '0 8px 18px rgba(124,58,237,0.10)' : 'none' }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
+                          <div style={{ display: 'grid', placeItems: 'center', minHeight: 28 }}>
+                            {record ? <div style={{ fontSize: record.status === 'present' ? 16 : 14, lineHeight: 1, fontWeight: 950, color: record.status === 'present' ? '#f97316' : '#9a3412' }}>{getRecordDisplayLabel(record)}</div> : <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 800 }}>—</div>}
                           </div>
-                          <div style={{ display: 'grid', gap: 4 }}>
-                            {holiday ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
-                            {!holiday && record?.note ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
+                          <div style={{ minHeight: 24, display: 'grid', alignContent: 'end' }}>
+                            {holiday ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : record?.note ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
+                  {calendarActionDate ? (
+                    <div style={{ marginTop: 8, borderRadius: 18, border: '1px solid #e9d5ff', background: '#faf5ff', padding: 12, display: 'grid', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#581c87' }}>預先請假 · {calendarActionDate}</div>
+                          <div style={{ fontSize: 11, color: '#7c3aed', fontWeight: 700 }}>撳一下就可以預先記低假期</div>
+                        </div>
+                        <button onClick={() => setCalendarActionDate(null)} style={{ border: 'none', background: 'transparent', color: '#7c3aed', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}>關閉</button>
+                      </div>
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {(['al', 'sl', 'bl', 'other'] as const).map((status) => (
+                          <div key={status} style={{ display: 'grid', gap: 6 }}>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>{status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                              {(['full_day', 'am', 'pm'] as const).map((period) => (
+                                <button
+                                  key={`${status}-${period}`}
+                                  onClick={async () => {
+                                    const detail = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
+                                    const note = buildLeaveNote(period, detail);
+                                    setCheckInLoading(true);
+                                    try {
+                                      await markOffDate(calendarActionDate, status, note, 'canton_calendar');
+                                      void loadAttendance();
+                                    } catch (error: any) {
+                                      alert(`Set leave failed: ${error?.message || 'Unknown error'}`);
+                                    } finally {
+                                      setCheckInLoading(false);
+                                    }
+                                  }}
+                                  disabled={checkInLoading}
+                                  style={{ borderRadius: 12, border: '1px solid #d8b4fe', background: '#fff', color: '#6b21a8', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer', opacity: checkInLoading ? 0.7 : 1 }}
+                                >
+                                  {getLeavePeriodLabel(period)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        {attendanceRecordMap.get(calendarActionDate) ? (
+                          <button
+                            onClick={async () => {
+                              setCheckInLoading(true);
+                              try {
+                                await clearAttendanceByDate(calendarActionDate);
+                                void loadAttendance();
+                              } catch (error: any) {
+                                alert(`Clear leave failed: ${error?.message || 'Unknown error'}`);
+                              } finally {
+                                setCheckInLoading(false);
+                              }
+                            }}
+                            disabled={checkInLoading}
+                            style={{ borderRadius: 12, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '10px 12px', fontSize: 12, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer', opacity: checkInLoading ? 0.7 : 1 }}
+                          >
+                            清除此日記錄
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </section>
 

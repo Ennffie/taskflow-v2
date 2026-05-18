@@ -230,7 +230,8 @@ async function sendAttendanceNotification(params: {
   }
 }
 
-async function upsertAttendanceForToday(params: {
+async function upsertAttendanceForDate(params: {
+  date: string;
   status: AttendanceStatus;
   checkInAt: string | null;
   note?: string | null;
@@ -239,7 +240,7 @@ async function upsertAttendanceForToday(params: {
   const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
-  const date = getHongKongDateString();
+  const date = params.date;
   const note = normalizeAttendanceNote(params.note);
   const existing = await fetchAttendanceByDate(userId, date);
   const payload = {
@@ -284,6 +285,21 @@ async function upsertAttendanceForToday(params: {
     void sendAttendanceNotification({ kind: 'status', record, previous: existing });
   }
   return record;
+}
+
+async function upsertAttendanceForToday(params: {
+  status: AttendanceStatus;
+  checkInAt: string | null;
+  note?: string | null;
+  source?: string;
+}): Promise<AttendanceLog> {
+  return upsertAttendanceForDate({
+    date: getHongKongDateString(),
+    status: params.status,
+    checkInAt: params.checkInAt,
+    note: params.note,
+    source: params.source,
+  });
 }
 
 async function createAutoEventLog(params: {
@@ -1142,6 +1158,16 @@ export async function markOffToday(status: Exclude<AttendanceStatus, 'present'>,
   });
 }
 
+export async function markOffDate(date: string, status: Exclude<AttendanceStatus, 'present'>, note?: string | null, source = 'manual'): Promise<AttendanceLog> {
+  return upsertAttendanceForDate({
+    date,
+    status,
+    checkInAt: null,
+    note,
+    source,
+  });
+}
+
 export async function updateTodayAttendanceNote(note?: string | null): Promise<AttendanceLog> {
   const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
@@ -1182,10 +1208,14 @@ export async function updateTodayAttendanceNote(note?: string | null): Promise<A
 }
 
 export async function clearTodayAttendance(): Promise<void> {
+  const date = getHongKongDateString();
+  return clearAttendanceByDate(date);
+}
+
+export async function clearAttendanceByDate(date: string): Promise<void> {
   const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
-  const date = getHongKongDateString();
   const existing = await fetchAttendanceByDate(userId, date);
   if (!existing) return;
 
@@ -1198,14 +1228,14 @@ export async function clearTodayAttendance(): Promise<void> {
 
   if (error) {
     if (isMissingAttendanceTableError(error)) {
-      writeAttendanceFallback(null);
+      deleteAttendanceFallback(userId, date);
       void sendAttendanceNotification({ kind: 'clear', record: existing, previous: existing });
       return;
     }
     throw error;
   }
 
-  writeAttendanceFallback(null);
+  deleteAttendanceFallback(userId, date);
   void sendAttendanceNotification({ kind: 'clear', record: existing, previous: existing });
 }
 
