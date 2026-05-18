@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp, RefreshCw, Sparkles, Waves, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, Sparkles, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
-import { checkInToday, clearTodayAttendance, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceTime } from '../lib/api';
+import { checkInToday, clearTodayAttendance, fetchAttendanceRecords, fetchTasks, fetchTodayAttendance, markOffToday, updateTodayAttendanceTime } from '../lib/api';
 import { AppShell } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
-import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile } from '../lib/horoscope';
+import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile, getHongKongDateString } from '../lib/horoscope';
 import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib/specialDays';
 import { type AttendanceLog, type AttendanceStatus, type TaskItem } from '../types';
 
@@ -158,6 +158,50 @@ function getTimeValueFromAttendance(attendance: AttendanceLog | null) {
   return `${hh}:${mm}`;
 }
 
+function shiftMonth(month: string, delta: number) {
+  const [year, mm] = month.split('-').map(Number);
+  const next = new Date(year, mm - 1 + delta, 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(month: string) {
+  const [year, mm] = month.split('-').map(Number);
+  return new Date(year, mm - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
+function statusLabel(record: AttendanceLog) {
+  if (record.status === 'present' && record.check_in_at) {
+    const d = new Date(record.check_in_at);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  return record.status.toUpperCase();
+}
+
+function getRecordDisplayLabel(record: AttendanceLog | null | undefined) {
+  if (!record) return '';
+  if (record.status === 'present') return statusLabel(record);
+  if (record.status === 'al') return 'AL';
+  if (record.status === 'sl') return 'SL';
+  if (record.status === 'bl') return 'BL';
+  return 'OFF';
+}
+
+function buildMonthCalendar(month: string) {
+  const [year, mm] = month.split('-').map(Number);
+  const firstDay = new Date(year, mm - 1, 1);
+  const firstWeekday = firstDay.getDay();
+  const daysInMonth = new Date(year, mm, 0).getDate();
+  const cells: Array<{ date: string | null; day: number | null }> = [];
+
+  for (let i = 0; i < firstWeekday; i++) cells.push({ date: null, day: null });
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = `${year}-${String(mm).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    cells.push({ date, day });
+  }
+  while (cells.length % 7 !== 0) cells.push({ date: null, day: null });
+  return cells;
+}
+
 export function CantonModePage() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
@@ -166,6 +210,8 @@ export function CantonModePage() {
   const [showModal, setShowModal] = useState(false);
   const [attendance, setAttendance] = useState<AttendanceLog | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
+  const [monthAttendanceRecords, setMonthAttendanceRecords] = useState<AttendanceLog[]>([]);
+  const [attendanceMonth, setAttendanceMonth] = useState(() => getHongKongDateString().slice(0, 7));
   const [checkInLoading, setCheckInLoading] = useState(false);
 
   const loadTasks = async () => {
@@ -182,7 +228,12 @@ export function CantonModePage() {
   const loadAttendance = async () => {
     setAttendanceLoading(true);
     try {
-      setAttendance(await fetchTodayAttendance());
+      const [todayAttendance, monthlyRecords] = await Promise.all([
+        fetchTodayAttendance(),
+        fetchAttendanceRecords({ month: attendanceMonth, userId: profile?.id ?? user?.id ?? undefined }),
+      ]);
+      setAttendance(todayAttendance);
+      setMonthAttendanceRecords(monthlyRecords);
     } catch (error: any) {
       alert(`Load check-in failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -201,7 +252,7 @@ export function CantonModePage() {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [user?.id]);
+  }, [user?.id, profile?.id, attendanceMonth]);
 
   const rootTasks = useMemo(() => tasks.filter((task) => !task.parent_id), [tasks]);
   const focusTasks = useMemo(() => rootTasks.filter((task) => task.is_focus && !isDone(task)), [rootTasks]);
@@ -239,6 +290,9 @@ export function CantonModePage() {
     return items.slice(0, 5);
   }, [rootTasks]);
 
+  const attendanceRecordMap = useMemo(() => new Map(monthAttendanceRecords.map((record) => [record.date, record])), [monthAttendanceRecords]);
+  const attendanceCalendarCells = useMemo(() => buildMonthCalendar(attendanceMonth), [attendanceMonth]);
+
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
       <div style={{ minHeight: 'calc(100vh - 48px)', margin: '-24px', padding: '24px 18px 130px', background: pageBg }}>
@@ -270,6 +324,7 @@ export function CantonModePage() {
                   try {
                     const next = await checkInToday('canton_mode');
                     setAttendance(next);
+                    void loadAttendance();
                   } catch (error: any) {
                     alert(`Check-in failed: ${error?.message || 'Unknown error'}`);
                   } finally {
@@ -284,6 +339,7 @@ export function CantonModePage() {
                     try {
                       await clearTodayAttendance();
                       setAttendance(null);
+                      void loadAttendance();
                     } catch (error: any) {
                       alert(`Cancel leave failed: ${error?.message || 'Unknown error'}`);
                     } finally {
@@ -298,6 +354,7 @@ export function CantonModePage() {
                   try {
                     const next = await markOffToday(status, note, 'canton_mode');
                     setAttendance(next);
+                    void loadAttendance();
                   } catch (error: any) {
                     alert(`Update off failed: ${error?.message || 'Unknown error'}`);
                   } finally {
@@ -309,6 +366,7 @@ export function CantonModePage() {
                   try {
                     const next = await updateTodayAttendanceTime(time);
                     setAttendance(next);
+                    void loadAttendance();
                   } catch (error: any) {
                     alert(`Update time failed: ${error?.message || 'Unknown error'}`);
                   } finally {
@@ -323,6 +381,7 @@ export function CantonModePage() {
                   try {
                     await clearTodayAttendance();
                     setAttendance(null);
+                    void loadAttendance();
                   } catch (error: any) {
                     alert(`Reset failed: ${error?.message || 'Unknown error'}`);
                   } finally {
@@ -330,6 +389,44 @@ export function CantonModePage() {
                   }
                 }}
               />
+
+              <section style={{ ...cardStyle, padding: 16, display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontWeight: 900 }}><CalendarDays size={16} /> 打咭月曆</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={() => setAttendanceMonth((current: string) => shiftMonth(current, -1))} style={{ width: 36, height: 36, borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Previous month"><ChevronLeft size={16} /></button>
+                    <div style={{ minWidth: 140, textAlign: 'center', fontSize: 15, fontWeight: 900, color: '#0f172a' }}>{formatMonthLabel(attendanceMonth)}</div>
+                    <button onClick={() => setAttendanceMonth((current: string) => shiftMonth(current, 1))} style={{ width: 36, height: 36, borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Next month"><ChevronRight size={16} /></button>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
+                      <div key={label} style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#94a3b8', padding: '4px 0' }}>{label}</div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
+                    {attendanceCalendarCells.map((cell, index) => {
+                      if (!cell.date || !cell.day) return <div key={`empty-${index}`} style={{ minHeight: 88, borderRadius: 16, background: '#f8fafc' }} />;
+                      const record = attendanceRecordMap.get(cell.date);
+                      const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
+                      const isToday = cell.date === getHongKongDateString();
+                      return (
+                        <div key={cell.date} style={{ minHeight: 88, borderRadius: 16, border: isToday ? '1.5px solid #f97316' : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
+                            {record ? <div style={{ fontSize: 11, fontWeight: 900, color: record.status === 'present' ? '#f97316' : '#9a3412' }}>{getRecordDisplayLabel(record)}</div> : null}
+                          </div>
+                          <div style={{ display: 'grid', gap: 4 }}>
+                            {holiday ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
+                            {!holiday && record?.note ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
 
               <section style={{ ...cardStyle, padding: '16px 0 0', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(251,247,255,0.94))' }}>
                 <div style={{ position: 'relative', height: 760, borderRadius: '30px 30px 0 0', overflow: 'auto', touchAction: 'pan-x pan-y pinch-zoom', background: 'radial-gradient(circle at 50% 50%, #fff 0%, #fdf4ff 40%, #eef6ff 100%)', padding: '28px 8px 72px' }}>
