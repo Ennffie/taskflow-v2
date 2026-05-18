@@ -54,10 +54,9 @@ export function AdminAttendancePage() {
       member,
       records: mine,
       avg: minutes.length ? Math.round(minutes.reduce((a, b) => a + b, 0) / minutes.length) : null,
-      earliest: minutes.length ? Math.min(...minutes) : null,
-      latest: minutes.length ? Math.max(...minutes) : null,
       lateCount,
       offCount: mine.filter((r) => r.status !== 'present').length,
+      slCount: mine.filter((r) => r.status === 'sl').length,
     };
   }), [profiles, records]);
 
@@ -155,9 +154,8 @@ export function AdminAttendancePage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: '#64748b', fontSize: 13, fontWeight: 700 }}>
                       {[
                         ['平均', formatMinutes(item.avg)],
-                        ['最早', formatMinutes(item.earliest)],
-                        ['最遲', formatMinutes(item.latest)],
                         ['Off', String(item.offCount)],
+                        ['SL', String(item.slCount)],
                         ['Late', String(item.lateCount)],
                       ].map(([label, value], index, array) => (
                         <div key={label} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
