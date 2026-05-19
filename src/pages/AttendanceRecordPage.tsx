@@ -408,7 +408,7 @@ export function AttendanceRecordPage() {
                       }}
                       style={{ minHeight: 48, borderRadius: 10, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: '4px 0 4px 6px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 2, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                     >
-                      <div style={{ fontSize: 10, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{cell.day}</div>
+                      <div style={{ fontSize: 8, fontWeight: 800, color: '#0f172a', lineHeight: 1, letterSpacing: '-0.02em' }}>{cell.day}</div>
                       {holiday ? (
                         <div style={{ fontSize: 7, lineHeight: 1, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,2)}</div>
                       ) : hasRecord ? (
