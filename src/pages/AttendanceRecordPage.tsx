@@ -413,7 +413,7 @@ export function AttendanceRecordPage() {
                         <div style={{ fontSize: 6, lineHeight: 1, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,2)}</div>
                       ) : hasRecord ? (
                         <div style={{ transform: 'scale(0.6)', transformOrigin: 'center', lineHeight: 1 }}>
-                          <div style={{ fontSize: 5, fontWeight: 900, color: isLeave ? '#9a3412' : color, lineHeight: 1, fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace', letterSpacing: '-0.08em' }}>
+                          <div style={{ fontSize: 5, fontWeight: 900, color: isLeave ? '#9a3412' : color, lineHeight: 1, fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace', letterSpacing: '-0.08em', WebkitTextSizeAdjust: 'none', textSizeAdjust: 'none' }}>
                             {isLeave ? (record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF') : (record.check_in_at ?? '')}
                           </div>
                         </div>
