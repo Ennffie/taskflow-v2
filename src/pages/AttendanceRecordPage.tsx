@@ -412,11 +412,21 @@ export function AttendanceRecordPage() {
                       {holiday ? (
                         <div style={{ fontSize: 6, lineHeight: 1, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,2)}</div>
                       ) : hasRecord ? (
-                        <div style={{ transform: 'scale(0.6)', transformOrigin: 'center', lineHeight: 1 }}>
-                          <div style={{ fontSize: 5, fontWeight: 900, color: isLeave ? '#9a3412' : color, lineHeight: 1, fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace', letterSpacing: '-0.08em', WebkitTextSizeAdjust: 'none', textSizeAdjust: 'none' }}>
+                        <svg width="28" height="7" viewBox="0 0 28 7" style={{ flexShrink: 0 }}>
+                          <text
+                            x="14"
+                            y="5.5"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontSize="5"
+                            fontFamily="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
+                            fill={isLeave ? '#9a3412' : color}
+                            fontWeight="900"
+                            letterSpacing="-0.05em"
+                          >
                             {isLeave ? (record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF') : (record.check_in_at ?? '')}
-                          </div>
-                        </div>
+                          </text>
+                        </svg>
                       ) : null}
                       {isLeave && !holiday ? (
                         <div style={{ position: 'absolute', bottom: 1, left: '25%', right: '25%', height: 1.5, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: 1 }} />
