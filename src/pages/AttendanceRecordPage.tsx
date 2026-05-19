@@ -165,12 +165,20 @@ export function AttendanceRecordPage() {
 
   useEffect(() => {
     if (!showDateSheet) return;
-    const timer = window.setTimeout(() => {
+    let cancelled = false;
+    const scroll = () => {
+      if (cancelled) return;
       if (sheetRef.current) {
-        sheetRef.current.scrollTo({ top: 160, behavior: 'smooth' });
+        sheetRef.current.scrollTo({ top: 200, behavior: 'smooth' });
       }
-    }, 400);
-    return () => window.clearTimeout(timer);
+    };
+    const raf = requestAnimationFrame(() => {
+      setTimeout(scroll, 500);
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
   }, [showDateSheet]);
 
   useEffect(() => {
@@ -451,6 +459,8 @@ export function AttendanceRecordPage() {
                   overflowY: 'auto',
                   boxShadow: '0 -8px 32px rgba(0,0,0,0.12)',
                   animation: 'slideUp 0.25s ease-out',
+                  scrollBehavior: 'smooth',
+                  paddingBottom: 120,
                 }}
               >
                 <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
