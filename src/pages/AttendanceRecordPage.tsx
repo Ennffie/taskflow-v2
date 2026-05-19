@@ -395,7 +395,6 @@ export function AttendanceRecordPage() {
                   const record = recordMap.get(cell.date);
                   const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
                   const isToday = cell.date === today;
-                  const isFlashing = flashDate === cell.date;
                   return (
                     <div
                       key={cell.date}
