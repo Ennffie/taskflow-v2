@@ -406,25 +406,20 @@ export function AttendanceRecordPage() {
                         setLeaveTime('full');
                         setLeaveType('al');
                       }}
-                      style={{ minHeight: 48, borderRadius: 10, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                      style={{ minHeight: 48, borderRadius: 10, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                     >
                       <div style={{ fontSize: 10, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{cell.day}</div>
                       {holiday ? (
-                        <div style={{ fontSize: 6, lineHeight: 1, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,2)}</div>
+                        <div style={{ fontSize: 7, lineHeight: 1, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,2)}</div>
                       ) : hasRecord ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1, gap: 0 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                           {isLeave ? (
-                            <div style={{ fontSize: 9, fontWeight: 900, color: '#9a3412', lineHeight: 1 }}>
+                            <div style={{ fontSize: 9, fontWeight: 900, color: '#9a3412', lineHeight: 1, padding: '1px 4px', borderRadius: 3, background: '#fee2e2' }}>
                               {record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF'}
                             </div>
-                          ) : record.check_in_at ? (<>
-                            <div style={{ fontSize: 9, fontWeight: 900, color: color, lineHeight: 1 }}>
-                              {record.check_in_at.split(':')[0]}:
-                            </div>
-                            <div style={{ fontSize: 9, fontWeight: 900, color: color, lineHeight: 1 }}>
-                              {record.check_in_at.split(':')[1]}
-                            </div>
-                          </>) : null}
+                          ) : (
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
+                          )}
                         </div>
                       ) : null}
                       {isLeave && !holiday ? (
