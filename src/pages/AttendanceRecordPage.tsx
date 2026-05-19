@@ -40,7 +40,7 @@ function formatMonthLabel(month: string) {
 function statusLabel(record: AttendanceLog) {
   if (record.status === 'present' && record.check_in_at) {
     const d = new Date(record.check_in_at);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
   return record.status.toUpperCase();
 }
@@ -421,7 +421,7 @@ export function AttendanceRecordPage() {
                       <style>{`@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
-                        {record ? <div style={{ fontSize: 10, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
+                        {record ? <div style={{ fontSize: 9, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
                       </div>
                       <div style={{ display: 'grid', gap: 4 }}>
                         {holiday ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
