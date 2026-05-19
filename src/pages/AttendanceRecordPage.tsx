@@ -413,19 +413,19 @@ export function AttendanceRecordPage() {
                         setLeaveTime('full');
                         setLeaveType('al');
                       }}
-                      style={{ minHeight: 64, borderRadius: 12, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 6, display: 'grid', alignContent: 'space-between', gap: 2, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                      style={{ minHeight: 64, borderRadius: 12, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: '2px 1px', display: 'grid', alignContent: 'space-between', gap: 0, cursor: 'pointer', position: 'relative', overflow: 'hidden', textAlign: 'center' }}
                     >
                       {record?.status && record.status !== 'present' ? (
                         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: '0 0 12px 12px', animation: 'growBar 0.3s ease-out', transition: 'all 0.3s ease' }} />
                       ) : null}
                       <style>{`@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignItems: 'center' }}>
                         <div style={{ fontSize: 9, fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>{cell.day}</div>
-                        {record ? <div style={{ fontSize: 5, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace', letterSpacing: '-0.02em' }}>{getRecordDisplayLabel(record)}</div> : null}
+                        {record ? <div style={{ fontSize: 6, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace', letterSpacing: '-0.02em' }}>{getRecordDisplayLabel(record)}</div> : null}
                       </div>
-                      <div style={{ display: 'grid', gap: 0 }}>
-                        {holiday ? <div style={{ fontSize: 7, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,3)}</div> : null}
-                        {!holiday && record?.note ? <div style={{ fontSize: 7, lineHeight: 1.2, color: '#64748b', fontWeight: 700 }}>{record.note.slice(0,2)}</div> : null}
+                      <div style={{ display: 'grid', gap: 0, alignItems: 'center', justifyContent: 'center' }}>
+                        {holiday ? <div style={{ fontSize: 6, lineHeight: 1, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,2)}</div> : null}
+                        {!holiday && record?.note ? <div style={{ fontSize: 6, lineHeight: 1, color: '#64748b', fontWeight: 700 }}>{record.note.slice(0,1)}</div> : null}
                       </div>
                     </div>
                   );
