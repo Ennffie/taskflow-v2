@@ -392,14 +392,14 @@ export function AttendanceRecordPage() {
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
+              <div style={{ display: 'grid', gap: 4 }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
-                  <div key={label} style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#94a3b8', padding: '4px 0' }}>{label}</div>
+                  <div key={label} style={{ textAlign: 'center', fontSize: 9, fontWeight: 900, color: '#94a3b8', padding: '2px 0' }}>{label}</div>
                 ))}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
                 {calendarCells.map((cell, index) => {
-                  if (!cell.date || !cell.day) return <div key={`empty-${index}`} style={{ minHeight: 88, borderRadius: 16, background: '#f8fafc' }} />;
+                  if (!cell.date || !cell.day) return <div key={`empty-${index}`} style={{ minHeight: 64, borderRadius: 12, background: '#f8fafc' }} />;
                   const record = recordMap.get(cell.date);
                   const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
                   const isToday = cell.date === today;
@@ -413,19 +413,19 @@ export function AttendanceRecordPage() {
                         setLeaveTime('full');
                         setLeaveType('al');
                       }}
-                      style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                      style={{ minHeight: 64, borderRadius: 12, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 6, display: 'grid', alignContent: 'space-between', gap: 2, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                     >
                       {record?.status && record.status !== 'present' ? (
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: '0 0 16px 16px', animation: 'growBar 0.3s ease-out', transition: 'all 0.3s ease' }} />
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: '0 0 12px 12px', animation: 'growBar 0.3s ease-out', transition: 'all 0.3s ease' }} />
                       ) : null}
                       <style>{`@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
-                        {record ? <div style={{ fontSize: 8, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                        <div style={{ fontSize: 10, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
+                        {record ? <div style={{ fontSize: 7, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
                       </div>
-                      <div style={{ display: 'grid', gap: 4 }}>
-                        {holiday ? <div style={{ fontSize: 9, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
-                        {!holiday && record?.note ? <div style={{ fontSize: 9, lineHeight: 1.3, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
+                      <div style={{ display: 'grid', gap: 0 }}>
+                        {holiday ? <div style={{ fontSize: 7, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,3)}</div> : null}
+                        {!holiday && record?.note ? <div style={{ fontSize: 7, lineHeight: 1.2, color: '#64748b', fontWeight: 700 }}>{record.note.slice(0,2)}</div> : null}
                       </div>
                     </div>
                   );
