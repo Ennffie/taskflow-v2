@@ -89,6 +89,7 @@ export function AttendanceRecordPage() {
   const [leaveType, setLeaveType] = useState<AttendanceStatus>('al');
   const [leaveTime, setLeaveTime] = useState<'full' | 'am' | 'pm'>('full');
   const [savingLeave, setSavingLeave] = useState(false);
+  const [flashDate, setFlashDate] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const [draftTime, setDraftTime] = useState('09:30');
   const timePickerRef = useRef<HTMLInputElement | null>(null);
@@ -171,6 +172,12 @@ export function AttendanceRecordPage() {
     }, 350);
     return () => window.clearTimeout(timer);
   }, [showDateSheet]);
+
+  useEffect(() => {
+    if (!flashDate) return;
+    const timer = window.setTimeout(() => setFlashDate(null), 900);
+    return () => window.clearTimeout(timer);
+  }, [flashDate]);
 
   const isSelf = targetUserId === (profile?.id ?? user?.id);
   const pageTitle = isSelf ? '我的記錄' : (targetProfile?.name ?? 'User');
@@ -372,6 +379,8 @@ export function AttendanceRecordPage() {
                   const record = recordMap.get(cell.date);
                   const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
                   const isToday = cell.date === today;
+                  const isFlashing = flashDate === cell.date;
+                  const flashColor = record?.status === 'al' ? 'rgba(52,199,89,0.15)' : record?.status === 'sl' ? 'rgba(255,204,0,0.15)' : record?.status === 'bl' ? 'rgba(255,59,48,0.15)' : 'rgba(255,149,0,0.15)';
                   return (
                     <div
                       key={cell.date}
@@ -381,12 +390,13 @@ export function AttendanceRecordPage() {
                         setLeaveTime('full');
                         setLeaveType('al');
                       }}
-                      style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                      style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8, cursor: 'pointer', position: 'relative', overflow: 'hidden', animation: isFlashing ? 'flashCell 0.7s ease' : undefined }}
                     >
                       {record?.status && record.status !== 'present' ? (
                         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: '0 0 16px 16px', animation: 'growBar 0.3s ease-out', transition: 'all 0.3s ease' }} />
                       ) : null}
                       <style>{`@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
+                      <style>{`@keyframes flashCell { 0% { background: ${flashColor}; } 50% { background: ${flashColor}; } 100% { background: ${holiday ? '#fff7ed' : '#f8fafc'}; } }`}</style>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
                         {record ? <div style={{ fontSize: 10, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
@@ -546,6 +556,7 @@ export function AttendanceRecordPage() {
                               const filtered = current.filter((r) => !(r.date === selectedDate && r.user_id === updated.user_id));
                               return [...filtered, updated];
                             });
+                            setFlashDate(selectedDate);
                             setShowDateSheet(false);
                           } catch (error: any) {
                             alert(`更新失敗: ${error?.message || 'Unknown error'}`);
