@@ -373,11 +373,12 @@ export function AttendanceRecordPage() {
                       style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                     >
                       {record?.status && record.status !== 'present' ? (
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: '0 0 16px 16px' }} />
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: '0 0 16px 16px', animation: 'growBar 0.3s ease-out', transition: 'all 0.3s ease' }} />
                       ) : null}
+                      <style>{`@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
-                        {record ? <div style={{ fontSize: 10, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412' }}>{getRecordDisplayLabel(record)}</div> : null}
+                        {record ? <div style={{ fontSize: 10, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
                       </div>
                       <div style={{ display: 'grid', gap: 4 }}>
                         {holiday ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
@@ -419,123 +420,157 @@ export function AttendanceRecordPage() {
                 <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
 
                 <div style={{ padding: '20px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ fontSize: 17, fontWeight: 950, color: '#0f172a' }}>
-                    {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('zh-HK', { month: 'long', day: 'numeric', weekday: 'short' })}
+                  <div>
+                    <div style={{ fontSize: 17, fontWeight: 950, color: '#0f172a' }}>
+                      {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('zh-HK', { month: 'long', day: 'numeric', weekday: 'short' })}
+                    </div>
                   </div>
-                  <button onClick={() => setShowDateSheet(false)} style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 16, fontWeight: 900 }}>✕</button>
+                  <button onClick={() => setShowDateSheet(false)} style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', color: '#a855f7', padding: '8px 14px', fontSize: 13, fontWeight: 900, cursor: 'pointer' }}>關閉</button>
                 </div>
 
                 {(() => {
                   const myRecord = recordMap.get(selectedDate);
                   const dayRecords = allRecords.filter((r) => r.date === selectedDate && r.user_id !== (profile?.id ?? user?.id));
-                  const leaveOptions: Array<{ status: AttendanceStatus; label: string; color: string; bg: string }> = [
-                    { status: 'al', label: '有薪年假', color: '#fff', bg: '#34C759' },
-                    { status: 'sl', label: '病假', color: '#fff', bg: '#FFCC00' },
-                    { status: 'bl', label: '無薪假', color: '#fff', bg: '#FF3B30' },
-                    { status: 'other', label: '其他', color: '#fff', bg: '#FF9500' },
+                  const leaveOptions: Array<{ status: AttendanceStatus; label: string; emoji: string; color: string; bg: string; lightBg: string }> = [
+                    { status: 'al', label: '年假', emoji: '🌴', color: '#fff', bg: '#34C759', lightBg: '#ecfdf3' },
+                    { status: 'sl', label: '病假', emoji: '🤒', color: '#fff', bg: '#FFCC00', lightBg: '#fefce8' },
+                    { status: 'bl', label: '無薪假', emoji: '💸', color: '#fff', bg: '#FF3B30', lightBg: '#fef2f2' },
+                    { status: 'other', label: '生日假', emoji: '🎂', color: '#fff', bg: '#FF9500', lightBg: '#fff7ed' },
                   ];
+                  const timeOptions = [
+                    { key: 'full', label: '全日' },
+                    { key: 'am', label: '上午' },
+                    { key: 'pm', label: '下午' },
+                  ] as const;
                   return (
-                    <div style={{ padding: '0 16px 24px', display: 'grid', gap: 20 }}>
+                    <div style={{ padding: '0 16px 24px', display: 'grid', gap: 16 }}>
+
+                      <div style={{ textAlign: 'center', marginBottom: 4 }}>
+                        <div style={{ fontSize: 12, color: '#a855f7', fontWeight: 700, marginBottom: 4 }}>預先請假 · {selectedDate}</div>
+                        <div style={{ fontSize: 11, color: '#c084fc', fontWeight: 600 }}>撳一下就可以預先記低假期</div>
+                      </div>
 
                       {myRecord && myRecord.status !== 'present' ? (
-                        <div style={{ display: 'grid', gap: 10 }}>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>📍 你嘅紀錄</div>
-                          <div style={{ padding: '14px 16px', borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <div style={{ width: 10, height: 10, borderRadius: '50%', background: myRecord.status === 'al' ? '#34C759' : myRecord.status === 'sl' ? '#FFCC00' : myRecord.status === 'bl' ? '#FF3B30' : '#FF9500' }} />
-                              <div>
-                                <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{leaveOptions.find((o) => o.status === myRecord.status)?.label ?? myRecord.status.toUpperCase()}</div>
-                                {myRecord.note ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{myRecord.note}</div> : null}
-                              </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', borderRadius: 16, background: '#f8fafc', border: '1px solid #e2e8f0', animation: 'fadeIn 0.3s ease' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: myRecord.status === 'al' ? '#34C759' : myRecord.status === 'sl' ? '#FFCC00' : myRecord.status === 'bl' ? '#FF3B30' : '#FF9500' }} />
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{leaveOptions.find((o) => o.status === myRecord.status)?.label ?? myRecord.status.toUpperCase()}</div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{myRecord.note ?? '全日'}</div>
                             </div>
-                            <button
-                              onClick={async () => {
-                                if (!window.confirm('確定要删除呢筆記錄？')) return;
-                                setSavingLeave(true);
-                                try {
-                                  await deleteAttendanceRecord(myRecord);
-                                  setRecords((current) => current.filter((r) => r.id !== myRecord.id));
-                                  setAllRecords((current) => current.filter((r) => r.id !== myRecord.id));
-                                } catch (error: any) {
-                                  alert(`Delete failed: ${error?.message || 'Unknown error'}`);
-                                } finally {
-                                  setSavingLeave(false);
-                                }
-                              }}
-                              disabled={savingLeave}
-                              style={{ borderRadius: 10, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '6px 10px', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}
-                            >
-                              删除
-                            </button>
                           </div>
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm('確定要删除呢筆記錄？')) return;
+                              setSavingLeave(true);
+                              try {
+                                await deleteAttendanceRecord(myRecord);
+                                setRecords((current) => current.filter((r) => r.id !== myRecord.id));
+                                setAllRecords((current) => current.filter((r) => r.id !== myRecord.id));
+                              } catch (error: any) {
+                                alert(`Delete failed: ${error?.message || 'Unknown error'}`);
+                              } finally {
+                                setSavingLeave(false);
+                              }
+                            }}
+                            disabled={savingLeave}
+                            style={{ borderRadius: 10, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '6px 10px', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}
+                          >
+                            删除
+                          </button>
                         </div>
                       ) : null}
 
-                      <div style={{ display: 'grid', gap: 10 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>➕ {myRecord && myRecord.status !== 'present' ? '更新請假' : '新增請假'}</div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {leaveOptions.map((opt) => (
-                            <button
-                              key={opt.status}
-                              onClick={() => setLeaveType(opt.status)}
-                              style={{
-                                borderRadius: 999,
-                                border: 'none',
-                                background: leaveType === opt.status ? opt.bg : '#f1f5f9',
-                                color: leaveType === opt.status ? opt.color : '#475569',
-                                padding: '10px 16px',
-                                fontSize: 13,
-                                fontWeight: 900,
-                                cursor: 'pointer',
-                                flex: 1,
-                                minWidth: 80,
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
+                      {leaveOptions.map((opt) => (
+                        <div key={opt.status} style={{ display: 'grid', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 900, color: '#0f172a' }}>
+                            <span>{opt.emoji}</span>
+                            {opt.label}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            {timeOptions.map((t) => {
+                              const isSelected = leaveType === opt.status && leaveTime === t.key;
+                              return (
+                                <button
+                                  key={t.key}
+                                  onClick={() => {
+                                    setLeaveType(opt.status);
+                                    setLeaveTime(t.key);
+                                  }}
+                                  style={{
+                                    borderRadius: 14,
+                                    border: isSelected ? 'none' : '1px solid #e2e8f0',
+                                    background: isSelected ? opt.bg : '#fff',
+                                    color: isSelected ? opt.color : '#475569',
+                                    padding: '12px 8px',
+                                    fontSize: 13,
+                                    fontWeight: 900,
+                                    cursor: 'pointer',
+                                    flex: 1,
+                                    transition: 'all 0.2s ease',
+                                    transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                                    boxShadow: isSelected ? `0 2px 8px ${opt.bg}40` : 'none',
+                                  }}
+                                >
+                                  {t.label}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          {([
-                            { key: 'full', label: '全日' },
-                            { key: 'am', label: '上午' },
-                            { key: 'pm', label: '下午' },
-                          ] as const).map((t) => (
-                            <button
-                              key={t.key}
-                              onClick={() => setLeaveTime(t.key)}
-                              style={{
-                                borderRadius: 999,
-                                border: '1px solid #e2e8f0',
-                                background: leaveTime === t.key ? '#0f172a' : '#fff',
-                                color: leaveTime === t.key ? '#fff' : '#475569',
-                                padding: '8px 14px',
-                                fontSize: 12,
-                                fontWeight: 900,
-                                cursor: 'pointer',
-                                flex: 1,
-                              }}
-                            >
-                              {t.label}
-                            </button>
-                          ))}
-                        </div>
+                      ))}
+
+                      <button
+                        onClick={async () => {
+                          setSavingLeave(true);
+                          try {
+                            const note = leaveTime === 'full' ? '全日' : leaveTime === 'am' ? '上午' : '下午';
+                            const updated = await updateAttendanceStatus(selectedDate, leaveType, note);
+                            setRecords((current) => {
+                              const filtered = current.filter((r) => r.date !== selectedDate);
+                              return [...filtered, updated];
+                            });
+                            setAllRecords((current) => {
+                              const filtered = current.filter((r) => !(r.date === selectedDate && r.user_id === updated.user_id));
+                              return [...filtered, updated];
+                            });
+                            setShowDateSheet(false);
+                          } catch (error: any) {
+                            alert(`更新失敗: ${error?.message || 'Unknown error'}`);
+                          } finally {
+                            setSavingLeave(false);
+                          }
+                        }}
+                        disabled={savingLeave}
+                        style={{
+                          borderRadius: 16,
+                          border: 'none',
+                          background: 'linear-gradient(135deg, #a855f7, #c084fc)',
+                          color: '#fff',
+                          padding: '16px',
+                          fontSize: 15,
+                          fontWeight: 950,
+                          cursor: savingLeave ? 'default' : 'pointer',
+                          opacity: savingLeave ? 0.7 : 1,
+                          marginTop: 8,
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {savingLeave ? '儲存緊…' : '確認請假'}
+                      </button>
+
+                      {myRecord && myRecord.status !== 'present' ? (
                         <button
                           onClick={async () => {
+                            if (!window.confirm('確定要清除此日記錄？')) return;
                             setSavingLeave(true);
                             try {
-                              const note = leaveTime === 'full' ? '全日' : leaveTime === 'am' ? '上午' : '下午';
-                              const updated = await updateAttendanceStatus(selectedDate, leaveType, note);
-                              setRecords((current) => {
-                                const filtered = current.filter((r) => r.date !== selectedDate);
-                                return [...filtered, updated];
-                              });
-                              setAllRecords((current) => {
-                                const filtered = current.filter((r) => !(r.date === selectedDate && r.user_id === updated.user_id));
-                                return [...filtered, updated];
-                              });
+                              await deleteAttendanceRecord(myRecord);
+                              setRecords((current) => current.filter((r) => r.id !== myRecord.id));
+                              setAllRecords((current) => current.filter((r) => r.id !== myRecord.id));
+                              setShowDateSheet(false);
                             } catch (error: any) {
-                              alert(`更新失敗: ${error?.message || 'Unknown error'}`);
+                              alert(`Delete failed: ${error?.message || 'Unknown error'}`);
                             } finally {
                               setSavingLeave(false);
                             }
@@ -544,18 +579,17 @@ export function AttendanceRecordPage() {
                           style={{
                             borderRadius: 16,
                             border: 'none',
-                            background: 'linear-gradient(135deg, #f472b6, #fb923c)',
-                            color: '#fff',
-                            padding: '14px 16px',
-                            fontSize: 15,
-                            fontWeight: 950,
-                            cursor: savingLeave ? 'default' : 'pointer',
-                            opacity: savingLeave ? 0.7 : 1,
+                            background: 'transparent',
+                            color: '#ef4444',
+                            padding: '12px',
+                            fontSize: 14,
+                            fontWeight: 900,
+                            cursor: 'pointer',
                           }}
                         >
-                          {savingLeave ? '儲存緊…' : '提交申請'}
+                          清除此日記錄
                         </button>
-                      </div>
+                      ) : null}
 
                       {dayRecords.length > 0 ? (
                         <div style={{ display: 'grid', gap: 10 }}>
@@ -588,6 +622,8 @@ export function AttendanceRecordPage() {
                       ) : loadingAll ? (
                         <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 700 }}>Loading 團隊動態…</div>
                       ) : null}
+
+                      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
                     </div>
                   );
                 })()}
