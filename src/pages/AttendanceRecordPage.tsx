@@ -89,6 +89,7 @@ export function AttendanceRecordPage() {
   const [leaveType, setLeaveType] = useState<AttendanceStatus>('al');
   const [leaveTime, setLeaveTime] = useState<'full' | 'am' | 'pm'>('full');
   const [savingLeave, setSavingLeave] = useState(false);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
   const [draftTime, setDraftTime] = useState('09:30');
   const timePickerRef = useRef<HTMLInputElement | null>(null);
   const [month, setMonth] = useState(() => getHongKongDateString().slice(0, 7));
@@ -160,6 +161,16 @@ export function AttendanceRecordPage() {
     if (!editingId) return;
     window.setTimeout(() => timePickerRef.current?.showPicker?.(), 50);
   }, [editingId]);
+
+  useEffect(() => {
+    if (!showDateSheet) return;
+    const timer = window.setTimeout(() => {
+      if (sheetRef.current) {
+        sheetRef.current.scrollTo({ top: 60, behavior: 'smooth' });
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [showDateSheet]);
 
   const isSelf = targetUserId === (profile?.id ?? user?.id);
   const pageTitle = isSelf ? '我的記錄' : (targetProfile?.name ?? 'User');
@@ -407,6 +418,7 @@ export function AttendanceRecordPage() {
             >
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
               <div
+                ref={sheetRef}
                 style={{
                   position: 'relative',
                   background: '#fff',
