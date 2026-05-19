@@ -421,7 +421,7 @@ export function AttendanceRecordPage() {
                       <style>{`@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <div style={{ fontSize: 10, fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>{cell.day}</div>
-                        {record ? <div style={{ fontSize: 7, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{getRecordDisplayLabel(record)}</div> : null}
+                        {record ? <div style={{ fontSize: 7, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', fontFamily: '"SF Mono", Menlo, "Roboto Mono", monospace', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em' }}>{getRecordDisplayLabel(record)}</div> : null}
                       </div>
                       <div style={{ display: 'grid', gap: 0 }}>
                         {holiday ? <div style={{ fontSize: 7, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,3)}</div> : null}
