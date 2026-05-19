@@ -160,7 +160,7 @@ function buildAttendanceFallbackEntry(params: {
   status: AttendanceStatus;
   checkInAt: string | null;
   note?: string | null;
-  source: string;
+  source?: string;
   existingId?: string;
   createdAt?: string;
 }): AttendanceLog {
@@ -172,7 +172,7 @@ function buildAttendanceFallbackEntry(params: {
     status: params.status,
     check_in_at: params.checkInAt,
     note: normalizeAttendanceNote(params.note),
-    source: `${params.source}:local_fallback`,
+    source: `${params.source ?? 'manual'}:local_fallback`,
     created_at: params.createdAt ?? nowIso,
     updated_at: nowIso,
   };
@@ -202,7 +202,7 @@ async function fetchAttendanceByDate(userId: string, date: string): Promise<Atte
 }
 
 async function sendAttendanceNotification(params: {
-  kind: 'status' | 'note' | 'clear';
+  kind: 'status' | 'note' | 'clear' | 'update' | 'add';
   record: AttendanceLog;
   previous?: AttendanceLog | null;
 }) {
@@ -1430,7 +1430,7 @@ export async function updateAttendanceStatus(date: string, status: AttendanceSta
 
     if (error || !data) {
       if (isMissingAttendanceTableError(error)) {
-        const fallbackEntry = buildAttendanceFallbackEntry({ userId, date, status, checkInAt: null, note: normalizedNote, id: existing.id });
+        const fallbackEntry = buildAttendanceFallbackEntry({ userId, date, status, checkInAt: null, note: normalizedNote, existingId: existing.id });
         writeAttendanceFallback(fallbackEntry);
         void sendAttendanceNotification({ kind: 'update', record: fallbackEntry, previous: existing });
         return fallbackEntry;

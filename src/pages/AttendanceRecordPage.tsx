@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
-import { deleteAttendanceRecord, fetchAttendanceRecords, fetchProfiles, fetchAttendanceRecordsForDate, updateAttendanceStatus, updateAttendanceTime, updateTodayAttendanceTime } from '../lib/api';
+import { deleteAttendanceRecord, fetchAttendanceRecords, fetchProfiles, updateAttendanceStatus, updateAttendanceTime, updateTodayAttendanceTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getHongKongDateString } from '../lib/horoscope';
 import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
 import { getPublicHolidayInfo } from '../lib/specialDays';
-import type { AttendanceLog, Profile } from '../types';
+import type { AttendanceLog, AttendanceStatus, Profile } from '../types';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, List, Users } from 'lucide-react';
 
 function formatMinutes(total: number | null) {
