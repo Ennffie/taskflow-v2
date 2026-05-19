@@ -420,12 +420,12 @@ export function AttendanceRecordPage() {
                       ) : null}
                       <style>{`@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
-                        {record ? <div style={{ fontSize: 9, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
+                        <div style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
+                        {record ? <div style={{ fontSize: 8, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
                       </div>
                       <div style={{ display: 'grid', gap: 4 }}>
-                        {holiday ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
-                        {!holiday && record?.note ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
+                        {holiday ? <div style={{ fontSize: 9, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
+                        {!holiday && record?.note ? <div style={{ fontSize: 9, lineHeight: 1.3, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
                       </div>
                     </div>
                   );
