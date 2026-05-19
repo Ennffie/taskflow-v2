@@ -164,12 +164,12 @@ export function AttendanceRecordPage() {
   }, [editingId]);
 
   useEffect(() => {
-    if (!flashDate) return;
+    if (!showDateSheet) return;
     const timer = window.setTimeout(() => {
       if (sheetRef.current) {
-        sheetRef.current.scrollTo({ top: 60, behavior: 'smooth' });
+        sheetRef.current.scrollTo({ top: 160, behavior: 'smooth' });
       }
-    }, 350);
+    }, 400);
     return () => window.clearTimeout(timer);
   }, [showDateSheet]);
 
