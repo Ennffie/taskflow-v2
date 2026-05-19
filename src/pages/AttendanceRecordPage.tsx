@@ -412,19 +412,20 @@ export function AttendanceRecordPage() {
                       {holiday ? (
                         <div style={{ fontSize: 6, lineHeight: 1, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,2)}</div>
                       ) : hasRecord ? (
-                        <svg width="28" height="7" viewBox="0 0 28 7" style={{ flexShrink: 0 }}>
+                        <svg width="32" height="8" viewBox="0 0 32 8" style={{ flexShrink: 0 }}>
+                          <rect x="0" y="2" width="32" height="4" rx="2" fill={isLeave ? '#fee2e2' : '#f1f5f9'} />
                           <text
-                            x="14"
+                            x="16"
                             y="5.5"
                             textAnchor="middle"
                             dominantBaseline="central"
-                            fontSize="5"
+                            fontSize="3"
                             fontFamily="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
-                            fill={isLeave ? '#9a3412' : color}
+                            fill={isLeave ? '#be123c' : color}
                             fontWeight="900"
-                            letterSpacing="-0.05em"
+                            letterSpacing="-0.08em"
                           >
-                            {isLeave ? (record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF') : (record.check_in_at ?? '')}
+                            {isLeave ? (record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF') : (record.check_in_at ?? '').replace(':', '')}
                           </text>
                         </svg>
                       ) : null}
