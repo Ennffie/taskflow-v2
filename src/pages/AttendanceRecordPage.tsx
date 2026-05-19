@@ -412,22 +412,20 @@ export function AttendanceRecordPage() {
                       {holiday ? (
                         <div style={{ fontSize: 6, lineHeight: 1, color: '#c2410c', fontWeight: 800 }}>{holiday.name.slice(0,2)}</div>
                       ) : hasRecord ? (
-                        <svg width="32" height="8" viewBox="0 0 32 8" style={{ flexShrink: 0 }}>
-                          <rect x="0" y="2" width="32" height="4" rx="2" fill={isLeave ? '#fee2e2' : '#f1f5f9'} />
-                          <text
-                            x="16"
-                            y="5.5"
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            fontSize="3"
-                            fontFamily="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
-                            fill={isLeave ? '#be123c' : color}
-                            fontWeight="900"
-                            letterSpacing="-0.08em"
-                          >
-                            {isLeave ? (record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF') : (record.check_in_at ?? '').replace(':', '')}
-                          </text>
-                        </svg>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1, gap: 0 }}>
+                          {isLeave ? (
+                            <div style={{ fontSize: 9, fontWeight: 900, color: '#9a3412', lineHeight: 1 }}>
+                              {record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF'}
+                            </div>
+                          ) : record.check_in_at ? (<>
+                            <div style={{ fontSize: 9, fontWeight: 900, color: color, lineHeight: 1 }}>
+                              {record.check_in_at.split(':')[0]}:
+                            </div>
+                            <div style={{ fontSize: 9, fontWeight: 900, color: color, lineHeight: 1 }}>
+                              {record.check_in_at.split(':')[1]}
+                            </div>
+                          </>) : null}
+                        </div>
                       ) : null}
                       {isLeave && !holiday ? (
                         <div style={{ position: 'absolute', bottom: 1, left: '25%', right: '25%', height: 1.5, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: 1 }} />
