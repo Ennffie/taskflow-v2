@@ -164,7 +164,7 @@ export function AttendanceRecordPage() {
   }, [editingId]);
 
   useEffect(() => {
-    if (!showDateSheet) return;
+    if (!flashDate) return;
     const timer = window.setTimeout(() => {
       if (sheetRef.current) {
         sheetRef.current.scrollTo({ top: 60, behavior: 'smooth' });
@@ -175,8 +175,23 @@ export function AttendanceRecordPage() {
 
   useEffect(() => {
     if (!flashDate) return;
-    const timer = window.setTimeout(() => setFlashDate(null), 900);
-    return () => window.clearTimeout(timer);
+    const el = document.querySelector(`[data-flash-date="${flashDate}"]`) as HTMLElement | null;
+    if (!el) return;
+    el.style.animation = 'none';
+    void el.offsetHeight;
+    el.style.animation = 'flashSuccess 0.7s ease-out';
+    const onEnd = () => {
+      el.style.animation = '';
+      el.removeEventListener('animationend', onEnd);
+    };
+    el.addEventListener('animationend', onEnd);
+    const fallbackTimer = window.setTimeout(() => {
+      el.style.animation = '';
+    }, 800);
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      el.removeEventListener('animationend', onEnd);
+    };
   }, [flashDate]);
 
   const isSelf = targetUserId === (profile?.id ?? user?.id);
@@ -184,6 +199,7 @@ export function AttendanceRecordPage() {
 
   return (
     <AppShell>
+      <style>{`@keyframes flashSuccess { 0% { background: rgba(168, 85, 247, 0.2); } 100% { background: transparent; } }`}</style>
       <div style={{ width: '100%', maxWidth: 780, minWidth: 0, margin: '0 auto', display: 'grid', gap: 16 }}>
         <section style={{ borderRadius: 28, background: '#fff', border: '1px solid #e2e8f0', padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
@@ -380,23 +396,22 @@ export function AttendanceRecordPage() {
                   const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
                   const isToday = cell.date === today;
                   const isFlashing = flashDate === cell.date;
-                  const flashColor = record?.status === 'al' ? 'rgba(52,199,89,0.15)' : record?.status === 'sl' ? 'rgba(255,204,0,0.15)' : record?.status === 'bl' ? 'rgba(255,59,48,0.15)' : 'rgba(255,149,0,0.15)';
                   return (
                     <div
                       key={cell.date}
+                      data-flash-date={cell.date}
                       onClick={() => {
                         setSelectedDate(cell.date);
                         setShowDateSheet(true);
                         setLeaveTime('full');
                         setLeaveType('al');
                       }}
-                      style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8, cursor: 'pointer', position: 'relative', overflow: 'hidden', animation: isFlashing ? 'flashCell 0.7s ease' : undefined }}
+                      style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                     >
                       {record?.status && record.status !== 'present' ? (
                         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: '0 0 16px 16px', animation: 'growBar 0.3s ease-out', transition: 'all 0.3s ease' }} />
                       ) : null}
                       <style>{`@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
-                      <style>{`@keyframes flashCell { 0% { background: ${flashColor}; } 50% { background: ${flashColor}; } 100% { background: ${holiday ? '#fff7ed' : '#f8fafc'}; } }`}</style>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
                         {record ? <div style={{ fontSize: 10, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412', transition: 'all 0.3s ease' }}>{getRecordDisplayLabel(record)}</div> : null}
