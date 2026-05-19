@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
-import { deleteAttendanceRecord, fetchAttendanceRecords, fetchProfiles, updateAttendanceTime, updateTodayAttendanceTime } from '../lib/api';
+import { deleteAttendanceRecord, fetchAttendanceRecords, fetchProfiles, fetchAttendanceRecordsForDate, updateAttendanceStatus, updateAttendanceTime, updateTodayAttendanceTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getHongKongDateString } from '../lib/horoscope';
 import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
@@ -79,9 +79,16 @@ export function AttendanceRecordPage() {
   const { profile, user } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const [records, setRecords] = useState<AttendanceLog[]>([]);
+  const [allRecords, setAllRecords] = useState<AttendanceLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAll, setLoadingAll] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showDateSheet, setShowDateSheet] = useState(false);
+  const [leaveType, setLeaveType] = useState<AttendanceStatus>('al');
+  const [leaveTime, setLeaveTime] = useState<'full' | 'am' | 'pm'>('full');
+  const [savingLeave, setSavingLeave] = useState(false);
   const [draftTime, setDraftTime] = useState('09:30');
   const timePickerRef = useRef<HTMLInputElement | null>(null);
   const [month, setMonth] = useState(() => getHongKongDateString().slice(0, 7));
@@ -89,6 +96,18 @@ export function AttendanceRecordPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+
+  const loadAllRecords = async () => {
+    if (!isAdmin) return;
+    setLoadingAll(true);
+    try {
+      setAllRecords(await fetchAttendanceRecords({ month, includeAllUsers: true }));
+    } catch (e) {
+      console.error('Failed to load all records:', e);
+    } finally {
+      setLoadingAll(false);
+    }
+  };
 
   const targetUserId = selectedUserId ?? profile?.id ?? user?.id ?? null;
   const targetProfile = profiles.find((p) => p.id === targetUserId) ?? profile;
@@ -114,7 +133,10 @@ export function AttendanceRecordPage() {
   useEffect(() => {
     void loadRecords();
     setEditingId(null);
-  }, [month, targetUserId]);
+    if (viewMode === 'calendar') {
+      void loadAllRecords();
+    }
+  }, [month, targetUserId, viewMode]);
 
   const summary = useMemo(() => {
     const present = records.filter((r) => r.status === 'present' && r.check_in_at);
@@ -340,10 +362,22 @@ export function AttendanceRecordPage() {
                   const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
                   const isToday = cell.date === today;
                   return (
-                    <div key={cell.date} style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8 }}>
+                    <div
+                      key={cell.date}
+                      onClick={() => {
+                        setSelectedDate(cell.date);
+                        setShowDateSheet(true);
+                        setLeaveTime('full');
+                        setLeaveType('al');
+                      }}
+                      style={{ minHeight: 88, borderRadius: 16, border: isToday ? `1.5px solid ${color}` : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', alignContent: 'space-between', gap: 8, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                    >
+                      {record?.status && record.status !== 'present' ? (
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: record.status === 'al' ? '#34C759' : record.status === 'sl' ? '#FFCC00' : record.status === 'bl' ? '#FF3B30' : '#FF9500', borderRadius: '0 0 16px 16px' }} />
+                      ) : null}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
-                        {record ? <div style={{ fontSize: 11, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412' }}>{getRecordDisplayLabel(record)}</div> : null}
+                        {record ? <div style={{ fontSize: 10, fontWeight: 900, color: record.status === 'present' ? color : '#9a3412' }}>{getRecordDisplayLabel(record)}</div> : null}
                       </div>
                       <div style={{ display: 'grid', gap: 4 }}>
                         {holiday ? <div style={{ fontSize: 10, lineHeight: 1.3, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
@@ -355,6 +389,211 @@ export function AttendanceRecordPage() {
               </div>
             </div>
           )}
+
+          {showDateSheet && selectedDate ? (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 50,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setShowDateSheet(false);
+              }}
+            >
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
+              <div
+                style={{
+                  position: 'relative',
+                  background: '#fff',
+                  borderRadius: '24px 24px 0 0',
+                  maxHeight: '85vh',
+                  overflowY: 'auto',
+                  boxShadow: '0 -8px 32px rgba(0,0,0,0.12)',
+                  animation: 'slideUp 0.25s ease-out',
+                }}
+              >
+                <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+
+                <div style={{ padding: '20px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ fontSize: 17, fontWeight: 950, color: '#0f172a' }}>
+                    {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('zh-HK', { month: 'long', day: 'numeric', weekday: 'short' })}
+                  </div>
+                  <button onClick={() => setShowDateSheet(false)} style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 16, fontWeight: 900 }}>✕</button>
+                </div>
+
+                {(() => {
+                  const myRecord = recordMap.get(selectedDate);
+                  const dayRecords = allRecords.filter((r) => r.date === selectedDate && r.user_id !== (profile?.id ?? user?.id));
+                  const leaveOptions: Array<{ status: AttendanceStatus; label: string; color: string; bg: string }> = [
+                    { status: 'al', label: '有薪年假', color: '#fff', bg: '#34C759' },
+                    { status: 'sl', label: '病假', color: '#fff', bg: '#FFCC00' },
+                    { status: 'bl', label: '無薪假', color: '#fff', bg: '#FF3B30' },
+                    { status: 'other', label: '其他', color: '#fff', bg: '#FF9500' },
+                  ];
+                  return (
+                    <div style={{ padding: '0 16px 24px', display: 'grid', gap: 20 }}>
+
+                      {myRecord && myRecord.status !== 'present' ? (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>📍 你嘅紀錄</div>
+                          <div style={{ padding: '14px 16px', borderRadius: 18, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ width: 10, height: 10, borderRadius: '50%', background: myRecord.status === 'al' ? '#34C759' : myRecord.status === 'sl' ? '#FFCC00' : myRecord.status === 'bl' ? '#FF3B30' : '#FF9500' }} />
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{leaveOptions.find((o) => o.status === myRecord.status)?.label ?? myRecord.status.toUpperCase()}</div>
+                                {myRecord.note ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{myRecord.note}</div> : null}
+                              </div>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm('確定要删除呢筆記錄？')) return;
+                                setSavingLeave(true);
+                                try {
+                                  await deleteAttendanceRecord(myRecord);
+                                  setRecords((current) => current.filter((r) => r.id !== myRecord.id));
+                                  setAllRecords((current) => current.filter((r) => r.id !== myRecord.id));
+                                } catch (error: any) {
+                                  alert(`Delete failed: ${error?.message || 'Unknown error'}`);
+                                } finally {
+                                  setSavingLeave(false);
+                                }
+                              }}
+                              disabled={savingLeave}
+                              style={{ borderRadius: 10, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '6px 10px', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>➕ {myRecord && myRecord.status !== 'present' ? '更新請假' : '新增請假'}</div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {leaveOptions.map((opt) => (
+                            <button
+                              key={opt.status}
+                              onClick={() => setLeaveType(opt.status)}
+                              style={{
+                                borderRadius: 999,
+                                border: 'none',
+                                background: leaveType === opt.status ? opt.bg : '#f1f5f9',
+                                color: leaveType === opt.status ? opt.color : '#475569',
+                                padding: '10px 16px',
+                                fontSize: 13,
+                                fontWeight: 900,
+                                cursor: 'pointer',
+                                flex: 1,
+                                minWidth: 80,
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          {([
+                            { key: 'full', label: '全日' },
+                            { key: 'am', label: '上午' },
+                            { key: 'pm', label: '下午' },
+                          ] as const).map((t) => (
+                            <button
+                              key={t.key}
+                              onClick={() => setLeaveTime(t.key)}
+                              style={{
+                                borderRadius: 999,
+                                border: '1px solid #e2e8f0',
+                                background: leaveTime === t.key ? '#0f172a' : '#fff',
+                                color: leaveTime === t.key ? '#fff' : '#475569',
+                                padding: '8px 14px',
+                                fontSize: 12,
+                                fontWeight: 900,
+                                cursor: 'pointer',
+                                flex: 1,
+                              }}
+                            >
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={async () => {
+                            setSavingLeave(true);
+                            try {
+                              const note = leaveTime === 'full' ? '全日' : leaveTime === 'am' ? '上午' : '下午';
+                              const updated = await updateAttendanceStatus(selectedDate, leaveType, note);
+                              setRecords((current) => {
+                                const filtered = current.filter((r) => r.date !== selectedDate);
+                                return [...filtered, updated];
+                              });
+                              setAllRecords((current) => {
+                                const filtered = current.filter((r) => !(r.date === selectedDate && r.user_id === updated.user_id));
+                                return [...filtered, updated];
+                              });
+                            } catch (error: any) {
+                              alert(`更新失敗: ${error?.message || 'Unknown error'}`);
+                            } finally {
+                              setSavingLeave(false);
+                            }
+                          }}
+                          disabled={savingLeave}
+                          style={{
+                            borderRadius: 16,
+                            border: 'none',
+                            background: 'linear-gradient(135deg, #f472b6, #fb923c)',
+                            color: '#fff',
+                            padding: '14px 16px',
+                            fontSize: 15,
+                            fontWeight: 950,
+                            cursor: savingLeave ? 'default' : 'pointer',
+                            opacity: savingLeave ? 0.7 : 1,
+                          }}
+                        >
+                          {savingLeave ? '儲存緊…' : '提交申請'}
+                        </button>
+                      </div>
+
+                      {dayRecords.length > 0 ? (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Users size={14} /> 團隊動態
+                          </div>
+                          <div style={{ display: 'grid', gap: 8 }}>
+                            {dayRecords.map((r) => {
+                              const p = profiles.find((prof) => prof.id === r.user_id);
+                              const pColor = getProfileColor(p);
+                              const pInitials = getProfileInitials(p?.name ?? '??');
+                              return (
+                                <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderRadius: 14, background: '#f8fafc' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{ width: 28, height: 28, borderRadius: 10, background: pColor, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flex: '0 0 auto' }}>{pInitials}</div>
+                                    <div>
+                                      <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{p?.name ?? 'Unknown'}</div>
+                                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{r.note ?? '—'}</div>
+                                    </div>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: r.status === 'al' ? '#34C759' : r.status === 'sl' ? '#FFCC00' : r.status === 'bl' ? '#FF3B30' : '#FF9500' }} />
+                                    <div style={{ fontSize: 12, fontWeight: 900, color: '#475569' }}>{leaveOptions.find((o) => o.status === r.status)?.label ?? r.status.toUpperCase()}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : loadingAll ? (
+                        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 700 }}>Loading 團隊動態…</div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : null}
         </section>
       </div>
     </AppShell>

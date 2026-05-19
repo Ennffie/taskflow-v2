@@ -1410,3 +1410,88 @@ export async function fetchAttendanceRecords(options?: {
 
   return Array.from(deduped.values());
 }
+
+export async function updateAttendanceStatus(date: string, status: AttendanceStatus, note?: string | null): Promise<AttendanceLog> {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const existing = await fetchAttendanceByDate(userId, date);
+  const normalizedNote = normalizeAttendanceNote(note);
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from('attendance_logs')
+      .update({ status, note: normalizedNote, check_in_at: null })
+      .eq('id', existing.id)
+      .eq('user_id', userId)
+      .eq('date', date)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      if (isMissingAttendanceTableError(error)) {
+        const fallbackEntry = buildAttendanceFallbackEntry({ userId, date, status, checkInAt: null, note: normalizedNote, id: existing.id });
+        writeAttendanceFallback(fallbackEntry);
+        void sendAttendanceNotification({ kind: 'update', record: fallbackEntry, previous: existing });
+        return fallbackEntry;
+      }
+      throw error;
+    }
+    void sendAttendanceNotification({ kind: 'update', record: data as AttendanceLog, previous: existing });
+    return data as AttendanceLog;
+  }
+
+  const { data, error } = await supabase
+    .from('attendance_logs')
+    .insert({ user_id: userId, date, status, note: normalizedNote })
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    if (isMissingAttendanceTableError(error)) {
+      const fallbackEntry = buildAttendanceFallbackEntry({ userId, date, status, checkInAt: null, note: normalizedNote });
+      writeAttendanceFallback(fallbackEntry);
+      void sendAttendanceNotification({ kind: 'add', record: fallbackEntry });
+      return fallbackEntry;
+    }
+    throw error;
+  }
+  void sendAttendanceNotification({ kind: 'add', record: data as AttendanceLog });
+  return data as AttendanceLog;
+}
+
+export async function fetchAttendanceRecordsForDate(date: string): Promise<AttendanceLog[]> {
+  const currentUserId = await getCurrentUserId();
+  if (!currentUserId) return [];
+
+  const { data, error } = await supabase
+    .from('attendance_logs')
+    .select('*')
+    .eq('date', date)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    if (isMissingAttendanceTableError(error)) {
+      const fallback = readAttendanceFallback(currentUserId, date);
+      return fallback ? [fallback] : [];
+    }
+    throw error;
+  }
+
+  const records = (data ?? []) as AttendanceLog[];
+  const deduped = new Map<string, AttendanceLog>();
+
+  for (const record of records) {
+    const key = record.user_id;
+    const existing = deduped.get(key);
+    if (!existing) {
+      deduped.set(key, record);
+      continue;
+    }
+    const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime();
+    const recordTime = new Date(record.updated_at ?? record.created_at).getTime();
+    if (recordTime > existingTime) deduped.set(key, record);
+  }
+
+  return Array.from(deduped.values());
+}
