@@ -50,15 +50,6 @@ function shouldHideFromAttendancePicker(profile: Profile) {
   return normalized.includes('claire') || normalized.includes('shani');
 }
 
-function getRecordDisplayLabel(record: AttendanceLog | null | undefined) {
-  if (!record) return '';
-  if (record.status === 'present') return statusLabel(record);
-  if (record.status === 'al') return 'AL';
-  if (record.status === 'sl') return 'SL';
-  if (record.status === 'bl') return 'BL';
-  return 'OFF';
-}
-
 function buildMonthCalendar(month: string) {
   const [year, mm] = month.split('-').map(Number);
   const firstDay = new Date(year, mm - 1, 1);
