@@ -414,7 +414,7 @@ export function AttendanceRecordPage() {
                       ) : hasRecord ? (
                         <div style={{ transform: 'scale(0.75)', transformOrigin: 'center', lineHeight: 1 }}>
                           <div style={{ fontSize: 7, fontWeight: 900, color: isLeave ? '#9a3412' : color, lineHeight: 1, fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace', letterSpacing: '-0.06em' }}>
-                            {isLeave ? (record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF') : (record.time_in ?? '')}
+                            {isLeave ? (record.status === 'al' ? 'AL' : record.status === 'sl' ? 'SL' : record.status === 'bl' ? 'BL' : 'OFF') : (record.check_in_at ?? '')}
                           </div>
                         </div>
                       ) : null}
