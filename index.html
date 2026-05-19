@@ -8,15 +8,33 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>TaskFlow v2</title>
+    <script>
+      // Aggressive cache bust: force reload if this is an old version
+      (function() {
+        const VERSION = '2025-05-19-v3';
+        try {
+          const stored = localStorage.getItem('tf2_version');
+          if (stored !== VERSION) {
+            localStorage.setItem('tf2_version', VERSION);
+            if ('caches' in window) {
+              caches.keys().then(function(names) {
+                names.forEach(function(name) { caches.delete(name); });
+              });
+            }
+            // Force reload from server, not cache
+            window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
+          }
+        } catch(e) {}
+      })();
+    </script>
     <style>
       body { margin: 0; font-family: -apple-system, system-ui; }
       #fallback { padding: 40px 20px; background: #fef2f2; min-height: 100vh; display: none; }
     </style>
-    <!-- Build: 2026-05-04-2145-v5 -->
-    <script type="module" crossorigin src="/taskflow-v2/assets/index-BRjiR4OZ-v2.js"></script>
+    <!-- Build: auto -->
+    <script type="module" crossorigin src="/taskflow-v2/assets/index-LqUZpO_D-v2.js"></script>
     <link rel="modulepreload" crossorigin href="/taskflow-v2/assets/jsx-runtime-BZZbE0za-v2.js">
-    <link rel="modulepreload" crossorigin href="/taskflow-v2/assets/supabase-CZ-puexS-v2.js">
-    <link rel="modulepreload" crossorigin href="/taskflow-v2/assets/AuthContext-BdyAEtND-v2.js">
+    <link rel="modulepreload" crossorigin href="/taskflow-v2/assets/AuthContext-COmGw25V-v2.js">
     <link rel="stylesheet" crossorigin href="/taskflow-v2/assets/index-BaaS5YcI-v2.css">
   </head>
   <body>
