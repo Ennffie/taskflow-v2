@@ -623,7 +623,7 @@ export function CantonModePage() {
                           const note = buildLeaveNote(period, detail);
                           setCheckInLoading(true);
                           try {
-                            await markOffDate(calendarActionDate, status, note, 'canton_calendar');
+                            await markOffDate(calendarActionDate, status, note, 'canton_calendar', profile?.id ?? user?.id ?? undefined);
                             void loadAttendance();
                           } catch (error: any) {
                             alert(`Set leave failed: ${error?.message || 'Unknown error'}`);
@@ -646,7 +646,7 @@ export function CantonModePage() {
                     if (!calendarActionDate) return;
                     setCheckInLoading(true);
                     try {
-                      await clearAttendanceByDate(calendarActionDate);
+                      await clearAttendanceByDate(calendarActionDate, profile?.id ?? user?.id ?? undefined);
                       void loadAttendance();
                     } catch (error: any) {
                       alert(`Clear leave failed: ${error?.message || 'Unknown error'}`);

@@ -236,8 +236,9 @@ async function upsertAttendanceForDate(params: {
   checkInAt: string | null;
   note?: string | null;
   source?: string;
+  userId?: string;
 }): Promise<AttendanceLog> {
-  const userId = await getCurrentUserId();
+  const userId = params.userId ?? await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   const date = params.date;
@@ -1158,13 +1159,14 @@ export async function markOffToday(status: Exclude<AttendanceStatus, 'present'>,
   });
 }
 
-export async function markOffDate(date: string, status: Exclude<AttendanceStatus, 'present'>, note?: string | null, source = 'manual'): Promise<AttendanceLog> {
+export async function markOffDate(date: string, status: Exclude<AttendanceStatus, 'present'>, note?: string | null, source = 'manual', targetUserId?: string): Promise<AttendanceLog> {
   return upsertAttendanceForDate({
     date,
     status,
     checkInAt: null,
     note,
     source,
+    userId: targetUserId,
   });
 }
 
@@ -1212,8 +1214,8 @@ export async function clearTodayAttendance(): Promise<void> {
   return clearAttendanceByDate(date);
 }
 
-export async function clearAttendanceByDate(date: string): Promise<void> {
-  const userId = await getCurrentUserId();
+export async function clearAttendanceByDate(date: string, targetUserId?: string): Promise<void> {
+  const userId = targetUserId ?? await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   const existing = await fetchAttendanceByDate(userId, date);
@@ -1411,8 +1413,8 @@ export async function fetchAttendanceRecords(options?: {
   return Array.from(deduped.values());
 }
 
-export async function updateAttendanceStatus(date: string, status: AttendanceStatus, note?: string | null): Promise<AttendanceLog> {
-  const userId = await getCurrentUserId();
+export async function updateAttendanceStatus(date: string, status: AttendanceStatus, note?: string | null, targetUserId?: string): Promise<AttendanceLog> {
+  const userId = targetUserId ?? await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   const existing = await fetchAttendanceByDate(userId, date);

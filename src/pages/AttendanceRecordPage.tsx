@@ -569,7 +569,7 @@ export function AttendanceRecordPage() {
                           setSavingLeave(true);
                           try {
                             const note = leaveTime === 'full' ? '全日' : leaveTime === 'am' ? '上午' : '下午';
-                            const updated = await updateAttendanceStatus(selectedDate, leaveType, note);
+                            const updated = await updateAttendanceStatus(selectedDate, leaveType, note, targetUserId ?? undefined);
                             setRecords((current) => {
                               const filtered = current.filter((r) => r.date !== selectedDate);
                               return [...filtered, updated];
