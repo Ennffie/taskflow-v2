@@ -383,6 +383,15 @@ export function AttendanceRecordPage() {
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <button onClick={() => setMonth((current) => shiftMonth(current, -1))} style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Previous month">
+                  <ChevronLeft size={14} />
+                </button>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{formatMonthLabel(month)}</div>
+                <button onClick={() => setMonth((current) => shiftMonth(current, 1))} style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Next month">
+                  <ChevronRight size={14} />
+                </button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 2 }}>
                 {['日','一','二','三','四','五','六'].map((label) => (
                   <div key={label} style={{ textAlign: 'center', fontSize: 8, fontWeight: 900, color: '#94a3b8', padding: '1px 0' }}>{label}</div>
