@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
 import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile, getHongKongDateString } from '../lib/horoscope';
 import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib/specialDays';
+import { isLateCheckIn } from '../lib/attendanceRules';
 import { type AttendanceLog, type AttendanceStatus, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
@@ -214,6 +215,17 @@ export function CantonModePage() {
   const [attendanceMonth, setAttendanceMonth] = useState(() => getHongKongDateString().slice(0, 7));
   const [calendarActionDate, setCalendarActionDate] = useState<string | null>(null);
   const [checkInLoading, setCheckInLoading] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(orientation: portrait)').matches;
+  });
+
+  useEffect(() => {
+    const mql = window.matchMedia('(orientation: portrait)');
+    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -422,7 +434,23 @@ export function CantonModePage() {
                         >
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
                           <div style={{ display: 'grid', placeItems: 'center', minHeight: 28 }}>
-                            {record ? <div style={{ fontSize: record.status === 'present' ? 16 : 14, lineHeight: 1, fontWeight: 950, color: record.status === 'present' ? '#f97316' : '#9a3412' }}>{getRecordDisplayLabel(record)}</div> : <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 800 }}>—</div>}
+                            {record ? (() => {
+                              if (record.status === 'present' && isPortrait) {
+                                const d = record.check_in_at ? new Date(record.check_in_at) : null;
+                                const minutes = d ? d.getHours() * 60 + d.getMinutes() : 0;
+                                const late = isLateCheckIn(minutes, profile);
+                                return (
+                                  <div style={{ fontSize: 20, lineHeight: 1, fontWeight: 950, color: late ? '#ef4444' : '#22c55e' }}>
+                                    {late ? '✗' : '✓'}
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div style={{ fontSize: record.status === 'present' ? 16 : 14, lineHeight: 1, fontWeight: 950, color: record.status === 'present' ? '#f97316' : '#9a3412' }}>
+                                  {getRecordDisplayLabel(record)}
+                                </div>
+                              );
+                            })() : <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 800 }}>—</div>}
                           </div>
                           <div style={{ minHeight: 24, display: 'grid', alignContent: 'end' }}>
                             {holiday ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : record?.note ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
