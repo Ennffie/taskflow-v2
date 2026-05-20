@@ -429,13 +429,7 @@ export function CantonModePage() {
                       return (
                         <button
                           key={cell.date}
-                          onClick={() => {
-                            setCalendarActionDate(cell.date);
-                            window.setTimeout(() => {
-                              const el = document.getElementById('canton-calendar-action');
-                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                            }, 100);
-                          }}
+                          onClick={() => setCalendarActionDate(cell.date)}
                           style={{ minHeight: 88, borderRadius: 16, border: isSelected ? '1.5px solid #7c3aed' : isToday ? '1.5px solid #f97316' : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: 6, textAlign: 'left', cursor: 'pointer', boxShadow: isSelected ? '0 8px 18px rgba(124,58,237,0.10)' : 'none' }}
                         >
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
@@ -465,67 +459,6 @@ export function CantonModePage() {
                       );
                     })}
                   </div>
-                  {calendarActionDate ? (
-                    <div id='canton-calendar-action' style={{ marginTop: 8, borderRadius: 18, border: '1px solid #e9d5ff', background: '#faf5ff', padding: 12, display: 'grid', gap: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: '#581c87' }}>預先請假 · {calendarActionDate}</div>
-                          <div style={{ fontSize: 11, color: '#7c3aed', fontWeight: 700 }}>撳一下就可以預先記低假期</div>
-                        </div>
-                        <button onClick={() => setCalendarActionDate(null)} style={{ border: 'none', background: 'transparent', color: '#7c3aed', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}>關閉</button>
-                      </div>
-                      <div style={{ display: 'grid', gap: 8 }}>
-                        {(['al', 'sl', 'bl', 'other'] as const).map((status) => (
-                          <div key={status} style={{ display: 'grid', gap: 6 }}>
-                            <div style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>{status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                              {(['full_day', 'am', 'pm'] as const).map((period) => (
-                                <button
-                                  key={`${status}-${period}`}
-                                  onClick={async () => {
-                                    const detail = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
-                                    const note = buildLeaveNote(period, detail);
-                                    setCheckInLoading(true);
-                                    try {
-                                      await markOffDate(calendarActionDate, status, note, 'canton_calendar');
-                                      void loadAttendance();
-                                    } catch (error: any) {
-                                      alert(`Set leave failed: ${error?.message || 'Unknown error'}`);
-                                    } finally {
-                                      setCheckInLoading(false);
-                                    }
-                                  }}
-                                  disabled={checkInLoading}
-                                  style={{ borderRadius: 12, border: '1px solid #d8b4fe', background: '#fff', color: '#6b21a8', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer', opacity: checkInLoading ? 0.7 : 1 }}
-                                >
-                                  {getLeavePeriodLabel(period)}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                        {attendanceRecordMap.get(calendarActionDate) ? (
-                          <button
-                            onClick={async () => {
-                              setCheckInLoading(true);
-                              try {
-                                await clearAttendanceByDate(calendarActionDate);
-                                void loadAttendance();
-                              } catch (error: any) {
-                                alert(`Clear leave failed: ${error?.message || 'Unknown error'}`);
-                              } finally {
-                                setCheckInLoading(false);
-                              }
-                            }}
-                            disabled={checkInLoading}
-                            style={{ borderRadius: 12, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '10px 12px', fontSize: 12, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer', opacity: checkInLoading ? 0.7 : 1 }}
-                          >
-                            清除此日記錄
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
               </section>
 
@@ -565,6 +498,75 @@ export function CantonModePage() {
         </div>
       </div>
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} variant="canton" />}
+      {calendarActionDate && (
+        <>
+          <div
+            onClick={() => setCalendarActionDate(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.35)' }}
+          />
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, borderRadius: '24px 24px 0 0', background: '#fff', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', padding: '20px 16px 28px', display: 'grid', gap: 14, animation: 'cantonSheetUp 0.35s cubic-bezier(0.16,1,0.3,1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a' }}>{calendarActionDate}</div>
+                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginTop: 2 }}>預先請假</div>
+              </div>
+              <button onClick={() => setCalendarActionDate(null)} style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: '#f1f5f9', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 14, fontWeight: 900 }}>✕</button>
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {(['al', 'sl', 'bl', 'other'] as const).map((status) => (
+                <div key={status} style={{ display: 'grid', gap: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                    {(['full_day', 'am', 'pm'] as const).map((period) => (
+                      <button
+                        key={`${status}-${period}`}
+                        onClick={async () => {
+                          const detail = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
+                          const note = buildLeaveNote(period, detail);
+                          setCheckInLoading(true);
+                          try {
+                            await markOffDate(calendarActionDate, status, note, 'canton_calendar');
+                            void loadAttendance();
+                          } catch (error: any) {
+                            alert(`Set leave failed: ${error?.message || 'Unknown error'}`);
+                          } finally {
+                            setCheckInLoading(false);
+                          }
+                        }}
+                        disabled={checkInLoading}
+                        style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', padding: '12px 6px', fontSize: 13, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer', opacity: checkInLoading ? 0.7 : 1 }}
+                      >
+                        {getLeavePeriodLabel(period)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {attendanceRecordMap.get(calendarActionDate) ? (
+                <button
+                  onClick={async () => {
+                    setCheckInLoading(true);
+                    try {
+                      await clearAttendanceByDate(calendarActionDate);
+                      void loadAttendance();
+                    } catch (error: any) {
+                      alert(`Clear leave failed: ${error?.message || 'Unknown error'}`);
+                    } finally {
+                      setCheckInLoading(false);
+                    }
+                  }}
+                  disabled={checkInLoading}
+                  style={{ borderRadius: 12, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '12px', fontSize: 13, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer', opacity: checkInLoading ? 0.7 : 1 }}
+                >
+                  清除此日記錄
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <style>{`@keyframes cantonSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+        </>
+      )}
+
     </AppShell>
   );
 }
