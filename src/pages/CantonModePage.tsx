@@ -282,6 +282,9 @@ export function CantonModePage() {
         fetchAttendanceRecords({ month: attendanceMonth, includeAllUsers: true }),
         fetchProfiles(),
       ]);
+      console.log('[Canton] allMonthRecords count:', allMonthlyRecords.length);
+      console.log('[Canton] profiles count:', profilesData.length);
+      console.log('[Canton] my records count:', monthlyRecords.length);
       setAttendance(todayAttendance);
       setMonthAttendanceRecords(monthlyRecords);
       setAllMonthRecords(allMonthlyRecords);
@@ -289,6 +292,7 @@ export function CantonModePage() {
       profilesData.forEach((p) => map.set(p.id, p));
       setProfilesMap(map);
     } catch (error: any) {
+      console.error('[Canton] loadAttendance error:', error);
       alert(`Load check-in failed: ${error?.message || 'Unknown error'}`);
     } finally {
       setAttendanceLoading(false);
