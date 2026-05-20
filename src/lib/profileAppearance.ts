@@ -16,6 +16,13 @@ export function getProfileColor(profile?: Pick<Profile, 'id' | 'name'> | null) {
   const normalized = `${profile.id ?? ''}:${profile.name}`.toLowerCase();
   if (normalized.includes('enfield')) return '#6366F1';
   if (normalized.includes('alice')) return '#997EF0';
+  if (normalized.includes('benne')) return '#8B5CF6';
+  if (normalized.includes('mandy')) return '#10B981';
+  if (normalized.includes('silvie')) return '#EC4899';
+  if (normalized.includes('claire')) return '#F59E0B';
+  if (normalized.includes('shani')) return '#14B8A6';
+  if (normalized.includes('alby')) return '#EF4444';
+  if (normalized.includes('pamela')) return '#3B82F6';
   let hash = 0;
   for (let i = 0; i < normalized.length; i++) {
     hash = ((hash << 5) - hash) + normalized.charCodeAt(i);
