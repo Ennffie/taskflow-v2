@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, Sparkles, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
-import { checkInToday, clearAttendanceByDate, clearTodayAttendance, fetchAttendanceRecords, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceTime } from '../lib/api';
+import { checkInToday, clearAttendanceByDate, clearTodayAttendance, fetchAttendanceRecords, fetchProfiles, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceTime } from '../lib/api';
 import { AppShell, notifyModalClose, notifyModalOpen } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +10,8 @@ import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize
 import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile, getHongKongDateString } from '../lib/horoscope';
 import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib/specialDays';
 import { isLateCheckIn } from '../lib/attendanceRules';
-import { type AttendanceLog, type AttendanceStatus, type TaskItem } from '../types';
+import { getProfileColor, getProfileInitials } from '../lib/profileAppearance';
+import { type AttendanceLog, type AttendanceStatus, type Profile, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
 const cardStyle: React.CSSProperties = {
@@ -187,6 +188,30 @@ function getRecordDisplayLabel(record: AttendanceLog | null | undefined) {
   return 'OFF';
 }
 
+function getLeaveDotColor(status: string) {
+  switch (status) {
+    case 'al': return '#8b5cf6';
+    case 'sl': return '#ef4444';
+    case 'bl': return '#ec4899';
+    default: return '#94a3b8';
+  }
+}
+
+function getTeamLeaveForDate(date: string, allRecords: AttendanceLog[], currentUserId?: string | null) {
+  return allRecords.filter(
+    (r) => r.date === date && r.status !== 'present' && r.user_id !== currentUserId
+  );
+}
+
+function getLeaveTypeLabel(status: string) {
+  switch (status) {
+    case 'al': return '年假';
+    case 'sl': return '病假';
+    case 'bl': return '生日假';
+    default: return 'Other';
+  }
+}
+
 function buildMonthCalendar(month: string) {
   const [year, mm] = month.split('-').map(Number);
   const firstDay = new Date(year, mm - 1, 1);
@@ -214,6 +239,8 @@ export function CantonModePage() {
   const [monthAttendanceRecords, setMonthAttendanceRecords] = useState<AttendanceLog[]>([]);
   const [attendanceMonth, setAttendanceMonth] = useState(() => getHongKongDateString().slice(0, 7));
   const [calendarActionDate, setCalendarActionDate] = useState<string | null>(null);
+  const [allMonthRecords, setAllMonthRecords] = useState<AttendanceLog[]>([]);
+  const [profilesMap, setProfilesMap] = useState<Map<string, Profile>>(new Map());
 
   useEffect(() => {
     if (calendarActionDate) {
@@ -249,12 +276,18 @@ export function CantonModePage() {
   const loadAttendance = async () => {
     setAttendanceLoading(true);
     try {
-      const [todayAttendance, monthlyRecords] = await Promise.all([
+      const [todayAttendance, monthlyRecords, allMonthlyRecords, profilesData] = await Promise.all([
         fetchTodayAttendance(),
         fetchAttendanceRecords({ month: attendanceMonth, userId: profile?.id ?? user?.id ?? undefined }),
+        fetchAttendanceRecords({ month: attendanceMonth, includeAllUsers: true }),
+        fetchProfiles(),
       ]);
       setAttendance(todayAttendance);
       setMonthAttendanceRecords(monthlyRecords);
+      setAllMonthRecords(allMonthlyRecords);
+      const map = new Map<string, Profile>();
+      profilesData.forEach((p) => map.set(p.id, p));
+      setProfilesMap(map);
     } catch (error: any) {
       alert(`Load check-in failed: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -460,7 +493,35 @@ export function CantonModePage() {
                               );
                             })() : <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 800 }}>—</div>}
                           </div>
-                          <div style={{ minHeight: 24, display: 'grid', alignContent: 'end' }}>
+                          <div style={{ minHeight: 24, display: 'grid', alignContent: 'end', gap: 4 }}>
+                            {(() => {
+                              const teamLeave = getTeamLeaveForDate(cell.date, allMonthRecords, profile?.id ?? user?.id ?? undefined);
+                              const visibleDots = teamLeave.slice(0, 3);
+                              const overflow = teamLeave.length - 3;
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+                                  {visibleDots.map((leave) => {
+                                    const p = profilesMap.get(leave.user_id);
+                                    return (
+                                      <div
+                                        key={leave.id}
+                                        style={{
+                                          width: 6,
+                                          height: 6,
+                                          borderRadius: '50%',
+                                          background: getLeaveDotColor(leave.status),
+                                          flexShrink: 0,
+                                        }}
+                                        title={p ? `${p.name} · ${getLeaveTypeLabel(leave.status)}` : getLeaveTypeLabel(leave.status)}
+                                      />
+                                    );
+                                  })}
+                                  {overflow > 0 && (
+                                    <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, lineHeight: 1 }}>+{overflow}</span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             {holiday ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : record?.note ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
                           </div>
                         </button>
@@ -520,6 +581,35 @@ export function CantonModePage() {
               <button onClick={() => setCalendarActionDate(null)} style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: '#f1f5f9', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 14, fontWeight: 900 }}>✕</button>
             </div>
             <div style={{ display: 'grid', gap: 10 }}>
+              {calendarActionDate && (() => {
+                const teamLeave = getTeamLeaveForDate(calendarActionDate, allMonthRecords, profile?.id ?? user?.id ?? undefined);
+                if (teamLeave.length === 0) return null;
+                return (
+                  <div style={{ display: 'grid', gap: 8, padding: '12px 0', borderBottom: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>當日放假 · {teamLeave.length}人</div>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {teamLeave.map((leave) => {
+                        const p = profilesMap.get(leave.user_id);
+                        const color = p ? getProfileColor(p) : '#94a3b8';
+                        const initials = p ? getProfileInitials(p.name) : '?';
+                        const { period } = parseLeaveNote(leave.note);
+                        const periodText = period ? getLeavePeriodLabel(period) : '';
+                        return (
+                          <div key={leave.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 8, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flexShrink: 0 }}>{initials}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', lineHeight: 1.2 }}>{p?.name ?? 'Unknown'}</div>
+                              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, marginTop: 2 }}>
+                                <span style={{ color: getLeaveDotColor(leave.status) }}>●</span> {getLeaveTypeLabel(leave.status)}{periodText ? ` · ${periodText}` : ''}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
               {(['al', 'sl', 'bl', 'other'] as const).map((status) => (
                 <div key={status} style={{ display: 'grid', gap: 6 }}>
                   <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}</div>
