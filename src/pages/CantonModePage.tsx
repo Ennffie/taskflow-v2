@@ -572,7 +572,45 @@ export function CantonModePage() {
         onClick={() => setCalendarActionDate(null)}
         style={{ position: 'fixed', inset: 0, zIndex: 110, background: calendarActionDate ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0)', opacity: calendarActionDate ? 1 : 0, transition: 'opacity 0.35s ease', pointerEvents: calendarActionDate ? 'auto' : 'none' }}
       />
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 120, borderRadius: '24px 24px 0 0', background: '#fff', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', padding: '20px 16px 28px', display: 'grid', gap: 14, transform: calendarActionDate ? 'translateY(0)' : 'translateY(100%)', opacity: calendarActionDate ? 1 : 0, transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease', pointerEvents: calendarActionDate ? 'auto' : 'none' }}>
+      <div
+        ref={(el) => {
+          if (!el) return;
+          let startY = 0;
+          let currentY = 0;
+          const onStart = (e: TouchEvent) => { startY = e.touches[0].clientY; currentY = startY; };
+          const onMove = (e: TouchEvent) => {
+            currentY = e.touches[0].clientY;
+            const delta = currentY - startY;
+            if (delta > 0) {
+              el.style.transform = `translateY(${delta}px)`;
+              el.style.transition = 'none';
+            }
+          };
+          const onEnd = () => {
+            const delta = currentY - startY;
+            el.style.transition = 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease';
+            if (delta > 80) {
+              setCalendarActionDate(null);
+            } else {
+              el.style.transform = 'translateY(0)';
+            }
+          };
+          el.addEventListener('touchstart', onStart, { passive: true });
+          el.addEventListener('touchmove', onMove, { passive: true });
+          el.addEventListener('touchend', onEnd);
+          return () => {
+            el.removeEventListener('touchstart', onStart);
+            el.removeEventListener('touchmove', onMove);
+            el.removeEventListener('touchend', onEnd);
+          };
+        }}
+        onClick={(e) => { if (e.target === e.currentTarget) setCalendarActionDate(null); }}
+        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 120, borderRadius: '24px 24px 0 0', background: '#fff', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', padding: '8px 16px 28px', display: 'grid', gap: 14, transform: calendarActionDate ? 'translateY(0)' : 'translateY(100%)', opacity: calendarActionDate ? 1 : 0, transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease', pointerEvents: calendarActionDate ? 'auto' : 'none' }}
+      >
+            {/* Drag handle */}
+            <div style={{ display: 'grid', placeItems: 'center', padding: '4px 0 8px', cursor: 'grab' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#cbd5e1' }} />
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div>
                 <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a' }}>{calendarActionDate}</div>
