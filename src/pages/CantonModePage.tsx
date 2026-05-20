@@ -3,7 +3,7 @@ import { AlertTriangle, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Ch
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
 import { checkInToday, clearAttendanceByDate, clearTodayAttendance, fetchAttendanceRecords, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceTime } from '../lib/api';
-import { AppShell } from '../components/AppShell';
+import { AppShell, notifyModalClose, notifyModalOpen } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
@@ -214,6 +214,14 @@ export function CantonModePage() {
   const [monthAttendanceRecords, setMonthAttendanceRecords] = useState<AttendanceLog[]>([]);
   const [attendanceMonth, setAttendanceMonth] = useState(() => getHongKongDateString().slice(0, 7));
   const [calendarActionDate, setCalendarActionDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (calendarActionDate) {
+      notifyModalOpen();
+    } else {
+      notifyModalClose();
+    }
+  }, [calendarActionDate]);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [isPortrait, setIsPortrait] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -498,13 +506,12 @@ export function CantonModePage() {
         </div>
       </div>
       {showModal && <TaskFormModal onClose={() => setShowModal(false)} onCreated={loadTasks} variant="canton" />}
-      {calendarActionDate && (
-        <>
-          <div
-            onClick={() => setCalendarActionDate(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.35)' }}
-          />
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, borderRadius: '24px 24px 0 0', background: '#fff', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', padding: '20px 16px 28px', display: 'grid', gap: 14, animation: 'cantonSheetUp 0.35s cubic-bezier(0.16,1,0.3,1)' }}>
+      <>
+      <div
+        onClick={() => setCalendarActionDate(null)}
+        style={{ position: 'fixed', inset: 0, zIndex: 110, background: calendarActionDate ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0)', opacity: calendarActionDate ? 1 : 0, transition: 'opacity 0.35s ease', pointerEvents: calendarActionDate ? 'auto' : 'none' }}
+      />
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 120, borderRadius: '24px 24px 0 0', background: '#fff', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', padding: '20px 16px 28px', display: 'grid', gap: 14, transform: calendarActionDate ? 'translateY(0)' : 'translateY(100%)', opacity: calendarActionDate ? 1 : 0, transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease', pointerEvents: calendarActionDate ? 'auto' : 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div>
                 <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a' }}>{calendarActionDate}</div>
@@ -521,6 +528,7 @@ export function CantonModePage() {
                       <button
                         key={`${status}-${period}`}
                         onClick={async () => {
+                          if (!calendarActionDate) return;
                           const detail = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
                           const note = buildLeaveNote(period, detail);
                           setCheckInLoading(true);
@@ -542,9 +550,10 @@ export function CantonModePage() {
                   </div>
                 </div>
               ))}
-              {attendanceRecordMap.get(calendarActionDate) ? (
+              {calendarActionDate && attendanceRecordMap.get(calendarActionDate) ? (
                 <button
                   onClick={async () => {
+                    if (!calendarActionDate) return;
                     setCheckInLoading(true);
                     try {
                       await clearAttendanceByDate(calendarActionDate);
@@ -565,7 +574,6 @@ export function CantonModePage() {
           </div>
           <style>{`@keyframes cantonSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
         </>
-      )}
 
     </AppShell>
   );

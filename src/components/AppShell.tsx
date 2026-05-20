@@ -96,14 +96,13 @@ export function AppShell({ children, onAddTask: _onAddTask }: AppShellProps) {
             position: 'fixed', 
             bottom: '16px', 
             left: '50%', 
-            transform: 'translateX(-50%)',
+            transform: isModalOpen ? 'translateX(-50%) translateY(140px)' : 'translateX(-50%)',
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
             zIndex: 100,
-            filter: isModalOpen ? 'blur(4px)' : 'none',
-            opacity: isModalOpen ? 0.6 : 1,
-            transition: 'filter 0.3s ease, opacity 0.3s ease',
+            opacity: isModalOpen ? 0 : 1,
+            transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), filter 0.3s ease, opacity 0.3s ease',
             pointerEvents: isModalOpen ? 'none' : 'auto',
           }}
         >
