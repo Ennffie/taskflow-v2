@@ -521,6 +521,7 @@ export function CantonModePage() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
                                   {visibleDots.map((leave) => {
                                     const p = profilesMap.get(leave.user_id);
+                                    const dotColor = p ? getProfileColor(p) : getLeaveDotColor(leave.status);
                                     return (
                                       <div
                                         key={leave.id}
@@ -528,7 +529,7 @@ export function CantonModePage() {
                                           width: 6,
                                           height: 6,
                                           borderRadius: '50%',
-                                          background: getLeaveDotColor(leave.status),
+                                          background: dotColor,
                                           flexShrink: 0,
                                         }}
                                         title={p ? `${p.name} · ${getLeaveTypeLabel(leave.status)}` : getLeaveTypeLabel(leave.status)}
