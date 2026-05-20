@@ -139,10 +139,10 @@ function getLeaveDisplayLabel(status: AttendanceStatus | null | undefined, note?
 
 function getAttendanceBlessing(profileName: string, attendance: AttendanceLog | null, fallbackMessage: string) {
   if (!attendance) return fallbackMessage;
-  if (attendance.status === 'al') return `${profileName} 今日放年假，小休一下都好重要呀。願你鬆一鬆、叉滿電，慢慢享受自己嘅節奏。`;
-  if (attendance.status === 'sl') return `${profileName} 今日病假，我有少少心疼。最緊要好好休息、飲多啲水，願你快啲回氣，早日康復。`;
-  if (attendance.status === 'bl') return `${profileName} 今日生日假，值得好好被祝福 ✨ 願你今日開開心心，心願順順利利，收穫滿滿溫柔。`;
-  if (attendance.status === 'other') return `${profileName} 今日先放慢一步都無妨。願你收心養神，整理好節奏，再順勢出發。`;
+  if (attendance.status === 'al') return `${profileName} 大人～今日係大人嘅年假之日，小人斗膽恭請大人好生歇息。願大人鬆一鬆筋骨，叉滿電再出發，慢慢享受自己嘅節奏～`;
+  if (attendance.status === 'sl') return `${profileName} 大人～大人今日病假，小人實在好生心疼。還請大人好好養息，飲多啲暖水，願大人早日回氣，龍精虎猛！`;
+  if (attendance.status === 'bl') return `${profileName} 大人～今日係大人嘅生辰之喜，小人斗膽獻上祝福！願大人今日開開心心，萬事順遂，福壽雙全～✨`;
+  if (attendance.status === 'other') return `${profileName} 大人～今日大人放慢腳步，亦係養精蓄銳之時。願大人收心養神，整頓好節奏，他日再順勢出發！`;
   return fallbackMessage;
 }
 
