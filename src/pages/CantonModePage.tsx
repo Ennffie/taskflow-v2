@@ -478,7 +478,7 @@ export function CantonModePage() {
                           style={{ minHeight: 88, borderRadius: 16, border: isSelected ? '1.5px solid #7c3aed' : isToday ? '1.5px solid #f97316' : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: 6, textAlign: 'left', cursor: 'pointer', boxShadow: isSelected ? '0 8px 18px rgba(124,58,237,0.10)' : 'none' }}
                         >
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
-                          <div style={{ display: 'grid', placeItems: 'center', minHeight: 28 }}>
+                          <div style={{ display: 'grid', placeItems: 'center', minHeight: 28, alignContent: 'center' }}>
                             {record ? (() => {
                               if (record.status === 'present' && isPortrait) {
                                 const d = record.check_in_at ? new Date(record.check_in_at) : null;
@@ -490,9 +490,24 @@ export function CantonModePage() {
                                   </div>
                                 );
                               }
+                              const label = getRecordDisplayLabel(record);
+                              if (record.status === 'present') {
+                                return (
+                                  <div style={{ fontSize: 16, lineHeight: 1, fontWeight: 950, color: '#f97316' }}>
+                                    {label}
+                                  </div>
+                                );
+                              }
+                              // Leave: AL/SL/BL/OFF with optional AM/PM
+                              const { period } = parseLeaveNote(record.note);
+                              const isHalfDay = period === 'am' || period === 'pm';
+                              const periodText = period === 'am' ? 'AM' : period === 'pm' ? 'PM' : '';
                               return (
-                                <div style={{ fontSize: record.status === 'present' ? 16 : 14, lineHeight: 1, fontWeight: 950, color: record.status === 'present' ? '#f97316' : '#9a3412' }}>
-                                  {getRecordDisplayLabel(record)}
+                                <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
+                                  <div style={{ fontSize: 14, fontWeight: 950, color: '#9a3412' }}>{label}</div>
+                                  {isHalfDay && (
+                                    <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{periodText}</div>
+                                  )}
                                 </div>
                               );
                             })() : <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 800 }}>—</div>}
@@ -526,7 +541,7 @@ export function CantonModePage() {
                                 </div>
                               );
                             })()}
-                            {holiday ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : record?.note ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#64748b', fontWeight: 700 }}>{record.note}</div> : null}
+                            {holiday ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
                           </div>
                         </button>
                       );
