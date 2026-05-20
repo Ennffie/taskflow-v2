@@ -429,7 +429,13 @@ export function CantonModePage() {
                       return (
                         <button
                           key={cell.date}
-                          onClick={() => setCalendarActionDate(cell.date)}
+                          onClick={() => {
+                            setCalendarActionDate(cell.date);
+                            window.setTimeout(() => {
+                              const el = document.getElementById('canton-calendar-action');
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }, 100);
+                          }}
                           style={{ minHeight: 88, borderRadius: 16, border: isSelected ? '1.5px solid #7c3aed' : isToday ? '1.5px solid #f97316' : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: 6, textAlign: 'left', cursor: 'pointer', boxShadow: isSelected ? '0 8px 18px rgba(124,58,237,0.10)' : 'none' }}
                         >
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
@@ -460,7 +466,7 @@ export function CantonModePage() {
                     })}
                   </div>
                   {calendarActionDate ? (
-                    <div style={{ marginTop: 8, borderRadius: 18, border: '1px solid #e9d5ff', background: '#faf5ff', padding: 12, display: 'grid', gap: 10 }}>
+                    <div id='canton-calendar-action' style={{ marginTop: 8, borderRadius: 18, border: '1px solid #e9d5ff', background: '#faf5ff', padding: 12, display: 'grid', gap: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#581c87' }}>預先請假 · {calendarActionDate}</div>
