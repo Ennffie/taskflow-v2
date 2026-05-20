@@ -179,8 +179,36 @@ function buildAttendanceFallbackEntry(params: {
 }
 
 async function getCurrentUserId(): Promise<string | null> {
-  const { data: userData } = await supabase.auth.getUser();
-  return userData.user?.id ?? null;
+  return getCachedCurrentUserId();
+}
+
+let currentUserIdPromise: Promise<string | null> | null = null;
+
+async function getCachedCurrentUserId(): Promise<string | null> {
+  if (!currentUserIdPromise) {
+    currentUserIdPromise = withRetry(async () => {
+      const { data: userData, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return userData.user?.id ?? null;
+    });
+
+    currentUserIdPromise.finally(() => {
+      window.setTimeout(() => {
+        if (currentUserIdPromise) currentUserIdPromise = null;
+      }, 150);
+    });
+  }
+
+  return currentUserIdPromise;
+}
+
+function getMonthBounds(month: string): { start: string; end: string } {
+  const [year, mm] = month.split('-').map(Number);
+  const daysInMonth = new Date(year, mm, 0).getDate();
+  return {
+    start: `${month}-01`,
+    end: `${month}-${String(daysInMonth).padStart(2, '0')}`,
+  };
 }
 
 async function fetchAttendanceByDate(userId: string, date: string): Promise<AttendanceLog | null> {
@@ -1363,7 +1391,9 @@ export async function fetchAttendanceRecords(options?: {
   month?: string;
   includeAllUsers?: boolean;
 }): Promise<AttendanceLog[]> {
-  const currentUserId = await getCurrentUserId();
+  const currentUserId = options?.includeAllUsers
+    ? await getCachedCurrentUserId()
+    : (options?.userId ?? await getCachedCurrentUserId());
   if (!currentUserId) return [];
 
   let query = supabase
@@ -1379,8 +1409,7 @@ export async function fetchAttendanceRecords(options?: {
   }
 
   if (options?.month) {
-    const start = `${options.month}-01`;
-    const end = `${options.month}-31`;
+    const { start, end } = getMonthBounds(options.month);
     query = query.gte('date', start).lte('date', end);
   }
 
