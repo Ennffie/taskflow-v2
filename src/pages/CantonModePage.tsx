@@ -7,7 +7,7 @@ import { AppShell, notifyModalClose, notifyModalOpen } from '../components/AppSh
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
-import { buildLeaveNote, getAttendanceLeaveInfo, getLeaveDisplayLabel, getLeavePeriodLabel, parseLeaveNote, type LeavePeriod } from '../lib/attendanceLeave';
+import { buildLeaveNote, getAttendanceLeaveInfo, getLeaveDisplayLabel, getLeavePeriodLabel, type LeavePeriod } from '../lib/attendanceLeave';
 import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile, getHongKongDateString } from '../lib/horoscope';
 import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib/specialDays';
 import { isLateCheckIn } from '../lib/attendanceRules';
@@ -311,6 +311,14 @@ export function CantonModePage() {
   const attendanceRecordMap = useMemo(() => new Map(monthAttendanceRecords.map((record) => [record.date, record])), [monthAttendanceRecords]);
   const attendanceCalendarCells = useMemo(() => buildMonthCalendar(attendanceMonth), [attendanceMonth]);
   const todayDate = getHongKongDateString();
+  const calendarActionRecord = useMemo(
+    () => (calendarActionDate ? attendanceRecordMap.get(calendarActionDate) ?? null : null),
+    [attendanceRecordMap, calendarActionDate]
+  );
+  const calendarActionLeaveInfo = useMemo(
+    () => getAttendanceLeaveInfo(calendarActionRecord?.status, calendarActionRecord?.note),
+    [calendarActionRecord]
+  );
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -610,7 +618,11 @@ export function CantonModePage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div>
                 <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a' }}>{calendarActionDate}</div>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginTop: 2 }}>預先請假</div>
+                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginTop: 2 }}>
+                  {calendarActionLeaveInfo
+                    ? `目前設定：${getLeaveTypeLabel(calendarActionLeaveInfo.status)} · ${getLeavePeriodLabel(calendarActionLeaveInfo.period)}`
+                    : '預先請假'}
+                </div>
               </div>
               <button onClick={() => setCalendarActionDate(null)} style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: '#f1f5f9', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 14, fontWeight: 900 }}>✕</button>
             </div>
@@ -626,8 +638,8 @@ export function CantonModePage() {
                         const p = profilesMap.get(leave.user_id);
                         const color = p ? getProfileColor(p) : '#94a3b8';
                         const initials = p ? getProfileInitials(p.name) : '?';
-                        const { period } = parseLeaveNote(leave.note);
-                        const periodText = period ? getLeavePeriodLabel(period) : '';
+                        const leaveInfo = getAttendanceLeaveInfo(leave.status, leave.note);
+                        const periodText = leaveInfo ? getLeavePeriodLabel(leaveInfo.period) : '';
                         return (
                           <div key={leave.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{ width: 28, height: 28, borderRadius: 8, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flexShrink: 0 }}>{initials}</div>
@@ -648,33 +660,46 @@ export function CantonModePage() {
                 <div key={status} style={{ display: 'grid', gap: 6 }}>
                   <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                    {(['full_day', 'am', 'pm'] as const).map((period) => (
-                      <button
-                        key={`${status}-${period}`}
-                        onClick={async () => {
-                          if (!calendarActionDate) return;
-                          const detail = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
-                          const note = buildLeaveNote(period, detail);
-                          setCheckInLoading(true);
-                          try {
-                            await markOffDate(calendarActionDate, status, note, 'canton_calendar', profile?.id ?? user?.id ?? undefined);
-                            void loadAttendance();
-                          } catch (error: any) {
-                            alert(`Set leave failed: ${error?.message || 'Unknown error'}`);
-                          } finally {
-                            setCheckInLoading(false);
-                          }
-                        }}
-                        disabled={checkInLoading}
-                        style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', padding: '12px 6px', fontSize: 13, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer', opacity: checkInLoading ? 0.7 : 1 }}
-                      >
-                        {getLeavePeriodLabel(period)}
-                      </button>
-                    ))}
+                    {(['full_day', 'am', 'pm'] as const).map((period) => {
+                      const active = calendarActionLeaveInfo?.status === status && (calendarActionLeaveInfo.period ?? 'full_day') === period;
+                      return (
+                        <button
+                          key={`${status}-${period}`}
+                          onClick={async () => {
+                            if (!calendarActionDate) return;
+                            const detail = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
+                            const note = buildLeaveNote(period, detail);
+                            setCheckInLoading(true);
+                            try {
+                              await markOffDate(calendarActionDate, status, note, 'canton_calendar', profile?.id ?? user?.id ?? undefined);
+                              void loadAttendance();
+                            } catch (error: any) {
+                              alert(`Set leave failed: ${error?.message || 'Unknown error'}`);
+                            } finally {
+                              setCheckInLoading(false);
+                            }
+                          }}
+                          disabled={checkInLoading}
+                          style={{
+                            borderRadius: 12,
+                            border: active ? '1px solid #fb923c' : '1px solid #e2e8f0',
+                            background: active ? '#f97316' : '#f8fafc',
+                            color: active ? '#fff' : '#0f172a',
+                            padding: '12px 6px',
+                            fontSize: 13,
+                            fontWeight: 900,
+                            cursor: checkInLoading ? 'default' : 'pointer',
+                            opacity: checkInLoading ? 0.7 : 1,
+                          }}
+                        >
+                          {getLeavePeriodLabel(period)}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
-              {calendarActionDate && attendanceRecordMap.get(calendarActionDate) ? (
+              {calendarActionDate && calendarActionRecord ? (
                 <button
                   onClick={async () => {
                     if (!calendarActionDate) return;
