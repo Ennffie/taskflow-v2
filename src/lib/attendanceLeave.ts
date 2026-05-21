@@ -60,15 +60,21 @@ export function parseEmbeddedLeaveNote(note: string | null | undefined): { statu
 
 export function getAttendanceLeaveInfo(status: AttendanceStatus | null | undefined, note: string | null | undefined): { status: LeaveStatus; period: LeavePeriod; detail: string; embedded: boolean } | null {
   if (!status) return null;
-  if (status === 'present') {
-    const embedded = parseEmbeddedLeaveNote(note);
-    if (!embedded) return null;
-    return { ...embedded, embedded: true };
+  const embedded = parseEmbeddedLeaveNote(note);
+  if (embedded) {
+    if (status === 'present') return { ...embedded, embedded: true };
+    return {
+      status: status as LeaveStatus,
+      period: embedded.period,
+      detail: embedded.detail,
+      embedded: true,
+    };
   }
+  if (status === 'present') return null;
 
   const parsed = parseLeaveNote(note);
   return {
-    status,
+    status: status as LeaveStatus,
     period: parsed.period ?? 'full_day',
     detail: parsed.detail,
     embedded: false,
