@@ -3,6 +3,7 @@ import { AppShell } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
 import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
 import { deleteAttendanceRecord, fetchAttendanceRecords, fetchProfiles, updateAttendanceStatus, updateAttendanceTime, updateTodayAttendanceTime } from '../lib/api';
+import { formatAttendanceNote } from '../lib/attendanceLeave';
 import { useAuth } from '../contexts/AuthContext';
 import { getHongKongDateString } from '../lib/horoscope';
 import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
@@ -292,7 +293,7 @@ export function AttendanceRecordPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{formatDay(record.date)}</div>
-                      {record.note ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{record.note}</div> : null}
+                      {formatAttendanceNote(record.status, record.note) ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{formatAttendanceNote(record.status, record.note)}</div> : null}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {canEditTime ? (
@@ -509,7 +510,7 @@ export function AttendanceRecordPage() {
                             <div style={{ width: 10, height: 10, borderRadius: '50%', background: myRecord.status === 'al' ? '#34C759' : myRecord.status === 'sl' ? '#FFCC00' : myRecord.status === 'bl' ? '#FF3B30' : '#FF9500' }} />
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{leaveOptions.find((o) => o.status === myRecord.status)?.label ?? myRecord.status.toUpperCase()}</div>
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{myRecord.note ?? '全日'}</div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{formatAttendanceNote(myRecord.status, myRecord.note) ?? '全日'}</div>
                             </div>
                           </div>
                           <button
@@ -661,7 +662,7 @@ export function AttendanceRecordPage() {
                                     <div style={{ width: 28, height: 28, borderRadius: 10, background: pColor, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flex: '0 0 auto' }}>{pInitials}</div>
                                     <div>
                                       <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{p?.name ?? 'Unknown'}</div>
-                                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{r.note ?? '—'}</div>
+                                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{formatAttendanceNote(r.status, r.note) ?? '—'}</div>
                                     </div>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

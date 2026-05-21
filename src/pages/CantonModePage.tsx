@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, Sparkles, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
-import { checkInToday, clearAttendanceByDate, clearTodayAttendance, fetchAttendanceRecords, fetchProfiles, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceTime } from '../lib/api';
+import { checkInToday, clearAttendanceByDate, clearTodayAttendance, fetchAttendanceRecords, fetchProfiles, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceNote, updateTodayAttendanceTime } from '../lib/api';
 import { AppShell, notifyModalClose, notifyModalOpen } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { MAX_VISIBLE_PLANETS, getPlanetAngle, getPlanetLaneRadius, getPlanetSize } from '../lib/cantonOrbit';
+import { buildLeaveNote, getAttendanceLeaveInfo, getLeaveDisplayLabel, getLeavePeriodLabel, parseLeaveNote, type LeavePeriod } from '../lib/attendanceLeave';
 import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForProfile, getHongKongDateString } from '../lib/horoscope';
 import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib/specialDays';
 import { isLateCheckIn } from '../lib/attendanceRules';
@@ -95,47 +96,6 @@ function hexToRgba(hex: string, alpha: number) {
   const g = (value >> 8) & 255;
   const b = value & 255;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-type LeavePeriod = 'full_day' | 'am' | 'pm';
-
-function getLeaveLabel(status: AttendanceStatus | null | undefined) {
-  if (status === 'al') return '年假';
-  if (status === 'sl') return '病假';
-  if (status === 'bl') return '生日假';
-  if (status === 'other') return '其他假';
-  return '';
-}
-
-function getLeavePeriodLabel(period: LeavePeriod | null | undefined) {
-  if (period === 'am') return '上午';
-  if (period === 'pm') return '下午';
-  return '全日';
-}
-
-function parseLeaveNote(note: string | null | undefined): { period: LeavePeriod | null; detail: string } {
-  const value = (note ?? '').trim();
-  if (!value) return { period: null, detail: '' };
-  if (value === '全日') return { period: 'full_day', detail: '' };
-  if (value === '上午') return { period: 'am', detail: '' };
-  if (value === '下午') return { period: 'pm', detail: '' };
-  if (value.startsWith('全日｜')) return { period: 'full_day', detail: value.slice(3) };
-  if (value.startsWith('上午｜')) return { period: 'am', detail: value.slice(3) };
-  if (value.startsWith('下午｜')) return { period: 'pm', detail: value.slice(3) };
-  return { period: null, detail: value };
-}
-
-function buildLeaveNote(period: LeavePeriod, detail?: string | null) {
-  const periodLabel = getLeavePeriodLabel(period);
-  const trimmed = detail?.trim();
-  return trimmed ? `${periodLabel}｜${trimmed}` : periodLabel;
-}
-
-function getLeaveDisplayLabel(status: AttendanceStatus | null | undefined, note?: string | null) {
-  const leaveLabel = getLeaveLabel(status);
-  if (!leaveLabel) return '';
-  const { period } = parseLeaveNote(note);
-  return period ? `${leaveLabel}（${getLeavePeriodLabel(period)}）` : leaveLabel;
 }
 
 function getAttendanceBlessing(profileName: string, attendance: AttendanceLog | null, fallbackMessage: string) {
@@ -392,12 +352,17 @@ export function CantonModePage() {
                 }}
                 onMarkOff={async (status, period) => {
                   if (checkInLoading) return;
-                  const currentPeriod = parseLeaveNote(attendance?.note).period ?? 'full_day';
-                  if (attendance?.status === status && currentPeriod === period) {
+                  const currentLeave = getAttendanceLeaveInfo(attendance?.status, attendance?.note);
+                  if (currentLeave?.status === status && currentLeave.period === period) {
                     setCheckInLoading(true);
                     try {
-                      await clearTodayAttendance();
-                      setAttendance(null);
+                      if (attendance?.status === 'present') {
+                        const next = await updateTodayAttendanceNote(null);
+                        setAttendance(next);
+                      } else {
+                        await clearTodayAttendance();
+                        setAttendance(null);
+                      }
                       void loadAttendance();
                     } catch (error: any) {
                       alert(`Cancel leave failed: ${error?.message || 'Unknown error'}`);
@@ -775,28 +740,29 @@ function AttendanceCheckInCard({
         : getAttendanceBlessing(profileName, attendance, horoscope.message);
   const dateLabel = formatHongKongDateLabel(today);
   const timeLabel = attendance?.check_in_at ? formatHongKongTimeLabel(attendance.check_in_at) : '—:—';
-  const leaveLabel = getLeaveLabel(attendance?.status);
+  const leaveInfo = getAttendanceLeaveInfo(attendance?.status, attendance?.note);
   const leaveDisplayLabel = getLeaveDisplayLabel(attendance?.status, attendance?.note);
-  const leaveMeta = parseLeaveNote(attendance?.note);
+  const hasHalfDayLeave = leaveInfo?.period === 'am' || leaveInfo?.period === 'pm';
+  const canShowTimeEditor = attendance?.status === 'present';
   const displayLabel = publicHoliday
     ? publicHoliday.greeting
     : isWeekend
       ? '今日唔駛上班哦～'
       : attendance?.status === 'present'
         ? timeLabel
-        : leaveDisplayLabel || leaveLabel || '—:—';
+        : leaveDisplayLabel || '—:—';
   const helperText = publicHoliday
     ? `今日係公眾假期：${publicHoliday.name}`
-    : attendance && attendance.status !== 'present'
-      ? `今日：${leaveDisplayLabel || leaveLabel}${leaveMeta.detail ? ` · ${leaveMeta.detail}` : ''}`
+    : leaveInfo
+      ? `今日：${leaveDisplayLabel}${leaveInfo.detail ? ` · ${leaveInfo.detail}` : ''}${hasHalfDayLeave ? ' · 都要簽到' : ''}`
       : '';
 
   useEffect(() => {
     setSelectedTime(getTimeValueFromAttendance(attendance));
-    if (attendance?.status !== 'present') {
+    if (!canShowTimeEditor) {
       setShowTimePicker(false);
     }
-  }, [attendance?.check_in_at, attendance?.status]);
+  }, [attendance?.check_in_at, canShowTimeEditor]);
 
   useEffect(() => {
     setShowLeaveOptions(false);
@@ -837,7 +803,7 @@ function AttendanceCheckInCard({
                   <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'stretch' }}>
                     <button
                       onClick={() => {
-                        if (attendance?.status === 'present') {
+                        if (canShowTimeEditor) {
                           setShowTimePicker((current) => !current);
                           return;
                         }
@@ -849,20 +815,20 @@ function AttendanceCheckInCard({
                         border: 'none',
                         borderRadius: 18,
                         padding: '15px 18px',
-                        background: attendance ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
-                        color: attendance ? '#c2410c' : '#fff',
+                        background: canShowTimeEditor ? '#fff7ed' : 'linear-gradient(135deg, #fb7185 0%, #f59e0b 100%)',
+                        color: canShowTimeEditor ? '#c2410c' : '#fff',
                         fontSize: 16,
                         fontWeight: 900,
-                        boxShadow: attendance ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
+                        boxShadow: canShowTimeEditor ? '0 10px 22px rgba(251,146,60,0.14)' : '0 14px 26px rgba(249,115,22,0.24)',
                         cursor: loading || checkingIn ? 'default' : 'pointer',
                         opacity: checkingIn ? 0.82 : 1,
                       }}
                     >
-                      {checkingIn ? '處理中…' : attendance ? '唔好意思我想改' : '簽到'}
+                      {checkingIn ? '處理中…' : canShowTimeEditor ? '唔好意思我想改' : '簽到'}
                     </button>
                   </div>
 
-                  {attendance?.status === 'present' && showTimePicker ? (
+                  {canShowTimeEditor && showTimePicker ? (
                     <div style={{ marginTop: 12, display: 'grid', gap: 10, padding: 12, borderRadius: 18, background: '#fff7ed', border: '1px solid #fed7aa' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                         <div style={{ color: '#9a3412', fontSize: 13, fontWeight: 900 }}>重新揀今日簽到時間</div>
@@ -918,7 +884,7 @@ function AttendanceCheckInCard({
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ display: 'grid', gap: 8, paddingTop: showLeaveOptions ? 8 : 0, transform: showLeaveOptions ? 'translateY(0)' : 'translateY(-6px)', transition: 'transform 220ms ease, padding-top 220ms ease' }}>
                     {(['al', 'sl', 'bl', 'other'] as const).map((status) => {
-                      const active = attendance?.status === status;
+                      const active = leaveInfo?.status === status;
                       const selecting = pendingLeaveStatus === status;
                       return (
                         <button
@@ -936,7 +902,7 @@ function AttendanceCheckInCard({
                         <div style={{ fontSize: 11, fontWeight: 900, color: '#94a3b8', textAlign: 'center' }}>時段</div>
                         <div style={{ display: 'grid', gap: 8 }}>
                           {(['full_day', 'am', 'pm'] as const).map((period) => {
-                            const active = attendance?.status === pendingLeaveStatus && (parseLeaveNote(attendance?.note).period ?? 'full_day') === period;
+                            const active = leaveInfo?.status === pendingLeaveStatus && (leaveInfo.period ?? 'full_day') === period;
                             return (
                               <button
                                 key={period}

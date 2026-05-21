@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { getReportDate } from './date';
 import { getHongKongDateString } from './horoscope';
+import { buildEmbeddedLeaveNote, getAttendanceLeaveInfo, parseLeaveNote } from './attendanceLeave';
 import type { AttendanceLog, AttendanceStatus, LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
 // Fetch bridge URL from Supabase app_config
@@ -272,12 +273,28 @@ async function upsertAttendanceForDate(params: {
   const date = params.date;
   const note = normalizeAttendanceNote(params.note);
   const existing = await fetchAttendanceByDate(userId, date);
+  const requestedLeave = params.status === 'present' ? null : parseLeaveNote(note);
+  const isHalfDayLeaveRequest = Boolean(requestedLeave?.period && requestedLeave.period !== 'full_day');
+  const existingLeave = existing ? getAttendanceLeaveInfo(existing.status, existing.note) : null;
+  const nextStatus: AttendanceStatus = params.status !== 'present' && isHalfDayLeaveRequest && existing?.status === 'present'
+    ? 'present'
+    : params.status;
+  const nextCheckInAt = params.status !== 'present' && isHalfDayLeaveRequest && existing?.status === 'present'
+    ? existing.check_in_at
+    : params.checkInAt;
+  const nextNote = params.status === 'present'
+    ? (existingLeave && existingLeave.period !== 'full_day'
+      ? buildEmbeddedLeaveNote(existingLeave.status, existingLeave.period, existingLeave.detail)
+      : note)
+    : (isHalfDayLeaveRequest && requestedLeave?.period && requestedLeave.period !== 'full_day'
+      ? buildEmbeddedLeaveNote(params.status, requestedLeave.period, requestedLeave.detail)
+      : note);
   const payload = {
     user_id: userId,
     date,
-    status: params.status,
-    check_in_at: params.checkInAt,
-    note,
+    status: nextStatus,
+    check_in_at: nextCheckInAt,
+    note: nextNote,
     source: params.source ?? 'manual',
   };
 
@@ -293,9 +310,9 @@ async function upsertAttendanceForDate(params: {
       const fallbackEntry = buildAttendanceFallbackEntry({
         userId,
         date,
-        status: params.status,
-        checkInAt: params.checkInAt,
-        note,
+        status: nextStatus,
+        checkInAt: nextCheckInAt,
+        note: nextNote,
         source: params.source ?? 'manual',
         existingId: existingFallback?.id,
         createdAt: existingFallback?.created_at,
