@@ -445,33 +445,44 @@ export function CantonModePage() {
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
                           <div style={{ display: 'grid', placeItems: 'center', minHeight: 28, alignContent: 'center' }}>
                             {record ? (() => {
+                              const leaveInfo = getAttendanceLeaveInfo(record.status, record.note);
+                              const halfDayIndicator = leaveInfo && (leaveInfo.period === 'am' || leaveInfo.period === 'pm')
+                                ? (leaveInfo.period === 'am' ? 'AM' : 'PM')
+                                : '';
                               if (record.status === 'present' && isPortrait) {
                                 const d = record.check_in_at ? new Date(record.check_in_at) : null;
                                 const minutes = d ? d.getHours() * 60 + d.getMinutes() : 0;
                                 const late = isLateCheckIn(minutes, profile);
                                 return (
-                                  <div style={{ fontSize: 20, lineHeight: 1, fontWeight: 950, color: late ? '#ef4444' : '#22c55e' }}>
-                                    {late ? '✗' : '✓'}
+                                  <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
+                                    <div style={{ fontSize: 20, fontWeight: 950, color: late ? '#ef4444' : '#22c55e' }}>
+                                      {late ? '✗' : '✓'}
+                                    </div>
+                                    {halfDayIndicator ? (
+                                      <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
+                                    ) : null}
                                   </div>
                                 );
                               }
                               const label = getRecordDisplayLabel(record);
                               if (record.status === 'present') {
                                 return (
-                                  <div style={{ fontSize: 16, lineHeight: 1, fontWeight: 950, color: '#f97316' }}>
-                                    {label}
+                                  <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
+                                    <div style={{ fontSize: 16, fontWeight: 950, color: '#f97316' }}>
+                                      {label}
+                                    </div>
+                                    {halfDayIndicator ? (
+                                      <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
+                                    ) : null}
                                   </div>
                                 );
                               }
                               // Leave: AL/SL/BL/OFF with optional AM/PM
-                              const { period } = parseLeaveNote(record.note);
-                              const isHalfDay = period === 'am' || period === 'pm';
-                              const periodText = period === 'am' ? 'AM' : period === 'pm' ? 'PM' : '';
                               return (
                                 <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
                                   <div style={{ fontSize: 14, fontWeight: 950, color: '#9a3412' }}>{label}</div>
-                                  {isHalfDay && (
-                                    <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{periodText}</div>
+                                  {halfDayIndicator && (
+                                    <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
                                   )}
                                 </div>
                               );
