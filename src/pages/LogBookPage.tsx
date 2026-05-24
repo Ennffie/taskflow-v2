@@ -12,6 +12,26 @@ import { panelStyle } from './TaskListPage';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
 
+function parseStructuredDescription(description: string | null | undefined): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!description) return result;
+  description.split('\n').forEach((line) => {
+    const match = line.match(/^([^:]+):\s*(.+)$/);
+    if (!match) return;
+    result[match[1].trim()] = match[2].trim();
+  });
+  return result;
+}
+
+function getTagValue(tags: string[], prefix: string): string | null {
+  const match = tags.find((tag) => tag.startsWith(prefix));
+  return match ? match.slice(prefix.length) : null;
+}
+
+function getTagValues(tags: string[], prefix: string): string[] {
+  return tags.filter((tag) => tag.startsWith(prefix)).map((tag) => tag.slice(prefix.length));
+}
+
 function getEffectiveRound(task: { round_number?: number | null; status?: TaskStatus | null }): number {
   const explicitRound = task.round_number && task.round_number >= 1 ? task.round_number : 1;
   const status = task.status ?? 'todo';
@@ -301,6 +321,29 @@ export function LogBookPage() {
     : task.status;
   const status = getStatusMeta(effectiveStatusKey);
   const priority = PRIORITY_META[task.priority];
+  const structuredDescription = useMemo(() => parseStructuredDescription(task.description), [task.description]);
+  const crceRole = getTagValue(task.tags, 'role:');
+  const crcePortal = getTagValue(task.tags, 'portal:');
+  const crcePortalOther = getTagValue(task.tags, 'portal-other:');
+  const crceCopywriting = getTagValue(task.tags, 'copywriting:');
+  const crceFeatures = getTagValues(task.tags, 'feature:');
+  const crceFeatureOther = getTagValue(task.tags, 'feature-other:');
+  const hasCrceDetails = Boolean(
+    crceRole ||
+    crcePortal ||
+    crceCopywriting ||
+    crceFeatures.length ||
+    structuredDescription['Today update'] ||
+    structuredDescription['Requestor'] ||
+    structuredDescription['Received on'] ||
+    structuredDescription['Requirement received'] ||
+    structuredDescription['DEV start'] ||
+    structuredDescription['Target CM completion'] ||
+    structuredDescription['Target draft 1'] ||
+    structuredDescription['Target draft 2'] ||
+    structuredDescription['Target draft 3'] ||
+    structuredDescription['Copywriting ready']
+  );
 
   const inputStyle = {
     width: '100%',
@@ -457,6 +500,53 @@ export function LogBookPage() {
               </div>
               </div>
             </div>
+
+            {hasCrceDetails && (
+              <div style={{ display: 'grid', gap: '10px', padding: '14px', borderRadius: '12px', background: '#fafafa', border: '1px solid #e5e7eb' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  CRCE Details
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                  {crceRole && <MetaItem label="Role" value={crceRole} />}
+                  {crcePortal && <MetaItem label="Portal" value={crcePortalOther ? `${crcePortal} (${crcePortalOther})` : crcePortal} />}
+                  {crceCopywriting && <MetaItem label="Copywriting" value={crceCopywriting} />}
+                  {structuredDescription['Requestor'] && <MetaItem label="Requestor" value={structuredDescription['Requestor']} />}
+                  {structuredDescription['Received on'] && <MetaItem label="Received on" value={structuredDescription['Received on']} />}
+                  {structuredDescription['Requirement received'] && <MetaItem label="Requirement received" value={structuredDescription['Requirement received']} />}
+                  {structuredDescription['DEV start'] && <MetaItem label="DEV start" value={structuredDescription['DEV start']} />}
+                  {structuredDescription['Target CM completion'] && <MetaItem label="Target CM completion" value={structuredDescription['Target CM completion']} />}
+                  {structuredDescription['Target draft 1'] && <MetaItem label="Target draft 1" value={structuredDescription['Target draft 1']} />}
+                  {structuredDescription['Target draft 2'] && <MetaItem label="Target draft 2" value={structuredDescription['Target draft 2']} />}
+                  {structuredDescription['Target draft 3'] && <MetaItem label="Target draft 3" value={structuredDescription['Target draft 3']} />}
+                  {structuredDescription['Copywriting ready'] && <MetaItem label="Copywriting ready" value={structuredDescription['Copywriting ready']} />}
+                </div>
+                {(crceFeatures.length > 0 || crceFeatureOther) && (
+                  <div style={{ display: 'grid', gap: '6px' }}>
+                    <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 700 }}>Features</div>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {crceFeatures.map((feature) => (
+                        <span key={feature} style={{ fontSize: '12px', fontWeight: 700, color: '#475569', background: '#eef2ff', padding: '6px 10px', borderRadius: '999px' }}>
+                          {feature}
+                        </span>
+                      ))}
+                      {crceFeatureOther && (
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', background: '#fef3c7', padding: '6px 10px', borderRadius: '999px' }}>
+                          Other: {crceFeatureOther}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {structuredDescription['Today update'] && (
+                  <div style={{ display: 'grid', gap: '6px' }}>
+                    <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 700 }}>Today&apos;s update</div>
+                    <div style={{ fontSize: '13px', lineHeight: 1.6, color: '#111827', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px 12px' }}>
+                      {structuredDescription['Today update']}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {!task.parent_id && (
@@ -683,5 +773,14 @@ function Badge({ bg, color, text }: { bg: string; color: string; text: string })
     <span style={{ borderRadius: '6px', background: bg, color, padding: '3px 8px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
       {text}
     </span>
+  );
+}
+
+function MetaItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginTop: '2px', wordBreak: 'break-word' }}>{value}</div>
+    </div>
   );
 }

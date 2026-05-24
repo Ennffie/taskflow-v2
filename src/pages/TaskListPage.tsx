@@ -24,6 +24,12 @@ interface ImportRow {
   assigneeNames: string[];
   dueDate: string | null;
   description: string;
+  source?: 'generic' | 'crce_tracker';
+  importKind?: 'task' | 'subtask';
+  mainTaskId?: string | null;
+  mainTaskTitle?: string;
+  subtaskTitle?: string | null;
+  tags?: string[];
 }
 
 
@@ -631,6 +637,30 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     setParsing(true);
 
     sheetToJsonRows(wb, sheetName).then((data: any) => {
+      const normalizeCell = (value: unknown) => String(value ?? '').trim();
+      const buildCrceMainTitle = (ticketNo: string, description: string) => {
+        if (ticketNo && description) return `${ticketNo} - ${description}`;
+        return ticketNo || description || 'Untitled CRCE Task';
+      };
+      const buildCrceSubtaskTitle = (role: string, portal: string, features: string[]) => {
+        const base = [role || 'Unknown Role', portal || 'Unknown Portal'].filter(Boolean).join(' / ');
+        return features.length > 0 ? `${base} / ${features.join(', ')}` : base;
+      };
+      const buildCrceDescription = (parts: Array<[string, string | null | undefined]>) => {
+        return parts
+          .filter(([, value]) => value && String(value).trim() !== '')
+          .map(([label, value]) => `${label}: ${String(value).trim()}`)
+          .join('\n');
+      };
+      const looksLikeCrceHeader = (row: any[]) => {
+        const normalized = row.map((cell) => normalizeCell(cell).toLowerCase());
+        return normalized[1] === 'ticket no.'
+          && normalized[2] === 'description'
+          && normalized[13] === 'status'
+          && normalized[17] === 'pic'
+          && normalized[18] === 'role'
+          && normalized[19] === 'portal';
+      };
       const looksLikeStatus = (value: string) => {
         const normalized = value.trim().toLowerCase();
         return [
@@ -644,12 +674,18 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       const parsed: ImportRow[] = [];
       let startRow = 0;
       let lastMember = '';
-      let format: 'A' | 'B' | 'C' | null = null; // A = Member,Date; B = Date,Member; C = Member,Task ID,Task Name,Description,Update,Status,Due Date
+      let format: 'A' | 'B' | 'C' | 'CRCE' | null = null; // A = Member,Date; B = Date,Member; C = Member,Task ID,Task Name,Description,Update,Status,Due Date
       
       // Detect header row and format
       for (let i = 0; i < Math.min(data.length, 15); i++) {
         const row = data[i] as any[];
         if (!row || row.length < 3) continue;
+
+        if (looksLikeCrceHeader(row)) {
+          startRow = i + 1;
+          format = 'CRCE';
+          break;
+        }
         
         const col0 = String(row[0] || '').toLowerCase().trim();
         const col1 = String(row[1] || '').toLowerCase().trim();
@@ -713,8 +749,85 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         let taskName = '';
         let update = '';
         let status = 'New';
+        let importKind: ImportRow['importKind'] = 'task';
+        let mainTaskId: string | null = null;
+        let mainTaskTitle = '';
+        let subtaskTitle: string | null = null;
+        let tags: string[] = [];
         
-        if (format === 'B') {
+        if (format === 'CRCE') {
+          const ticketNo = normalizeCell(row[1]);
+          const description = normalizeCell(row[2]);
+          const statusCell = normalizeCell(row[13]);
+          const requestor = normalizeCell(row[14]);
+          const receivedOn = parseDate(row[15]);
+          const requirementDate = parseDate(row[16]);
+          const pic = normalizeCell(row[17]);
+          const role = normalizeCell(row[18]);
+          const portal = normalizeCell(row[19]);
+          const portalOther = normalizeCell(row[20]);
+          const devStartDate = parseDate(row[21]);
+          const targetCmDate = parseDate(row[22]);
+          const targetDraft1 = parseDate(row[23]);
+          const targetDraft2 = parseDate(row[24]);
+          const targetDraft3 = parseDate(row[25]);
+          const copywritingRequired = normalizeCell(row[26]);
+          const copywritingReadyDate = parseDate(row[27]);
+          const remarks = normalizeCell(row[28]);
+          const featureColumns = [
+            ['Reg', normalizeCell(row[3])],
+            ['Login', normalizeCell(row[4])],
+            ['Enrol', normalizeCell(row[5])],
+            ['Cont', normalizeCell(row[6])],
+            ['Inv', normalizeCell(row[7])],
+            ['Trans', normalizeCell(row[8])],
+            ['WD', normalizeCell(row[9])],
+            ['Data Mod', normalizeCell(row[10])],
+            ['Term | Offset', normalizeCell(row[11])],
+          ] as const;
+          const features = featureColumns
+            .filter(([, value]) => ['x', 'y', 'yes', '1', 'true'].includes(value.toLowerCase()))
+            .map(([label]) => label);
+          const featureOther = normalizeCell(row[12]);
+
+          if (!ticketNo && !description && !statusCell && !pic && !role && !portal) continue;
+
+          taskId = ticketNo || '';
+          mainTaskId = ticketNo || null;
+          mainTaskTitle = buildCrceMainTitle(ticketNo, description);
+          subtaskTitle = buildCrceSubtaskTitle(role, portal === 'Others' ? `${portal}${portalOther ? ` (${portalOther})` : ''}` : portal, features);
+          taskName = subtaskTitle;
+          status = statusCell || 'Not Started';
+          date = targetCmDate || targetDraft1 || targetDraft2 || targetDraft3 || devStartDate || null;
+          importKind = 'subtask';
+          tags = [
+            role ? `role:${role}` : '',
+            portal ? `portal:${portal}` : '',
+            ...features.map((feature) => `feature:${feature}`),
+            copywritingRequired ? `copywriting:${copywritingRequired}` : '',
+          ].filter(Boolean);
+          if (featureOther) tags.push(`feature-other:${featureOther}`);
+          if (portalOther) tags.push(`portal-other:${portalOther}`);
+          update = buildCrceDescription([
+            ['Today update', remarks || ''],
+            ['Requestor', requestor],
+            ['Received on', receivedOn],
+            ['Requirement received', requirementDate],
+            ['Role', role],
+            ['Portal', portal],
+            ['Portal other', portalOther],
+            ['Features', features.length ? features.join(', ') : ''],
+            ['Feature other', featureOther],
+            ['DEV start', devStartDate],
+            ['Target CM completion', targetCmDate],
+            ['Target draft 1', targetDraft1],
+            ['Target draft 2', targetDraft2],
+            ['Target draft 3', targetDraft3],
+            ['Copywriting required', copywritingRequired],
+            ['Copywriting ready', copywritingReadyDate],
+          ]) || description || mainTaskTitle;
+          member = pic;
+        } else if (format === 'B') {
           // Format B: Date, Member, Task ID, Task Name, Status, [Detailed Progress / Milestone]
           const dateCell = row[0];
           member = String(row[1] || '').trim();
@@ -804,6 +917,12 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           assigneeNames: member ? [member] : [],
           dueDate: date || null,
           description: update || taskName,
+          source: format === 'CRCE' ? 'crce_tracker' : 'generic',
+          importKind,
+          mainTaskId,
+          mainTaskTitle,
+          subtaskTitle,
+          tags,
         });
       }
       

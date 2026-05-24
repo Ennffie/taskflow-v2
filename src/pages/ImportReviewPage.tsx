@@ -15,12 +15,19 @@ interface ImportRow {
   assigneeNames: string[];
   dueDate: string | null;
   description: string;
+  source?: 'generic' | 'crce_tracker';
+  importKind?: 'task' | 'subtask';
+  mainTaskId?: string | null;
+  mainTaskTitle?: string;
+  subtaskTitle?: string | null;
+  tags?: string[];
 }
 
 interface MatchResult {
   row: ImportRow;
   action: 'create' | 'update' | 'skip';
   matchedTask: TaskItem | null;
+  matchedMainTask?: TaskItem | null;
   matchedAssignees: Profile[];
   parsedStatus: TaskStatus | null;
   reason: string;
@@ -50,6 +57,11 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   'Waiting': 'todo',
   'Focus': 'in_progress',
   'Priority': 'in_progress',
+  'Not Started': 'todo',
+  'Pending': 'planning',
+  'Completed': 'finished',
+  'On Hold': 'planning',
+  'Cancelled': 'cancelled',
 };
 
 function parseStatus(statusStr: string): TaskStatus | null {
@@ -95,6 +107,10 @@ function findAssigneesByName(names: string[], profiles: Profile[]): Profile[] {
     if (match && !matches.find(m => m.id === match.id)) matches.push(match);
   }
   return matches;
+}
+
+function buildMainTaskLookup(row: ImportRow): string {
+  return normalizeTaskCode(row.mainTaskId || row.taskId || extractTaskId(row.mainTaskTitle || row.title)) || (row.mainTaskTitle || row.title).trim();
 }
 
 export function ImportReviewPage() {
@@ -148,31 +164,92 @@ export function ImportReviewPage() {
     taskLogMap: Map<string, Set<string>>
   ): MatchResult[] => {
     const rootTasks = tasks.filter((task) => !task.parent_id);
-    // Detect Day 2: all unique dates, earliest = Day 1, others = Day 2
+    const subtasks = tasks.filter((task) => !!task.parent_id);
     const allDates = [...new Set(rows.map(r => r.dueDate).filter(Boolean) as string[])].sort();
     const day1Date = allDates.length > 0 ? allDates[0] : null;
     
     return rows.map((row) => {
-      const isDay2 = Boolean(day1Date && row.dueDate && row.dueDate !== day1Date);
-      // Day 2 rows force focus flag while keeping a normal status
+      const isCrce = row.source === 'crce_tracker' || row.importKind === 'subtask';
+      const isDay2 = !isCrce && Boolean(day1Date && row.dueDate && row.dueDate !== day1Date);
       const parsedStatus = isDay2 ? 'in_progress' : parseStatus(row.status);
+      const matchedAssignees = findAssigneesByName(row.assigneeNames, profs);
+      if (isCrce) {
+        const mainKey = buildMainTaskLookup(row);
+        const mainTitle = (row.mainTaskTitle || row.title).trim();
+        let matchedMainTask = rootTasks.find((task) => extractTaskId(task.title) === normalizeTaskCode(mainKey)) || null;
+        if (!matchedMainTask) {
+          matchedMainTask = rootTasks.find((task) => task.title.trim() === mainTitle) || null;
+        }
+        if (!matchedMainTask) {
+          const bestMainMatch = rootTasks
+            .map((task) => ({ task, score: similarityScore(mainTitle, task.title) }))
+            .filter((item) => item.score > 0.75)
+            .sort((a, b) => b.score - a.score)[0];
+          if (bestMainMatch) matchedMainTask = bestMainMatch.task;
+        }
+
+        const desiredSubtaskTitle = (row.subtaskTitle || row.title).trim();
+        let matchedTask = matchedMainTask
+          ? subtasks.find((task) => task.parent_id === matchedMainTask!.id && task.title.trim() === desiredSubtaskTitle) || null
+          : null;
+        if (!matchedTask && matchedMainTask) {
+          const bestSubtaskMatch = subtasks
+            .filter((task) => task.parent_id === matchedMainTask!.id)
+            .map((task) => ({ task, score: similarityScore(desiredSubtaskTitle, task.title) }))
+            .filter((item) => item.score > 0.75)
+            .sort((a, b) => b.score - a.score)[0];
+          if (bestSubtaskMatch) matchedTask = bestSubtaskMatch.task;
+        }
+
+        if (!matchedMainTask || !matchedTask) {
+          return {
+            row,
+            action: 'create',
+            matchedTask,
+            matchedMainTask,
+            matchedAssignees,
+            parsedStatus,
+            reason: !matchedMainTask ? 'Create main task + subtask' : 'Create new subtask under existing main task',
+          };
+        }
+
+        const existingLogs = taskLogMap.get(matchedTask.id);
+        const logKey = `${row.description.trim().toLowerCase()}_${row.dueDate}`;
+        const logExists = existingLogs?.has(logKey);
+        if (logExists) {
+          return {
+            row,
+            action: 'skip',
+            matchedTask,
+            matchedMainTask,
+            matchedAssignees,
+            parsedStatus,
+            reason: 'Same subtask log already exists',
+            logExists: true,
+          };
+        }
+
+        return {
+          row,
+          action: 'update',
+          matchedTask,
+          matchedMainTask,
+          matchedAssignees,
+          parsedStatus,
+          reason: parsedStatus && parsedStatus !== matchedTask.status
+            ? `Subtask status: ${getStatusMeta(matchedTask.status).label} → ${getStatusMeta(parsedStatus).label}`
+            : 'Add new subtask log',
+          logExists: false,
+        };
+      }
+
       const rowTaskId = normalizeTaskCode(row.taskId || extractTaskId(row.title));
       const cleanTitleStr = cleanTitle(row.title);
-      const matchedAssignees = findAssigneesByName(row.assigneeNames, profs);
-      
-      // 1. Try find by Task ID
       let matchedTask = rootTasks.find(t => extractTaskId(t.title) === rowTaskId) || null;
-      
-      // 2. Try find by exact title
       if (!matchedTask) {
         const normalizedFullTitle = rowTaskId ? `${rowTaskId} - ${cleanTitleStr}` : row.title;
-        matchedTask = rootTasks.find(t => 
-          t.title === row.title || 
-          t.title === normalizedFullTitle
-        ) || null;
+        matchedTask = rootTasks.find(t => t.title === row.title || t.title === normalizedFullTitle) || null;
       }
-      
-      // 3. Try fuzzy match
       if (!matchedTask) {
         const bestMatch = rootTasks
           .map(t => ({ task: t, score: similarityScore(cleanTitleStr, t.title) }))
@@ -180,55 +257,18 @@ export function ImportReviewPage() {
           .sort((a, b) => b.score - a.score)[0];
         if (bestMatch) matchedTask = bestMatch.task;
       }
-      
-      // No match → create new
       if (!matchedTask) {
-        return {
-          row,
-          action: 'create',
-          matchedTask: null,
-          matchedAssignees,
-          parsedStatus,
-          isDay2,
-          reason: isDay2 ? 'New task (Day 2 → Focus)' : 'New task',
-        };
+        return { row, action: 'create', matchedTask: null, matchedAssignees, parsedStatus, isDay2, reason: isDay2 ? 'New task (Day 2 → Focus)' : 'New task' };
       }
-      
-      // Task exists → check if log (event + date) already exists
       const existingLogs = taskLogMap.get(matchedTask.id);
       const logKey = `${row.description.trim().toLowerCase()}_${row.dueDate}`;
       const logExists = existingLogs?.has(logKey);
-      
-      // Day 2: always update focus flag, skip log only if same log exists
       if (isDay2) {
-        return {
-          row,
-          action: 'update',
-          matchedTask,
-          matchedAssignees,
-          parsedStatus,
-          isDay2: true,
-          reason: logExists 
-            ? 'Day 2 → Focus (log exists, update flag only)' 
-            : 'Day 2 → Focus + add log',
-          logExists: !!logExists,
-        };
+        return { row, action: 'update', matchedTask, matchedAssignees, parsedStatus, isDay2: true, reason: logExists ? 'Day 2 → Focus (log exists, update flag only)' : 'Day 2 → Focus + add log', logExists: !!logExists };
       }
-      
-      // Day 1: skip if same log exists
       if (logExists) {
-        return {
-          row,
-          action: 'skip',
-          matchedTask,
-          matchedAssignees,
-          parsedStatus,
-          isDay2: false,
-          reason: 'Same log already exists',
-        };
+        return { row, action: 'skip', matchedTask, matchedAssignees, parsedStatus, isDay2: false, reason: 'Same log already exists' };
       }
-      
-      // Day 1 + new log → update
       return {
         row,
         action: 'update',
@@ -236,9 +276,7 @@ export function ImportReviewPage() {
         matchedAssignees,
         parsedStatus,
         isDay2: false,
-        reason: parsedStatus !== matchedTask.status 
-          ? `Status: ${getStatusMeta(matchedTask.status).label} → ${parsedStatus ? getStatusMeta(parsedStatus).label : '?'}`
-          : 'Add new log',
+        reason: parsedStatus !== matchedTask.status ? `Status: ${getStatusMeta(matchedTask.status).label} → ${parsedStatus ? getStatusMeta(parsedStatus).label : '?'}` : 'Add new log',
         logExists: false,
       };
     });
@@ -255,6 +293,7 @@ export function ImportReviewPage() {
     
     const createdTasksMap = new Map<string, TaskItem>();
     const importedTaskIds = new Set<string>(); // Track which tasks were touched in this import
+    const isCrceImport = importData.some((row) => row.source === 'crce_tracker');
     let created = 0, updated = 0, logsAdded = 0, skipped = 0;
     const failures: { row: number; title: string; error: string }[] = [];
     
@@ -263,6 +302,76 @@ export function ImportReviewPage() {
         if (result.action === 'skip') {
           skipped++;
           continue;
+        }
+
+        if ((result.row.source === 'crce_tracker' || result.row.importKind === 'subtask') && result.row.importKind === 'subtask') {
+          const mainKey = buildMainTaskLookup(result.row);
+          let mainTask = result.matchedMainTask || createdTasksMap.get(`main:${mainKey}`) || null;
+
+          if (!mainTask) {
+            const createdMainTask = await createTask({
+              title: result.row.mainTaskTitle || result.row.title,
+              description: result.row.mainTaskTitle || result.row.title,
+              status: 'todo',
+              priority: 'medium',
+              assignee_ids: [],
+              tags: ['import:crce'],
+            });
+            mainTask = createdMainTask as TaskItem;
+            createdTasksMap.set(`main:${mainKey}`, mainTask);
+            importedTaskIds.add(mainTask.id);
+            created++;
+          }
+
+          if (result.action === 'create') {
+            const newSubtask = await createTask({
+              title: result.row.subtaskTitle || result.row.title,
+              description: result.row.description || result.row.subtaskTitle || result.row.title,
+              status: result.parsedStatus || 'todo',
+              priority: 'medium',
+              due_date: result.row.dueDate || undefined,
+              assignee_ids: result.matchedAssignees.map((a) => a.id),
+              tags: result.row.tags || [],
+              parent_id: mainTask.id,
+              round_number: 1,
+            });
+            created++;
+            importedTaskIds.add(newSubtask.id);
+            if (result.row.description) {
+              await createLog({
+                task_id: newSubtask.id,
+                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+                event: result.row.description,
+                category: 'other',
+              });
+              logsAdded++;
+            }
+            continue;
+          }
+
+          if (result.action === 'update' && result.matchedTask) {
+            importedTaskIds.add(result.matchedTask.id);
+            const taskPatch: Parameters<typeof updateTask>[1] = {};
+            if (result.parsedStatus && result.parsedStatus !== result.matchedTask.status) taskPatch.status = result.parsedStatus;
+            if (result.row.dueDate && result.row.dueDate !== result.matchedTask.due_date) taskPatch.due_date = result.row.dueDate;
+            if (Object.keys(taskPatch).length > 0) {
+              await updateTask(result.matchedTask.id, taskPatch);
+              updated++;
+            }
+            if (result.matchedAssignees.length > 0) {
+              await updateTaskAssignees(result.matchedTask.id, result.matchedAssignees.map((a) => a.id));
+            }
+            if (result.row.description && !result.logExists) {
+              await createLog({
+                task_id: result.matchedTask.id,
+                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
+                event: result.row.description,
+                category: 'other',
+              });
+              logsAdded++;
+            }
+            continue;
+          }
         }
         
         if (result.action === 'update' && result.matchedTask) {
@@ -377,16 +486,18 @@ export function ImportReviewPage() {
       }
     }
     
-    // Step: Post-import — clear focus on old tasks that were NOT in this import
-    try {
-      const allTasks = await fetchTasks();
-      const oldFocusTasks = allTasks.filter(t => t.is_focus && !importedTaskIds.has(t.id));
-      for (const task of oldFocusTasks) {
-        await updateTask(task.id, { is_focus: false });
+    // Generic daily-report imports used to clear focus. CRCE imports should not touch it.
+    if (!isCrceImport) {
+      try {
+        const allTasks = await fetchTasks();
+        const oldFocusTasks = allTasks.filter(t => t.is_focus && !importedTaskIds.has(t.id));
+        for (const task of oldFocusTasks) {
+          await updateTask(task.id, { is_focus: false });
+        }
+        console.log(`Cleared focus on ${oldFocusTasks.length} old focus tasks`);
+      } catch (error) {
+        console.error('Failed to reset old focus tasks:', error);
       }
-      console.log(`Cleared focus on ${oldFocusTasks.length} old focus tasks`);
-    } catch (error) {
-      console.error('Failed to reset old focus tasks:', error);
     }
     
     alert(
