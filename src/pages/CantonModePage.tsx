@@ -977,8 +977,21 @@ function AttendanceCheckInCard({
 
 function HamsterBadge() {
   return (
-    <div style={{ width: 72, height: 72, borderRadius: 24, background: 'linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid rgba(251,146,60,0.22)', display: 'grid', placeItems: 'center', boxShadow: '0 12px 24px rgba(251,146,60,0.14)', overflow: 'hidden', padding: 6 }}>
-      <img src={attendanceMascotCute} alt="Attendance mascot" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 18, display: 'block' }} />
+    <div style={{ width: 72, height: 72, borderRadius: 24, background: 'linear-gradient(180deg, #fff7ed 0%, #fed7aa 100%)', border: '1px solid rgba(251,146,60,0.28)', display: 'grid', placeItems: 'center', boxShadow: '0 12px 24px rgba(251,146,60,0.16)', overflow: 'hidden', padding: 0, flexShrink: 0 }}>
+      <img
+        src={attendanceMascotCute}
+        alt="Attendance mascot"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'center 42%',
+          borderRadius: 24,
+          display: 'block',
+          transform: 'scale(1.05)',
+          filter: 'saturate(1.06) contrast(1.04)',
+        }}
+      />
     </div>
   );
 }
