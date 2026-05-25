@@ -31,8 +31,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
       return await fn();
     } catch (err: any) {
       lastError = err;
-      // Check if it's a lock error
-      if (err?.message?.includes('lock') || err?.message?.includes('another request stole')) {
+      if (isSupabaseLockError(err)) {
         await new Promise(r => setTimeout(r, 200 * (i + 1)));
         continue;
       }
@@ -40,6 +39,11 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
     }
   }
   throw lastError;
+}
+
+function isSupabaseLockError(error: any): boolean {
+  const message = `${error?.message || ''}`.toLowerCase();
+  return message.includes('lock') || message.includes('another request stole');
 }
 
 type TaskRecord = {
@@ -213,21 +217,23 @@ function getMonthBounds(month: string): { start: string; end: string } {
 }
 
 async function fetchAttendanceByDate(userId: string, date: string): Promise<AttendanceLog | null> {
-  const { data, error } = await supabase
-    .from('attendance_logs')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('date', date)
-    .maybeSingle();
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('attendance_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .maybeSingle();
 
-  if (error) {
-    if (isMissingAttendanceTableError(error)) {
-      return readAttendanceFallback(userId, date);
+    if (error) {
+      if (isMissingAttendanceTableError(error)) {
+        return readAttendanceFallback(userId, date);
+      }
+      throw error;
     }
-    throw error;
-  }
 
-  return (data as AttendanceLog | null) ?? readAttendanceFallback(userId, date);
+    return (data as AttendanceLog | null) ?? readAttendanceFallback(userId, date);
+  });
 }
 
 async function sendAttendanceNotification(params: {
@@ -435,12 +441,14 @@ async function attachProfilesToLogs(logs: LogEntry[]): Promise<LogEntry[]> {
 }
 
 export async function fetchProfiles(): Promise<Profile[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, name, email, role')
-    .order('name');
-  if (error) throw error;
-  return (data ?? []) as Profile[];
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, role')
+      .order('name');
+    if (error) throw error;
+    return (data ?? []) as Profile[];
+  });
 }
 
 function getEffectiveRound(task: { round_number?: number | null; status?: TaskStatus | null }): number {
@@ -1413,50 +1421,52 @@ export async function fetchAttendanceRecords(options?: {
     : (options?.userId ?? await getCachedCurrentUserId());
   if (!currentUserId) return [];
 
-  let query = supabase
-    .from('attendance_logs')
-    .select('*')
-    .order('date', { ascending: false })
-    .order('created_at', { ascending: false });
+  return withRetry(async () => {
+    let query = supabase
+      .from('attendance_logs')
+      .select('*')
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
 
-  if (options?.userId) {
-    query = query.eq('user_id', options.userId);
-  } else if (!options?.includeAllUsers) {
-    query = query.eq('user_id', currentUserId);
-  }
-
-  if (options?.month) {
-    const { start, end } = getMonthBounds(options.month);
-    query = query.gte('date', start).lte('date', end);
-  }
-
-  const { data, error } = await query;
-  if (error) {
-    if (isMissingAttendanceTableError(error)) {
-      const today = getHongKongDateString();
-      const fallback = readAttendanceFallback(options?.userId ?? currentUserId, today);
-      return fallback ? [fallback] : [];
-    }
-    throw error;
-  }
-
-  const records = (data ?? []) as AttendanceLog[];
-  const deduped = new Map<string, AttendanceLog>();
-
-  for (const record of records) {
-    const key = `${record.user_id}:${record.date}`;
-    const existing = deduped.get(key);
-    if (!existing) {
-      deduped.set(key, record);
-      continue;
+    if (options?.userId) {
+      query = query.eq('user_id', options.userId);
+    } else if (!options?.includeAllUsers) {
+      query = query.eq('user_id', currentUserId);
     }
 
-    const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime();
-    const recordTime = new Date(record.updated_at ?? record.created_at).getTime();
-    if (recordTime > existingTime) deduped.set(key, record);
-  }
+    if (options?.month) {
+      const { start, end } = getMonthBounds(options.month);
+      query = query.gte('date', start).lte('date', end);
+    }
 
-  return Array.from(deduped.values());
+    const { data, error } = await query;
+    if (error) {
+      if (isMissingAttendanceTableError(error)) {
+        const today = getHongKongDateString();
+        const fallback = readAttendanceFallback(options?.userId ?? currentUserId, today);
+        return fallback ? [fallback] : [];
+      }
+      throw error;
+    }
+
+    const records = (data ?? []) as AttendanceLog[];
+    const deduped = new Map<string, AttendanceLog>();
+
+    for (const record of records) {
+      const key = `${record.user_id}:${record.date}`;
+      const existing = deduped.get(key);
+      if (!existing) {
+        deduped.set(key, record);
+        continue;
+      }
+
+      const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime();
+      const recordTime = new Date(record.updated_at ?? record.created_at).getTime();
+      if (recordTime > existingTime) deduped.set(key, record);
+    }
+
+    return Array.from(deduped.values());
+  });
 }
 
 export async function updateAttendanceStatus(date: string, status: AttendanceStatus, note?: string | null, targetUserId?: string): Promise<AttendanceLog> {
@@ -1512,34 +1522,36 @@ export async function fetchAttendanceRecordsForDate(date: string): Promise<Atten
   const currentUserId = await getCurrentUserId();
   if (!currentUserId) return [];
 
-  const { data, error } = await supabase
-    .from('attendance_logs')
-    .select('*')
-    .eq('date', date)
-    .order('created_at', { ascending: false });
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('attendance_logs')
+      .select('*')
+      .eq('date', date)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    if (isMissingAttendanceTableError(error)) {
-      const fallback = readAttendanceFallback(currentUserId, date);
-      return fallback ? [fallback] : [];
+    if (error) {
+      if (isMissingAttendanceTableError(error)) {
+        const fallback = readAttendanceFallback(currentUserId, date);
+        return fallback ? [fallback] : [];
+      }
+      throw error;
     }
-    throw error;
-  }
 
-  const records = (data ?? []) as AttendanceLog[];
-  const deduped = new Map<string, AttendanceLog>();
+    const records = (data ?? []) as AttendanceLog[];
+    const deduped = new Map<string, AttendanceLog>();
 
-  for (const record of records) {
-    const key = record.user_id;
-    const existing = deduped.get(key);
-    if (!existing) {
-      deduped.set(key, record);
-      continue;
+    for (const record of records) {
+      const key = record.user_id;
+      const existing = deduped.get(key);
+      if (!existing) {
+        deduped.set(key, record);
+        continue;
+      }
+      const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime();
+      const recordTime = new Date(record.updated_at ?? record.created_at).getTime();
+      if (recordTime > existingTime) deduped.set(key, record);
     }
-    const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime();
-    const recordTime = new Date(record.updated_at ?? record.created_at).getTime();
-    if (recordTime > existingTime) deduped.set(key, record);
-  }
 
-  return Array.from(deduped.values());
+    return Array.from(deduped.values());
+  });
 }

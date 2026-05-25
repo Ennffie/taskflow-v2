@@ -29,6 +29,11 @@ function getGreeting() {
   return { text: '晚安，Enfield~', icon: '🌙' };
 }
 
+function isRecoverableAttendanceLoadError(error: any) {
+  const message = `${error?.message || ''}`.toLowerCase();
+  return error?.name === 'AbortError' || message.includes('lock was stolen by another request');
+}
+
 function isDone(task: TaskItem) {
   return task.status === 'finished' || task.is_finished;
 }
@@ -253,6 +258,7 @@ export function CantonModePage() {
       setProfilesMap(map);
     } catch (error: any) {
       console.error('[Canton] loadAttendance error:', error);
+      if (isRecoverableAttendanceLoadError(error)) return;
       alert(`Load check-in failed: ${error?.message || 'Unknown error'}`);
     } finally {
       setAttendanceLoading(false);
