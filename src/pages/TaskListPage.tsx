@@ -637,7 +637,26 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     setParsing(true);
 
     sheetToJsonRows(wb, sheetName).then((data: any) => {
+      const worksheet = wb.Sheets[sheetName];
       const normalizeCell = (value: unknown) => String(value ?? '').trim();
+      const getColumnLabel = (columnIndex: number) => {
+        let label = '';
+        let index = columnIndex;
+        while (index >= 0) {
+          label = String.fromCharCode((index % 26) + 65) + label;
+          index = Math.floor(index / 26) - 1;
+        }
+        return label;
+      };
+      const getCellDisplayText = (rowIndex: number, columnIndex: number) => {
+        const address = `${getColumnLabel(columnIndex)}${rowIndex + 1}`;
+        const cell = worksheet?.[address];
+        return typeof cell?.w === 'string' ? cell.w.trim() : '';
+      };
+      const parseDateCell = (rowIndex: number, columnIndex: number, rawValue: unknown) => {
+        const displayText = getCellDisplayText(rowIndex, columnIndex);
+        return parseDate(displayText || rawValue);
+      };
       const buildCrceMainTitle = (ticketNo: string, description: string) => {
         if (ticketNo && description) return `${ticketNo} - ${description}`;
         return ticketNo || description || 'Untitled CRCE Task';
@@ -654,7 +673,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       };
       const looksLikeCrceHeader = (row: any[]) => {
         const normalized = row.map((cell) => normalizeCell(cell).toLowerCase());
-        return normalized[1] === 'ticket no.'
+        return ['ticket no.', 'ticket no'].includes(normalized[1])
           && normalized[2] === 'description'
           && normalized[13] === 'status'
           && normalized[17] === 'pic'
@@ -760,19 +779,19 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           const description = normalizeCell(row[2]);
           const statusCell = normalizeCell(row[13]);
           const requestor = normalizeCell(row[14]);
-          const receivedOn = parseDate(row[15]);
-          const requirementDate = parseDate(row[16]);
+          const receivedOn = parseDateCell(i, 15, row[15]);
+          const requirementDate = parseDateCell(i, 16, row[16]);
           const pic = normalizeCell(row[17]);
           const role = normalizeCell(row[18]);
           const portal = normalizeCell(row[19]);
           const portalOther = normalizeCell(row[20]);
-          const devStartDate = parseDate(row[21]);
-          const targetCmDate = parseDate(row[22]);
-          const targetDraft1 = parseDate(row[23]);
-          const targetDraft2 = parseDate(row[24]);
-          const targetDraft3 = parseDate(row[25]);
+          const devStartDate = parseDateCell(i, 21, row[21]);
+          const targetCmDate = parseDateCell(i, 22, row[22]);
+          const targetDraft1 = parseDateCell(i, 23, row[23]);
+          const targetDraft2 = parseDateCell(i, 24, row[24]);
+          const targetDraft3 = parseDateCell(i, 25, row[25]);
           const copywritingRequired = normalizeCell(row[26]);
-          const copywritingReadyDate = parseDate(row[27]);
+          const copywritingReadyDate = parseDateCell(i, 27, row[27]);
           const remarks = normalizeCell(row[28]);
           const featureColumns = [
             ['Reg', normalizeCell(row[3])],
@@ -791,6 +810,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           const featureOther = normalizeCell(row[12]);
 
           if (!ticketNo && !description && !statusCell && !pic && !role && !portal) continue;
+          if (/^\[\s*put tix link here\s*\]$/i.test(ticketNo)) continue;
 
           taskId = ticketNo || '';
           mainTaskId = ticketNo || null;
@@ -836,11 +856,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           const statusCell = row[4];
           const detailCell = row[5]; // Detailed Progress / Milestone (optional)
           
-          if (dateCell instanceof Date) {
-            date = dateCell.toISOString().slice(0, 10);
-          } else {
-            date = parseDate(dateCell);
-          }
+          date = parseDateCell(i, 0, dateCell);
           
           if (statusCell !== undefined) {
             status = String(statusCell).trim() || 'New';
@@ -858,7 +874,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           const rawCol5 = String(row[5] || '').trim();
           const dueDateCell = row[6];
 
-          date = parseDate(dueDateCell);
+          date = parseDateCell(i, 6, dueDateCell);
           const col4IsStatus = looksLikeStatus(rawCol4);
           const col5IsStatus = looksLikeStatus(rawCol5);
 
@@ -876,14 +892,12 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           taskName = String(row[2] || '').trim();
           update = String(row[3] || '').trim();
           
-          if (dateCell instanceof Date) {
-            date = dateCell.toISOString().slice(0, 10);
-          } else if (String(dateCell || '').toLowerCase().includes('today')) {
+          if (String(dateCell || '').toLowerCase().includes('today')) {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            date = tomorrow.toISOString().slice(0, 10);
+            date = normalizeImportedDate(tomorrow);
           } else {
-            date = parseDate(dateCell);
+            date = parseDateCell(i, 1, dateCell);
           }
           
           // Extract Task ID from task name
@@ -952,6 +966,13 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     });
   };
 
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const normalizeImportedDate = (date: Date): string | null => {
     if (isNaN(date.getTime())) return null;
 
@@ -959,11 +980,11 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     if (date.getFullYear() < currentYear - 1) {
       const normalized = new Date(currentYear, date.getMonth(), date.getDate());
       if (!isNaN(normalized.getTime())) {
-        return normalized.toISOString().slice(0, 10);
+        return formatLocalDate(normalized);
       }
     }
 
-    return date.toISOString().slice(0, 10);
+    return formatLocalDate(date);
   };
 
   const parseDate = (dateVal: any): string | null => {
@@ -985,7 +1006,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     if (/^today$/i.test(dateStr)) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      return tomorrow.toISOString().slice(0, 10);
+      return normalizeImportedDate(tomorrow);
     }
     
     // Handle DD-MMM format (e.g., "21-Apr", "20-Apr")
@@ -996,6 +1017,19 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       const monthIndex = monthNames.indexOf(dddMmmMatch[2].toLowerCase());
       if (monthIndex >= 0 && day >= 1 && day <= 31) {
         const year = new Date().getFullYear(); // Use current year
+        const date = new Date(year, monthIndex, day);
+        const normalized = normalizeImportedDate(date);
+        if (normalized) return normalized;
+      }
+    }
+
+    const dayMonthYearMatch = dateStr.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
+    if (dayMonthYearMatch) {
+      const day = parseInt(dayMonthYearMatch[1], 10);
+      const monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      const monthIndex = monthNames.indexOf(dayMonthYearMatch[2].slice(0, 3).toLowerCase());
+      const year = parseInt(dayMonthYearMatch[3], 10);
+      if (monthIndex >= 0 && day >= 1 && day <= 31) {
         const date = new Date(year, monthIndex, day);
         const normalized = normalizeImportedDate(date);
         if (normalized) return normalized;
