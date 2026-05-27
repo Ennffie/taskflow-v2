@@ -1338,8 +1338,8 @@ export function CantonAiCoachPage() {
       let statusLabel = '待辦';
       const normalizedStatusRaw = statusRaw.trim().toLowerCase();
       if (['review', 'internal review', 'internal_review', '檢查', '審批'].includes(normalizedStatusRaw)) {
-        status = 'review';
-        statusLabel = 'Review';
+        status = 'internal_review';
+        statusLabel = 'Internal Review';
       } else if (['wip', 'in progress', '進行中', '進行'].includes(normalizedStatusRaw)) {
         status = 'in_progress';
         statusLabel = '進行中';

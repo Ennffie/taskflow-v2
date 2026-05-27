@@ -853,9 +853,6 @@ export async function createTask(payload: {
   round_number?: number;
   is_finished?: boolean;
 }) {
-  // Map 'finished' to 'done' for database compatibility
-  const dbStatus = payload.status === 'finished' ? 'done' : payload.status;
-
   // Get current user
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
@@ -867,7 +864,7 @@ export async function createTask(payload: {
       description: payload.description,
       today_update: payload.today_update?.trim() || null,
       next_day_focus: payload.next_day_focus?.trim() || null,
-      status: dbStatus,
+      status: payload.status,
       priority: payload.priority,
       due_date: payload.due_date ?? null,
       parent_id: payload.parent_id ?? null,
@@ -952,12 +949,6 @@ export async function updateTask(
     is_finished: boolean;
   }>
 ) {
-  // Map 'finished' to 'done' for database compatibility
-  const dbPayload = { ...payload };
-  if (dbPayload.status === 'finished') {
-    (dbPayload as any).status = 'done';
-  }
-
   // Get current user
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
@@ -972,7 +963,7 @@ export async function updateTask(
 
   const { error } = await supabase
     .from('tasks')
-    .update({ ...dbPayload, updated_at: new Date().toISOString(), updated_by: userId })
+    .update({ ...payload, updated_at: new Date().toISOString(), updated_by: userId })
     .eq('id', taskId);
   if (error) throw error;
 
@@ -1028,13 +1019,13 @@ export async function updateSubtask(
 
   if (payload.title !== undefined) updatePayload.title = payload.title;
   if (payload.due_date !== undefined) updatePayload.due_date = payload.due_date;
-  if (payload.status !== undefined) updatePayload.status = payload.status === 'finished' ? 'done' : payload.status;
+  if (payload.status !== undefined) updatePayload.status = payload.status;
   if (payload.progress !== undefined) {
     updatePayload.progress_percent = payload.progress;
     updatePayload.is_finished = payload.progress >= 100;
     if (payload.status === undefined) {
       updatePayload.status = payload.progress >= 100
-        ? 'done'
+        ? 'finished'
         : (before.status === 'done' || before.status === 'finished' ? 'in_progress' : before.status);
     }
   }

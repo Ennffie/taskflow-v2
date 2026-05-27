@@ -772,8 +772,8 @@ export function MyLogPage() {
                       <option value="round_2_review">Round 2 Review</option>
                       <option value="round_3_wip">Round 3 WIP</option>
                       <option value="round_3_review">Round 3 Review</option>
-                      <option value="review">Review</option>
-                      <option value="done">Done</option>
+                      <option value="pending_mpfa_pc_nfc">Pending for NFC</option>
+                      <option value="finished">Finished</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
                   </label>
