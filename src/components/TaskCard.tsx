@@ -91,7 +91,10 @@ export function TaskCard({
 
   const dueDateLabel = formatDate(task.due_date);
   const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  const primaryAssignee = task.assignees[0];
+  const firstSubtaskAssignee = subtasks.find((subtask) => subtask.assignees.length > 0)?.assignees[0];
+  const primaryAssignee = task.tags.includes('import:crce') && firstSubtaskAssignee
+    ? firstSubtaskAssignee
+    : task.assignees[0];
 
   const progress = (() => {
     if (subtasks.length === 0) return task.is_finished ? 100 : (task.progress_percent ?? 0);
