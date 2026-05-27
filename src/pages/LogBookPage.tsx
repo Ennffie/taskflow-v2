@@ -138,6 +138,10 @@ export function LogBookPage() {
       isFinished: (task.is_finished ?? false) && calculatedProgress >= 90,
     };
   }, [task, subtasks]);
+  const structuredDescription = useMemo(
+    () => parseStructuredDescription(task?.description),
+    [task?.description]
+  );
 
   const canFinishParentTask = !task?.parent_id && (subtasks.length === 0 ? true : derivedParentState.progress >= 90);
   const canManuallyEditMainTaskProgress = !task?.parent_id && subtasks.length === 0 && canEditTask && !derivedParentState.isFinished;
@@ -321,7 +325,6 @@ export function LogBookPage() {
     : task.status;
   const status = getStatusMeta(effectiveStatusKey);
   const priority = PRIORITY_META[task.priority];
-  const structuredDescription = useMemo(() => parseStructuredDescription(task.description), [task.description]);
   const crceRole = getTagValue(task.tags, 'role:');
   const crcePortal = getTagValue(task.tags, 'portal:');
   const crcePortalOther = getTagValue(task.tags, 'portal-other:');
