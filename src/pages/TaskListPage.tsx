@@ -959,7 +959,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         // Auto-detect Day 2: compare all dates, later dates = Day 2 (focus)
         const allDates = [...new Set(parsed.map(r => r.dueDate).filter(Boolean) as string[])].sort();
         console.log('All dates:', allDates);
-        if (allDates.length >= 2) {
+        if (format !== 'CRCE' && allDates.length >= 2) {
           const day1Date = allDates[0]; // earliest date
           parsed.forEach(row => {
             if (row.dueDate && row.dueDate !== day1Date) {
@@ -1048,36 +1048,26 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       }
     }
     
-    // Try to parse various date formats
-    const formats = [
-      // DD/MM/YYYY
-      /^(\d{1,2})\/(\d{1,2})\/(\d{4})/,
-      // YYYY-MM-DD
-      /^(\d{4})-(\d{2})-(\d{2})/,
-    ];
-    
-    for (const format of formats) {
-      const match = dateStr.match(format);
-      if (match) {
-        try {
-          const date = new Date(dateStr);
-          const normalized = normalizeImportedDate(date);
-          if (normalized) return normalized;
-        } catch {
-          // Continue to next format
-        }
+    const dayMonthSlashYearMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dayMonthSlashYearMatch) {
+      const day = parseInt(dayMonthSlashYearMatch[1], 10);
+      const month = parseInt(dayMonthSlashYearMatch[2], 10);
+      const year = parseInt(dayMonthSlashYearMatch[3], 10);
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return normalizeImportedDate(new Date(year, month - 1, day));
       }
     }
-    
-    // Default: try direct parsing
-    try {
-      const date = new Date(dateStr);
-      const normalized = normalizeImportedDate(date);
-      if (normalized) return normalized;
-    } catch {
-      return null;
+
+    const isoDateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoDateMatch) {
+      const year = parseInt(isoDateMatch[1], 10);
+      const month = parseInt(isoDateMatch[2], 10);
+      const day = parseInt(isoDateMatch[3], 10);
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return normalizeImportedDate(new Date(year, month - 1, day));
+      }
     }
-    
+
     return null;
   };
 

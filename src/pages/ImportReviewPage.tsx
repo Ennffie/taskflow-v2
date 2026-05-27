@@ -68,6 +68,20 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   'On Hold': 'planning',
   'Cancelled': 'cancelled',
   'WIP': 'in_progress',
+  'todo': 'todo',
+  'planning': 'planning',
+  'in_progress': 'in_progress',
+  'internal_review': 'internal_review',
+  'round_1_wip': 'round_1_wip',
+  'round_1_review': 'round_1_review',
+  'round_2_wip': 'round_2_wip',
+  'round_2_review': 'round_2_review',
+  'round_3_wip': 'round_3_wip',
+  'round_3_review': 'round_3_review',
+  'pending_mpfa_pc_nfc': 'pending_mpfa_pc_nfc',
+  'finished': 'finished',
+  'cancelled': 'cancelled',
+  'archived': 'archived',
 };
 
 function parseStatus(statusStr: string): TaskStatus | null {
