@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Plus, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
-import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, updateTaskAssignees, createTask, createLog } from '../lib/api';
+import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, updateTaskAssignees, createLog } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import type { TaskItem, Profile, TaskStatus } from '../types';
 import { getStatusMeta } from '../types';
 
@@ -132,6 +133,17 @@ function findAssigneesByName(names: string[], profiles: Profile[]): Profile[] {
 function buildMainTaskLookup(row: ImportRow): string {
   return normalizeTaskCode(row.mainTaskId || row.taskId || extractTaskId(row.mainTaskTitle || row.title)) || (row.mainTaskTitle || row.title).trim();
 }
+
+type PendingAssigneeInsert = { task_id: string; user_id: string };
+type PendingTagInsert = { task_id: string; name: string };
+type PendingLogInsert = {
+  task_id: string;
+  date: string;
+  event: string;
+  category: 'other';
+  file_name: string | null;
+  created_by: string;
+};
 
 export function ImportReviewPage() {
   const location = useLocation();
@@ -316,6 +328,111 @@ export function ImportReviewPage() {
     const isCrceImport = importData.some((row) => row.source === 'crce_tracker');
     let created = 0, updated = 0, logsAdded = 0, skipped = 0;
     const failures: { row: number; title: string; error: string }[] = [];
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      alert('Import failed: user session expired. Please sign in again.');
+      setProcessing(false);
+      return;
+    }
+
+    const userId = authData.user.id;
+    const pendingAssignees: PendingAssigneeInsert[] = [];
+    const pendingTags: PendingTagInsert[] = [];
+    const pendingLogs: PendingLogInsert[] = [];
+
+    const flushPendingWrites = async () => {
+      const jobs: Array<Promise<{ error: { message?: string } | null }>> = [];
+      if (pendingAssignees.length > 0) {
+        jobs.push(Promise.resolve(supabase.from('task_assignees').insert(pendingAssignees.splice(0, pendingAssignees.length))));
+      }
+      if (pendingTags.length > 0) {
+        jobs.push(Promise.resolve(supabase.from('tags').insert(pendingTags.splice(0, pendingTags.length))));
+      }
+      if (pendingLogs.length > 0) {
+        jobs.push(Promise.resolve(supabase.from('log_entries').insert(pendingLogs.splice(0, pendingLogs.length))));
+      }
+      const results = await Promise.all(jobs);
+      for (const result of results) {
+        if ((result as { error?: { message?: string } }).error) {
+          throw new Error((result as { error?: { message?: string } }).error?.message || 'Bulk import write failed');
+        }
+      }
+    };
+
+    const queueRelatedRows = (taskId: string, assigneeIds: string[], tags: string[], row: ImportRow) => {
+      if (assigneeIds.length > 0) {
+        pendingAssignees.push(...assigneeIds.map((id) => ({ task_id: taskId, user_id: id })));
+      } else {
+        pendingAssignees.push({ task_id: taskId, user_id: userId });
+      }
+      if (tags.length > 0) {
+        pendingTags.push(...tags.map((name) => ({ task_id: taskId, name })));
+      }
+      if (row.description) {
+        pendingLogs.push({
+          task_id: taskId,
+          date: row.dueDate || new Date().toISOString().slice(0, 10),
+          event: row.description,
+          category: 'other',
+          file_name: row.fileLink || null,
+          created_by: userId,
+        });
+        logsAdded++;
+      }
+    };
+
+    const maybeFlushPendingWrites = async () => {
+      if (pendingAssignees.length + pendingTags.length + pendingLogs.length >= 120) {
+        await flushPendingWrites();
+      }
+    };
+
+    const createImportedTask = async (payload: {
+      title: string;
+      description: string;
+      status: TaskStatus;
+      due_date?: string;
+      parent_id?: string | null;
+      is_focus?: boolean;
+      round_number?: number;
+      assignee_ids: string[];
+      tags: string[];
+      row: ImportRow;
+    }) => {
+      const { data: insertedTask, error: insertTaskError } = await supabase
+        .from('tasks')
+        .insert({
+          title: payload.title,
+          description: payload.description,
+          status: payload.status,
+          priority: 'medium',
+          due_date: payload.due_date ?? null,
+          parent_id: payload.parent_id ?? null,
+          is_focus: payload.is_focus ?? false,
+          progress_percent: 0,
+          round_number: payload.round_number ?? 1,
+          is_finished: false,
+          created_by: userId,
+          updated_by: userId,
+        })
+        .select()
+        .single();
+
+      if (insertTaskError || !insertedTask) {
+        throw insertTaskError ?? new Error('Task insert failed');
+      }
+
+      queueRelatedRows(insertedTask.id, payload.assignee_ids, payload.tags, payload.row);
+      await maybeFlushPendingWrites();
+
+      return {
+        ...(insertedTask as TaskItem),
+        assignees: [],
+        tags: payload.tags,
+        log_count: 0,
+      } as TaskItem;
+    };
     
     for (const result of matchResults) {
       try {
@@ -329,27 +446,27 @@ export function ImportReviewPage() {
           let mainTask = result.matchedMainTask || createdTasksMap.get(`main:${mainKey}`) || null;
 
           if (!mainTask) {
-            const createdMainTask = await createTask({
+            const createdMainTask = await createImportedTask({
               title: result.row.mainTaskTitle || result.row.title,
               description: result.row.mainTaskTitle || result.row.title,
               status: 'todo',
-              priority: 'medium',
+              row: { ...result.row, description: '' },
               assignee_ids: [],
               tags: ['import:crce'],
             });
-            mainTask = createdMainTask as TaskItem;
+            mainTask = createdMainTask;
             createdTasksMap.set(`main:${mainKey}`, mainTask);
             importedTaskIds.add(mainTask.id);
             created++;
           }
 
           if (result.action === 'create') {
-            const newSubtask = await createTask({
+            const newSubtask = await createImportedTask({
               title: result.row.subtaskTitle || result.row.title,
               description: result.row.description || result.row.subtaskTitle || result.row.title,
               status: result.parsedStatus || 'todo',
-              priority: 'medium',
               due_date: result.row.dueDate || undefined,
+              row: result.row,
               assignee_ids: result.matchedAssignees.map((a) => a.id),
               tags: result.row.tags || [],
               parent_id: mainTask.id,
@@ -357,16 +474,6 @@ export function ImportReviewPage() {
             });
             created++;
             importedTaskIds.add(newSubtask.id);
-            if (result.row.description) {
-              await createLog({
-                task_id: newSubtask.id,
-                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
-                event: result.row.description,
-                category: 'other',
-                file_name: result.row.fileLink || undefined,
-              });
-              logsAdded++;
-            }
             continue;
           }
 
@@ -474,31 +581,20 @@ export function ImportReviewPage() {
               ? `${normalizedTaskId} - ${result.row.title}` 
               : result.row.title;
             
-            const newTask = await createTask({
+            const newTask = await createImportedTask({
               title: fullTitle,
               description: result.row.description,
               status: result.parsedStatus || 'todo',
-              priority: 'medium',
               due_date: result.row.dueDate || undefined,
+              row: result.row,
               assignee_ids: result.matchedAssignees.map(a => a.id),
               tags: [],
               is_focus: result.isDay2 || false,
             });
             
             created++;
-            createdTasksMap.set(taskKey, newTask as TaskItem);
+            createdTasksMap.set(taskKey, newTask);
             importedTaskIds.add(newTask.id);
-            
-            if (result.row.description) {
-              await createLog({
-                task_id: newTask.id,
-                date: result.row.dueDate || new Date().toISOString().slice(0, 10),
-                event: result.row.description,
-                category: 'other',
-                file_name: result.row.fileLink || undefined,
-              });
-              logsAdded++;
-            }
           }
         }
       } catch (error) {
@@ -509,6 +605,17 @@ export function ImportReviewPage() {
           error: error instanceof Error ? error.message : 'Unknown',
         });
       }
+    }
+
+    try {
+      await flushPendingWrites();
+    } catch (error) {
+      console.error('Failed to flush batched import writes:', error);
+      failures.push({
+        row: -1,
+        title: 'Bulk import writes',
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
     }
     
     // Generic daily-report imports used to clear focus. CRCE imports should not touch it.
