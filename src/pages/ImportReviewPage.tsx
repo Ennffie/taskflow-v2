@@ -146,6 +146,7 @@ type PendingLogInsert = {
 };
 
 export function ImportReviewPage() {
+  "use no memo";
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -156,7 +157,7 @@ export function ImportReviewPage() {
     skip: true,
   });
   
-  const importData: ImportRow[] = location.state?.importData || [];
+  const importData = useMemo<ImportRow[]>(() => location.state?.importData || [], [location.state]);
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
 
   useEffect(() => {
