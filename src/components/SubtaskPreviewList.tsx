@@ -16,6 +16,23 @@ function getAvatarColor(name: string, id?: string) {
 
 const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
+function getTagValue(tags: string[], prefix: string): string | null {
+  const match = tags.find((tag) => tag.startsWith(prefix));
+  return match ? match.slice(prefix.length) : null;
+}
+
+function getSubtaskPreviewTitle(subtask: TaskItem): string {
+  const role = getTagValue(subtask.tags, 'role:');
+  const portal = getTagValue(subtask.tags, 'portal:');
+  const portalOther = getTagValue(subtask.tags, 'portal-other:');
+
+  if (!role && !portal) return subtask.title;
+
+  const resolvedPortal = portal === 'Others' && portalOther ? portalOther : portal;
+  const compactTitle = [role, resolvedPortal].filter(Boolean).join(' ');
+  return compactTitle || subtask.title;
+}
+
 interface SubtaskPreviewListProps {
   subtasks: TaskItem[];
   limit?: number;
@@ -41,6 +58,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
         const statusMeta = getStatusMeta(subtask.status);
         const isOverdue = !!subtask.due_date && new Date(subtask.due_date) < new Date(new Date().setHours(0,0,0,0));
         const isSelected = checkedTaskIds?.has(subtask.id) ?? false;
+        const previewTitle = getSubtaskPreviewTitle(subtask);
 
         return (
           <div
@@ -100,7 +118,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15, minWidth: 0 }}>{subtask.title}</div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15, minWidth: 0 }}>{previewTitle}</div>
                 <span style={{ fontSize: '8px', fontWeight: 700, color: statusMeta.color, background: statusMeta.bg, padding: '2px 5px', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {statusMeta.label}
                 </span>
