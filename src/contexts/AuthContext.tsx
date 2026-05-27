@@ -3,6 +3,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 
+const AUTH_INIT_TIMEOUT_MS = 5000;
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
@@ -39,15 +41,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let loadingSafetyTimer: number | null = window.setTimeout(() => {
+      if (!mounted) return;
+      setLoading(false);
+    }, AUTH_INIT_TIMEOUT_MS);
 
     const init = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) => {
+            window.setTimeout(() => reject(new Error('Auth session init timeout')), AUTH_INIT_TIMEOUT_MS);
+          }),
+        ]);
         if (!mounted) return;
 
         setSession(data.session);
         setUser(data.session?.user ?? null);
         setLoading(false);
+        if (loadingSafetyTimer) {
+          window.clearTimeout(loadingSafetyTimer);
+          loadingSafetyTimer = null;
+        }
 
         if (data.session?.user) {
           void loadProfile(data.session.user.id);
@@ -60,6 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setProfile(null);
           setLoading(false);
+          if (loadingSafetyTimer) {
+            window.clearTimeout(loadingSafetyTimer);
+            loadingSafetyTimer = null;
+          }
         }
       }
     };
@@ -70,6 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
+      if (loadingSafetyTimer) {
+        window.clearTimeout(loadingSafetyTimer);
+        loadingSafetyTimer = null;
+      }
 
       if (nextSession?.user) {
         void loadProfile(nextSession.user.id);
@@ -80,6 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      if (loadingSafetyTimer) {
+        window.clearTimeout(loadingSafetyTimer);
+      }
       authListener.subscription.unsubscribe();
     };
   }, []);
