@@ -6,7 +6,7 @@ import { BackButton } from '../components/BackButton';
 import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, updateTaskAssignees, createLog } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import type { TaskItem, Profile, TaskStatus } from '../types';
-import { getStatusMeta } from '../types';
+import { getStatusMeta, parseTaskStatusInput } from '../types';
 
 interface ImportRow {
   rowIndex: number;
@@ -37,56 +37,8 @@ interface MatchResult {
   logExists?: boolean;
 }
 
-// Status mapping from XLS to TaskStatus
-const STATUS_MAP: Record<string, TaskStatus> = {
-  '完成': 'finished',
-  '進行中': 'in_progress',
-  '新開始': 'todo',
-  '計劃中': 'planning',
-  '等待中': 'todo',
-  'Done': 'finished',
-  'In Progress': 'in_progress',
-  'Internal Review': 'internal_review',
-  'Round 1 WIP': 'round_1_wip',
-  'Round 1 Review': 'round_1_review',
-  'Round 2 WIP': 'round_2_wip',
-  'Round 2 Review': 'round_2_review',
-  'Round 3 WIP': 'round_3_wip',
-  'Round 3 Review': 'round_3_review',
-  'Pending MPFA/PC for NFC': 'pending_mpfa_pc_nfc',
-  'Planning': 'planning',
-  'New': 'todo',
-  'Waiting': 'todo',
-  'Focus': 'in_progress',
-  'Priority': 'in_progress',
-  'Not Started': 'todo',
-  'Pending': 'planning',
-  'Pending for approval': 'planning',
-  'Pending on tech team': 'planning',
-  'Pending for further requirement': 'planning',
-  'Pending requirement confirmation by Benne': 'planning',
-  'Completed': 'finished',
-  'On Hold': 'planning',
-  'Cancelled': 'cancelled',
-  'WIP': 'in_progress',
-  'todo': 'todo',
-  'planning': 'planning',
-  'in_progress': 'in_progress',
-  'internal_review': 'internal_review',
-  'round_1_wip': 'round_1_wip',
-  'round_1_review': 'round_1_review',
-  'round_2_wip': 'round_2_wip',
-  'round_2_review': 'round_2_review',
-  'round_3_wip': 'round_3_wip',
-  'round_3_review': 'round_3_review',
-  'pending_mpfa_pc_nfc': 'pending_mpfa_pc_nfc',
-  'finished': 'finished',
-  'cancelled': 'cancelled',
-  'archived': 'archived',
-};
-
 function parseStatus(statusStr: string): TaskStatus | null {
-  return STATUS_MAP[statusStr.trim()] || null;
+  return parseTaskStatusInput(statusStr);
 }
 
 function normalizeTaskCode(value: string | null | undefined): string | null {

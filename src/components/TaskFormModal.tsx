@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { createTask, createTaskEventLog, fetchProfiles, updateTask } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { STATUS_META, TASK_STATUS_OPTIONS } from '../types';
+import { TASK_STATUS_OPTION_ITEMS } from '../types';
 import type { Profile, TaskItem, TaskPriority, TaskStatus } from '../types';
 import { notifyModalOpen, notifyModalClose } from './AppShell';
 
@@ -21,7 +21,6 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [todayUpdate, setTodayUpdate] = useState('');
-  const [nextDayFocus, setNextDayFocus] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
@@ -47,7 +46,6 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     setTitle(initialTask.title);
     setDescription(cleanDescription);
     setTodayUpdate(initialTask.today_update || '');
-    setNextDayFocus(initialTask.next_day_focus || '');
     setStatus(normalizedStatus as TaskStatus);
     setPriority(initialTask.priority);
     setDueDate(initialTask.due_date || '');
@@ -82,8 +80,6 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
     descriptionPlaceholder: 'Context、scope、handoff、reference…',
     todayUpdate: '今日做到咩',
     todayPlaceholder: '今日進度 / 最新情況',
-    nextFocus: '下一步搞咩',
-    nextPlaceholder: '下一個 working day focus',
     status: '狀態',
     priority: '重要度',
     due: 'Deadline',
@@ -148,7 +144,6 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           title: title.trim(),
           description: finalDescription,
           today_update: todayUpdate.trim() || null,
-          next_day_focus: nextDayFocus.trim() || null,
           status: finalStatus,
           priority,
           due_date: dueDate || null,
@@ -183,7 +178,6 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
           title: title.trim(),
           description,
           today_update: todayUpdate,
-          next_day_focus: nextDayFocus,
           status: finalStatus,
           priority,
           due_date: dueDate || undefined,
@@ -215,13 +209,10 @@ export function TaskFormModal({ onClose, onCreated, parentTaskId, parentTaskTitl
         )}
         <Field label={copy?.titleLabel ?? 'Title'}><input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder={copy?.titlePlaceholder ?? 'e.g. PMC portal redesign'} /></Field>
         <Field label={copy?.descriptionLabel ?? 'Description'}><textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder={copy?.descriptionPlaceholder ?? 'Context, scope, handoff details'} /></Field>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          <Field label={copy?.todayUpdate ?? 'Today Update'}><textarea value={todayUpdate} onChange={(e) => setTodayUpdate(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder={copy?.todayPlaceholder ?? 'What was done today'} /></Field>
-          <Field label={copy?.nextFocus ?? 'Next Day Focus'}><textarea value={nextDayFocus} onChange={(e) => setNextDayFocus(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder={copy?.nextPlaceholder ?? 'Next working day focus'} /></Field>
-        </div>
+        <Field label={copy?.todayUpdate ?? 'Today Update'}><textarea value={todayUpdate} onChange={(e) => setTodayUpdate(e.target.value)} style={{ ...inputStyle, minHeight: '110px', resize: 'vertical' }} placeholder={copy?.todayPlaceholder ?? 'What was done today'} /></Field>
         {/* Status + Priority in one row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          <Field label={copy?.status ?? 'Status'}><select value={status} onChange={(e) => { const s = e.target.value as TaskStatus; setStatus(s); setIsFinished(s === 'finished'); }} style={inputStyle}>{TASK_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{(STATUS_META as any)[value]?.label ?? value}</option>)}</select></Field>
+          <Field label={copy?.status ?? 'Status'}><select value={status} onChange={(e) => { const s = e.target.value as TaskStatus; setStatus(s); setIsFinished(s === 'finished'); }} style={inputStyle}>{TASK_STATUS_OPTION_ITEMS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
           <Field label={copy?.priority ?? 'Priority'}><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} style={inputStyle}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         </div>
         {parentTaskId && (

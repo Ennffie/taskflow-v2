@@ -4,6 +4,23 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type LogCategory = 'design' | 'research' | 'meeting' | 'review' | 'other';
 export type AttendanceStatus = 'present' | 'al' | 'sl' | 'bl' | 'other';
 
+export const TASK_STATUS_OPTION_ITEMS = [
+  { value: 'todo', label: 'Todo' },
+  { value: 'planning', label: 'Planning' },
+  { value: 'in_progress', label: 'WIP' },
+  { value: 'internal_review', label: 'Internal Review' },
+  { value: 'round_1_wip', label: 'Round 1 WIP' },
+  { value: 'round_1_review', label: 'Round 1 Review' },
+  { value: 'round_2_wip', label: 'Round 2 WIP' },
+  { value: 'round_2_review', label: 'Round 2 Review' },
+  { value: 'round_3_wip', label: 'Round 3 WIP' },
+  { value: 'round_3_review', label: 'Round 3 Review' },
+  { value: 'pending_mpfa_pc_nfc', label: 'Pending for NFC' },
+  { value: 'finished', label: 'Finished' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'archived', label: 'Archived' },
+] as const satisfies ReadonlyArray<{ value: TaskStatus; label: string }>;
+
 export interface Profile {
   id: string;
   name: string;
@@ -91,21 +108,60 @@ export function getStatusMeta(status: string): { label: string; color: string; b
 }
 
 export const TASK_STATUS_OPTIONS: TaskStatus[] = [
-  'todo',
-  'planning',
-  'in_progress',
-  'internal_review',
-  'round_1_wip',
-  'round_1_review',
-  'round_2_wip',
-  'round_2_review',
-  'round_3_wip',
-  'round_3_review',
-  'pending_mpfa_pc_nfc',
-  'finished',
-  'cancelled',
-  'archived',
+  ...TASK_STATUS_OPTION_ITEMS.map((item) => item.value),
 ];
+
+export const TASK_STATUS_IMPORT_ALIASES: Record<string, TaskStatus> = {
+  '完成': 'finished',
+  '進行中': 'in_progress',
+  '新開始': 'todo',
+  '計劃中': 'planning',
+  '等待中': 'todo',
+  'done': 'finished',
+  'in progress': 'in_progress',
+  'internal review': 'internal_review',
+  'round 1 wip': 'round_1_wip',
+  'round 1 review': 'round_1_review',
+  'round 2 wip': 'round_2_wip',
+  'round 2 review': 'round_2_review',
+  'round 3 wip': 'round_3_wip',
+  'round 3 review': 'round_3_review',
+  'pending mpfa/pc for nfc': 'pending_mpfa_pc_nfc',
+  'pending for nfc': 'pending_mpfa_pc_nfc',
+  'planning': 'planning',
+  'new': 'todo',
+  'waiting': 'todo',
+  'focus': 'in_progress',
+  'priority': 'in_progress',
+  'not started': 'todo',
+  'pending': 'planning',
+  'pending for approval': 'planning',
+  'pending on tech team': 'planning',
+  'pending for further requirement': 'planning',
+  'pending requirement confirmation by benne': 'planning',
+  'completed': 'finished',
+  'on hold': 'planning',
+  'cancelled': 'cancelled',
+  'wip': 'in_progress',
+  'todo': 'todo',
+  'in_progress': 'in_progress',
+  'internal_review': 'internal_review',
+  'round_1_wip': 'round_1_wip',
+  'round_1_review': 'round_1_review',
+  'round_2_wip': 'round_2_wip',
+  'round_2_review': 'round_2_review',
+  'round_3_wip': 'round_3_wip',
+  'round_3_review': 'round_3_review',
+  'pending_mpfa_pc_nfc': 'pending_mpfa_pc_nfc',
+  'finished': 'finished',
+  'archived': 'archived',
+};
+
+export function parseTaskStatusInput(status: string | null | undefined): TaskStatus | null {
+  if (!status) return null;
+  const normalized = status.trim();
+  return TASK_STATUS_IMPORT_ALIASES[normalized.toLowerCase()] || null;
+}
 
 export const FOCUS_META = { label: 'Focus', color: '#7c3aed', bg: '#ede9fe' };
 

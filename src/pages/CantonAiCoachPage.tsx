@@ -12,6 +12,7 @@ import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaCha
 import { tryBuildDeterministicSummary } from '../lib/cantonSummary';
 import { buildDecisionContext } from '../lib/cantonDecisionContext';
 import { getStatusMeta } from '../types';
+import { TASK_STATUS_OPTION_ITEMS } from '../types';
 import type { LogEntry, Profile, Role, TaskItem, TaskStatus } from '../types';
 import { SubtaskInlineEdit } from '../components/SubtaskInlineEdit';
 import { TaskFormModal } from '../components/TaskFormModal';
@@ -2205,29 +2206,15 @@ export function CantonAiCoachPage() {
 
                     {openPanel.taskId === taskId && openPanel.panel === 'status' && (
                       <div ref={statusPickerRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, paddingBottom: 18, background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0', maxHeight: 'min(52vh, 360px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                        {[
-                          ['Todo', 'todo'],
-                          ['Planning', 'planning'],
-                          ['WIP', 'in_progress'],
-                          ['Internal Review', 'internal_review'],
-                          ['Round 1 WIP', 'round_1_wip'],
-                          ['Round 1 Review', 'round_1_review'],
-                          ['Round 2 WIP', 'round_2_wip'],
-                          ['Round 2 Review', 'round_2_review'],
-                          ['Round 3 WIP', 'round_3_wip'],
-                          ['Round 3 Review', 'round_3_review'],
-                          ['Pending for NFC', 'pending_mpfa_pc_nfc'],
-                          ['Finished', 'finished'],
-                          ['Archived', 'archived'],
-                        ].filter(([, value]) => {
+                        {TASK_STATUS_OPTION_ITEMS.filter((item) => {
                           // Subtasks cannot be 'finished'
-                          if (isSubtask && value === 'finished') return false;
+                          if (isSubtask && item.value === 'finished') return false;
                           // Main tasks with subtasks cannot manually set 'finished' - computed from subtasks
-                          if (!isSubtask && hasSubtasks && value === 'finished') return false;
+                          if (!isSubtask && hasSubtasks && item.value === 'finished') return false;
                           return true;
-                        }).map(([label, value]) => (
-                          <button key={value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: value as TaskStatus, is_finished: value === 'finished' || value === 'archived', is_focus: value === 'finished' || value === 'archived' ? false : selectedTask?.is_focus, progress_percent: value === 'finished' || value === 'archived' ? 100 : selectedTask?.progress_percent }, `Status：${label}`)} style={actionButtonStyle(value === selectedTask?.status ? 'focus' : 'panel')}>
-                            {label}
+                        }).map((item) => (
+                          <button key={item.value} disabled={isReplying} onClick={() => void quickUpdateTask(taskId, title, { status: item.value as TaskStatus, is_finished: item.value === 'finished' || item.value === 'archived', is_focus: item.value === 'finished' || item.value === 'archived' ? false : selectedTask?.is_focus, progress_percent: item.value === 'finished' || item.value === 'archived' ? 100 : selectedTask?.progress_percent }, `Status：${item.label}`)} style={actionButtonStyle(item.value === selectedTask?.status ? 'focus' : 'panel')}>
+                            {item.label}
                           </button>
                         ))}
                       </div>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { getStatusMeta, type TaskItem, type TaskStatus, type Profile } from '../types';
+import { getStatusMeta, TASK_STATUS_OPTION_ITEMS, type TaskItem, type TaskStatus, type Profile } from '../types';
 import { updateSubtask, updateSubtaskAssignees } from '../lib/api';
 
 interface SubtaskInlineEditProps {
@@ -263,15 +263,15 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
                 overflowY: 'auto',
                 WebkitOverflowScrolling: 'touch',
               }}>
-                {(['todo', 'planning', 'in_progress', 'internal_review', 'round_1_wip', 'round_1_review', 'round_2_wip', 'round_2_review', 'round_3_wip', 'round_3_review', 'pending_mpfa_pc_nfc', 'finished', 'cancelled'] as TaskStatus[]).map((s) => {
-                  const meta = getStatusMeta(s);
-                  const isSelected = status === s;
+                {TASK_STATUS_OPTION_ITEMS.filter((item) => item.value !== 'archived').map((item) => {
+                  const meta = getStatusMeta(item.value);
+                  const isSelected = status === item.value;
                   return (
                     <button
-                      key={s}
+                      key={item.value}
                       onClick={() => {
-                        setStatus(s);
-                        setPendingDelete(s === 'cancelled');
+                        setStatus(item.value);
+                        setPendingDelete(item.value === 'cancelled');
                         setShowStatusDropdown(false);
                       }}
                       style={{
@@ -298,7 +298,7 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
                         fontWeight: 700,
                         color: isSelected ? meta.color : '#475569',
                       }}>
-                        {meta.label}
+                        {item.label}
                       </span>
                     </button>
                   );

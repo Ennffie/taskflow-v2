@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Calendar, Trash2, Target } from 'lucide-reac
 import { AppShell } from '../components/AppShell';
 import { fetchMyLogs, fetchTasks, createLog, updateTask, updateLog, deleteLog } from '../lib/api';
 import { addDays, formatDate, formatDateTime, getReportDate } from '../lib/date';
+import { TASK_STATUS_OPTION_ITEMS } from '../types';
 import type { LogEntry, TaskItem, LogCategory, TaskStatus } from '../types';
 import { panelStyle } from './TaskListPage';
 
@@ -762,19 +763,9 @@ export function MyLogPage() {
                       style={inputStyle}
                     >
                       <option value="">No change</option>
-                      <option value="todo">Todo</option>
-                      <option value="planning">Planning</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="internal_review">Internal Review</option>
-                      <option value="round_1_wip">Round 1 WIP</option>
-                      <option value="round_1_review">Round 1 Review</option>
-                      <option value="round_2_wip">Round 2 WIP</option>
-                      <option value="round_2_review">Round 2 Review</option>
-                      <option value="round_3_wip">Round 3 WIP</option>
-                      <option value="round_3_review">Round 3 Review</option>
-                      <option value="pending_mpfa_pc_nfc">Pending for NFC</option>
-                      <option value="finished">Finished</option>
-                      <option value="cancelled">Cancelled</option>
+                      {TASK_STATUS_OPTION_ITEMS.filter((item) => item.value !== 'archived').map((item) => (
+                        <option key={item.value} value={item.value}>{item.label}</option>
+                      ))}
                     </select>
                   </label>
                 </div>
