@@ -820,6 +820,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
 
           if (!ticketNo && !description && !statusCell && !pic && !role && !portal) continue;
           if (/^\[\s*put tix link here\s*\]$/i.test(ticketNo)) continue;
+          if (/^ticket no\.?$/i.test(ticketNo) && /^description$/i.test(description) && /^status$/i.test(statusCell)) continue;
 
           taskId = ticketNo || '';
           fileLink = ticketLink;

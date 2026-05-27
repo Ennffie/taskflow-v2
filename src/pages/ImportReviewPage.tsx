@@ -60,9 +60,14 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   'Priority': 'in_progress',
   'Not Started': 'todo',
   'Pending': 'planning',
+  'Pending for approval': 'planning',
+  'Pending on tech team': 'planning',
+  'Pending for further requirement': 'planning',
+  'Pending requirement confirmation by Benne': 'planning',
   'Completed': 'finished',
   'On Hold': 'planning',
   'Cancelled': 'cancelled',
+  'WIP': 'in_progress',
 };
 
 function parseStatus(statusStr: string): TaskStatus | null {
