@@ -713,7 +713,7 @@ export function LogBookPage() {
                     <option value="design">Design</option>
                     <option value="research">Research</option>
                     <option value="meeting">Meeting</option>
-                    <option value="internal_review">Review</option>
+                    <option value="review">Review</option>
                     <option value="other">Other</option>
                   </select>
                 </label>
