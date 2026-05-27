@@ -15,6 +15,7 @@ interface ImportRow {
   assigneeNames: string[];
   dueDate: string | null;
   description: string;
+  fileLink?: string | null;
   source?: 'generic' | 'crce_tracker';
   importKind?: 'task' | 'subtask';
   mainTaskId?: string | null;
@@ -343,6 +344,7 @@ export function ImportReviewPage() {
                 date: result.row.dueDate || new Date().toISOString().slice(0, 10),
                 event: result.row.description,
                 category: 'other',
+                file_name: result.row.fileLink || undefined,
               });
               logsAdded++;
             }
@@ -367,6 +369,7 @@ export function ImportReviewPage() {
                 date: result.row.dueDate || new Date().toISOString().slice(0, 10),
                 event: result.row.description,
                 category: 'other',
+                file_name: result.row.fileLink || undefined,
               });
               logsAdded++;
             }
@@ -404,6 +407,7 @@ export function ImportReviewPage() {
               date: result.row.dueDate || new Date().toISOString().slice(0, 10),
               event: result.row.description,
               category: 'other',
+              file_name: result.row.fileLink || undefined,
             });
             logsAdded++;
           }
@@ -440,6 +444,7 @@ export function ImportReviewPage() {
                 date: result.row.dueDate || new Date().toISOString().slice(0, 10),
                 event: result.row.description,
                 category: 'other',
+                file_name: result.row.fileLink || undefined,
               });
               logsAdded++;
             }
@@ -471,6 +476,7 @@ export function ImportReviewPage() {
                 date: result.row.dueDate || new Date().toISOString().slice(0, 10),
                 event: result.row.description,
                 category: 'other',
+                file_name: result.row.fileLink || undefined,
               });
               logsAdded++;
             }

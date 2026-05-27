@@ -24,6 +24,7 @@ interface ImportRow {
   assigneeNames: string[];
   dueDate: string | null;
   description: string;
+  fileLink?: string | null;
   source?: 'generic' | 'crce_tracker';
   importKind?: 'task' | 'subtask';
   mainTaskId?: string | null;
@@ -653,6 +654,12 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         const cell = worksheet?.[address];
         return typeof cell?.w === 'string' ? cell.w.trim() : '';
       };
+      const getCellHyperlink = (rowIndex: number, columnIndex: number) => {
+        const address = `${getColumnLabel(columnIndex)}${rowIndex + 1}`;
+        const cell = worksheet?.[address];
+        const target = cell?.l?.Target;
+        return typeof target === 'string' && target.trim() ? target.trim() : null;
+      };
       const parseDateCell = (rowIndex: number, columnIndex: number, rawValue: unknown) => {
         const displayText = getCellDisplayText(rowIndex, columnIndex);
         return parseDate(displayText || rawValue);
@@ -768,6 +775,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         let taskName = '';
         let update = '';
         let status = 'New';
+        let fileLink: string | null = null;
         let importKind: ImportRow['importKind'] = 'task';
         let mainTaskId: string | null = null;
         let mainTaskTitle = '';
@@ -776,6 +784,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
         
         if (format === 'CRCE') {
           const ticketNo = normalizeCell(row[1]);
+          const ticketLink = getCellHyperlink(i, 1);
           const description = normalizeCell(row[2]);
           const statusCell = normalizeCell(row[13]);
           const requestor = normalizeCell(row[14]);
@@ -813,6 +822,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           if (/^\[\s*put tix link here\s*\]$/i.test(ticketNo)) continue;
 
           taskId = ticketNo || '';
+          fileLink = ticketLink;
           mainTaskId = ticketNo || null;
           mainTaskTitle = buildCrceMainTitle(ticketNo, description);
           subtaskTitle = buildCrceSubtaskTitle(role, portal === 'Others' ? `${portal}${portalOther ? ` (${portalOther})` : ''}` : portal, features);
@@ -931,6 +941,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           assigneeNames: member ? [member] : [],
           dueDate: date || null,
           description: update || taskName,
+          fileLink,
           source: format === 'CRCE' ? 'crce_tracker' : 'generic',
           importKind,
           mainTaskId,
