@@ -1,6 +1,7 @@
 import type { AttendanceLog, Profile } from '../types';
 import { formatThresholdLabel, getLateThresholdMinutes, isLateCheckIn } from '../lib/attendanceRules';
 import { getProfileColor } from '../lib/profileAppearance';
+import { HorizontalSwipeScroll } from './HorizontalSwipeScroll';
 
 interface AttendanceTrendChartProps {
   records: AttendanceLog[];
@@ -131,7 +132,7 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
     <div style={{ display: 'grid', gap: 8 }}>
       <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 800 }}>← 左右移動睇全月 →</div>
       <div style={{ width: '100%', minWidth: 0, borderRadius: 20, border: '1px solid #e2e8f0', background: '#fff', overflow: 'hidden' }}>
-        <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}>
+        <HorizontalSwipeScroll>
           <div style={{ width: svgWidth, minWidth: svgWidth, display: 'block' }}>
             <svg width={svgWidth} height={chartHeight} style={{ display: 'block', maxWidth: 'none', background: '#fff' }}>
           {ticks.map((tick) => {
@@ -179,7 +180,7 @@ export function AttendanceTrendChart({ records, profile, baselineMinutes = 570, 
           })}
             </svg>
           </div>
-        </div>
+        </HorizontalSwipeScroll>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: 11, fontWeight: 700, padding: '0 2px' }}>
