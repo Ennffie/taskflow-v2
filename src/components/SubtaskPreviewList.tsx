@@ -21,6 +21,13 @@ function getTagValue(tags: string[], prefix: string): string | null {
   return match ? match.slice(prefix.length) : null;
 }
 
+function getTagValues(tags: string[], prefix: string): string[] {
+  return tags
+    .filter((tag) => tag.startsWith(prefix))
+    .map((tag) => tag.slice(prefix.length))
+    .filter(Boolean);
+}
+
 function getSubtaskPreviewTitle(subtask: TaskItem): string {
   const role = getTagValue(subtask.tags, 'role:');
   const portal = getTagValue(subtask.tags, 'portal:');
@@ -33,6 +40,23 @@ function getSubtaskPreviewTitle(subtask: TaskItem): string {
   return compactTitle || subtask.title;
 }
 
+function getSubtaskHighlightLabel(subtask: TaskItem): string {
+  const role = getTagValue(subtask.tags, 'role:');
+  const portal = getTagValue(subtask.tags, 'portal:');
+  const portalOther = getTagValue(subtask.tags, 'portal-other:');
+  const featureOther = getTagValue(subtask.tags, 'feature-other:');
+  const features = getTagValues(subtask.tags, 'feature:');
+
+  const resolvedPortal = portal === 'Others' && portalOther ? portalOther : portal;
+  const primaryFeature = features[0] || featureOther;
+  const base = [role, resolvedPortal].filter(Boolean).join(' ');
+
+  if (base && primaryFeature) return `${base} | ${primaryFeature}`;
+  if (base) return base;
+  if (primaryFeature) return primaryFeature;
+  return subtask.title;
+}
+
 interface SubtaskPreviewListProps {
   subtasks: TaskItem[];
   limit?: number;
@@ -40,14 +64,69 @@ interface SubtaskPreviewListProps {
   checkedTaskIds?: Set<string>;
   onToggleSelect?: (taskId: string, e: React.MouseEvent) => void;
   embedded?: boolean;
+  compactSummary?: boolean;
 }
 
-export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false, checkedTaskIds, onToggleSelect, embedded = true }: SubtaskPreviewListProps) {
+export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false, checkedTaskIds, onToggleSelect, embedded = true, compactSummary = false }: SubtaskPreviewListProps) {
   const navigate = useNavigate();
   const visible = subtasks.slice(0, limit);
   const remaining = subtasks.length - visible.length;
+  const summaryItems = Array.from(new Set(subtasks.map((subtask) => getSubtaskHighlightLabel(subtask).trim()).filter(Boolean)));
+  const visibleSummaryItems = summaryItems.slice(0, 3);
 
   if (subtasks.length === 0) return null;
+
+  if (compactSummary) {
+    return (
+      <div style={{ marginTop: embedded ? '1px' : '0', paddingTop: embedded ? '6px' : '0', borderTop: embedded ? '1px solid #eef2f7' : 'none', display: 'grid', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Subtasks
+          </div>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b' }}>
+            {subtasks.length} item{subtasks.length === 1 ? '' : 's'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {visibleSummaryItems.map((item) => (
+            <span
+              key={item}
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#334155',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '999px',
+                padding: '5px 9px',
+                maxWidth: '100%',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {item}
+            </span>
+          ))}
+          {summaryItems.length > 3 && (
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                color: '#64748b',
+                background: '#eef2ff',
+                border: '1px solid #dbeafe',
+                borderRadius: '999px',
+                padding: '5px 9px',
+              }}
+            >
+              ...
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ marginTop: embedded ? '1px' : '0', paddingTop: embedded ? '4px' : '0', borderTop: embedded ? '1px solid #eef2f7' : 'none', display: 'grid', gap: '3px' }}>

@@ -95,6 +95,7 @@ export function TaskCard({
   const primaryAssignee = task.tags.includes('import:crce') && firstSubtaskAssignee
     ? firstSubtaskAssignee
     : task.assignees[0];
+  const shouldUseCompactSubtaskSummary = task.tags.includes('import:crce') || subtasks.length > 3;
 
   const progress = (() => {
     if (subtasks.length === 0) return task.is_finished ? 100 : (task.progress_percent ?? 0);
@@ -249,6 +250,7 @@ export function TaskCard({
             showCheckbox={showCheckbox}
             checkedTaskIds={checkedTaskIds}
             onToggleSelect={onToggleSelect}
+            compactSummary={shouldUseCompactSubtaskSummary}
           />
         </div>
       )}
