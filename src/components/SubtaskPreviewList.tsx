@@ -69,10 +69,9 @@ interface SubtaskPreviewListProps {
 
 export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false, checkedTaskIds, onToggleSelect, embedded = true, compactSummary = false }: SubtaskPreviewListProps) {
   const navigate = useNavigate();
-  const visible = subtasks.slice(0, limit);
+  const compactLimit = 3;
+  const visible = subtasks.slice(0, compactSummary ? compactLimit : limit);
   const remaining = subtasks.length - visible.length;
-  const summaryItems = Array.from(new Set(subtasks.map((subtask) => getSubtaskHighlightLabel(subtask).trim()).filter(Boolean)));
-  const visibleSummaryItems = summaryItems.slice(0, 3);
 
   if (subtasks.length === 0) return null;
 
@@ -87,41 +86,54 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
             {subtasks.length} item{subtasks.length === 1 ? '' : 's'}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {visibleSummaryItems.map((item) => (
-            <span
-              key={item}
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#334155',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '999px',
-                padding: '5px 9px',
-                maxWidth: '100%',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {item}
-            </span>
-          ))}
-          {summaryItems.length > 3 && (
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                color: '#64748b',
-                background: '#eef2ff',
-                border: '1px solid #dbeafe',
-                borderRadius: '999px',
-                padding: '5px 9px',
-              }}
-            >
-              ...
-            </span>
+        <div style={{ display: 'grid', gap: '3px' }}>
+          {visible.map((subtask) => {
+            const assignee = subtask.assignees[0];
+            const progress = subtask.is_finished ? 100 : (subtask.progress_percent ?? 0);
+            const due = formatDate(subtask.due_date);
+            const statusMeta = getStatusMeta(subtask.status);
+            const isOverdue = !!subtask.due_date && new Date(subtask.due_date) < new Date(new Date().setHours(0,0,0,0));
+            const previewTitle = getSubtaskHighlightLabel(subtask);
+
+            return (
+              <div
+                key={subtask.id}
+                onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${subtask.id}`); }}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '18px minmax(0,1fr) auto',
+                  gap: '6px',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  borderRadius: '7px',
+                  padding: '4px 6px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: assignee ? getAvatarColor(assignee.name, assignee.id) : '#E2E8F0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 700 }}>
+                  {assignee ? initials(assignee.name) : '—'}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15, minWidth: 0 }}>{previewTitle}</div>
+                    <span style={{ fontSize: '8px', fontWeight: 700, color: statusMeta.color, background: statusMeta.bg, padding: '2px 5px', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {statusMeta.label}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '9px', color: isOverdue ? '#dc2626' : '#94a3b8', marginTop: '0px', lineHeight: 1.1 }}>{due === '—' ? 'No due date' : due}</div>
+                </div>
+                <div style={{ display: 'grid', gap: '2px', justifyItems: 'end', minWidth: '48px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: 700, color: '#475569' }}>{progress}%</div>
+                  <div style={{ width: '44px', height: '4px', borderRadius: '999px', background: '#e2e8f0', overflow: 'hidden' }}>
+                    <div style={{ width: `${progress}%`, height: '100%', background: progress >= 100 ? '#10b981' : '#7c3aed', borderRadius: '999px' }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {remaining > 0 && (
+            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, paddingLeft: '24px' }}>...</div>
           )}
         </div>
       </div>
