@@ -114,6 +114,10 @@ function sortTasks(tasks: TaskItem[], sortOption: SortOption): TaskItem[] {
   }
 }
 
+function isOpenOverdueTask(task: TaskItem): boolean {
+  return isOverdue(task.due_date) && task.status !== 'finished' && task.status !== 'archived';
+}
+
 export function TaskListPage() {
   const { profile, session, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -237,11 +241,27 @@ export function TaskListPage() {
     return matchesStatus;
   }), [queryFilteredTasks, statusFilter]);
 
+  const overdueRootIds = useMemo(() => {
+    const openOverdueRootIds = new Set(
+      filtered
+        .filter((task) => !task.parent_id && isOpenOverdueTask(task))
+        .map((task) => task.id),
+    );
+
+    filtered.forEach((task) => {
+      if (!task.parent_id) return;
+      if (!isOpenOverdueTask(task)) return;
+      openOverdueRootIds.add(task.parent_id);
+    });
+
+    return openOverdueRootIds;
+  }, [filtered]);
+
   const groupedTasks = useMemo(() => {
     const rootTasks = filtered.filter(t => !t.parent_id);
     const focusTasks = sortTasks(rootTasks.filter(t => t.is_focus), sortOption);
-    const overdueTasks = sortTasks(rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
-    const otherTasks = sortTasks(rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
+    const overdueTasks = sortTasks(rootTasks.filter(t => overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
+    const otherTasks = sortTasks(rootTasks.filter(t => !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
     const doneTasks = sortTasks(rootTasks.filter(t => t.status === 'finished'), sortOption);
     const archiveTasks = sortTasks(rootTasks.filter(t => t.status === 'archived'), sortOption);
     
@@ -253,7 +273,7 @@ export function TaskListPage() {
     if (archiveTasks.length > 0) groups['Archive'] = archiveTasks;
     
     return groups;
-  }, [filtered, sortOption]);
+  }, [filtered, overdueRootIds, sortOption]);
 
   const statusOptionBaseTasks = queryFilteredTasks.filter(t => !t.parent_id);
   const statusOptionCounts = (['all', ...TASK_STATUS_OPTIONS] as const).reduce<Record<string, number>>((acc, option) => {
@@ -266,8 +286,8 @@ export function TaskListPage() {
   // Stats for compact cards - use filtered tasks to match list
   const rootTasks = filtered.filter(t => !t.parent_id);
   const focusCount = rootTasks.filter(t => t.is_focus).length;
-  const overdueCount = rootTasks.filter(t => isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
-  const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
+  const overdueCount = rootTasks.filter(t => overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
+  const otherCount = rootTasks.filter(t => !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
   const allCount = rootTasks.length;
   const archiveCount = rootTasks.filter(t => t.status === 'archived').length;
   const compactCardCounts: Record<CompactCardKey, number> = {
