@@ -111,13 +111,16 @@ export function ImportReviewPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const importData = useMemo<ImportRow[]>(() => location.state?.importData || [], [location.state]);
+  const isCrceImport = useMemo(
+    () => importData.some((row) => row.source === 'crce_tracker' || row.importKind === 'subtask'),
+    [importData],
+  );
   const [expandedSections, setExpandedSections] = useState({
     create: true,
     update: true,
     skip: true,
   });
-  
-  const importData = useMemo<ImportRow[]>(() => location.state?.importData || [], [location.state]);
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
 
   useEffect(() => {
@@ -125,11 +128,17 @@ export function ImportReviewPage() {
     
     const loadData = async () => {
       try {
-        const [tasks, profs, logs] = await Promise.all([
-          fetchTasks(), 
-          fetchProfiles(),
-          fetchAllLogs()
-        ]);
+        const [tasks, profs, logs] = isCrceImport
+          ? await Promise.all([
+              Promise.resolve([] as TaskItem[]),
+              fetchProfiles(),
+              Promise.resolve([] as Awaited<ReturnType<typeof fetchAllLogs>>),
+            ])
+          : await Promise.all([
+              fetchTasks(),
+              fetchProfiles(),
+              fetchAllLogs()
+            ]);
         
         // Build map: task_id -> Set of "event_date" keys
         const taskLogMap = new Map<string, Set<string>>();
@@ -148,7 +157,7 @@ export function ImportReviewPage() {
     };
     
     loadData();
-  }, [importData, navigate]);
+  }, [importData, isCrceImport, navigate]);
 
   const performMatching = (
     rows: ImportRow[], 
@@ -286,7 +295,6 @@ export function ImportReviewPage() {
     
     const createdTasksMap = new Map<string, TaskItem>();
     const importedTaskIds = new Set<string>(); // Track which tasks were touched in this import
-    const isCrceImport = importData.some((row) => row.source === 'crce_tracker');
     let created = 0, updated = 0, logsAdded = 0, skipped = 0;
     const failures: { row: number; title: string; error: string }[] = [];
 
@@ -301,6 +309,35 @@ export function ImportReviewPage() {
     const pendingAssignees: PendingAssigneeInsert[] = [];
     const pendingTags: PendingTagInsert[] = [];
     const pendingLogs: PendingLogInsert[] = [];
+
+    if (isCrceImport) {
+      const confirmed = window.confirm(
+        'This CRCE import will delete all current tasks, logs, assignees, and tags before importing the new file. Continue?'
+      );
+      if (!confirmed) {
+        setProcessing(false);
+        return;
+      }
+
+      const clearSteps = [
+        { table: 'log_entries', key: 'id' },
+        { table: 'task_assignees', key: 'task_id' },
+        { table: 'tags', key: 'task_id' },
+        { table: 'tasks', key: 'id' },
+      ] as const;
+
+      for (const step of clearSteps) {
+        const { error } = await supabase
+          .from(step.table)
+          .delete()
+          .neq(step.key, '00000000-0000-0000-0000-000000000000');
+        if (error) {
+          alert(`Import failed while clearing ${step.table}: ${error.message}`);
+          setProcessing(false);
+          return;
+        }
+      }
+    }
 
     const flushPendingWrites = async () => {
       const jobs: Array<Promise<{ error: { message?: string } | null }>> = [];
@@ -675,6 +712,12 @@ export function ImportReviewPage() {
         </div>
 
         {/* Stats Cards */}
+        {isCrceImport && (
+          <div style={{ marginBottom: '16px', padding: '14px 16px', borderRadius: '12px', background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', fontSize: '14px', fontWeight: 500 }}>
+            This CRCE import will replace current task data before importing the new spreadsheet.
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           <StatCard label="Create New" count={grouped.create.length} color="#3b82f6" icon={<Plus size={20} />} />
           <StatCard label="Update" count={grouped.update.length} color="#10b981" icon={<CheckCircle2 size={20} />} />
