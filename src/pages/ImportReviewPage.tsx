@@ -86,6 +86,14 @@ function buildMainTaskLookup(row: ImportRow): string {
   return normalizeTaskCode(row.mainTaskId || row.taskId || extractTaskId(row.mainTaskTitle || row.title)) || (row.mainTaskTitle || row.title).trim();
 }
 
+function normalizeTagList(tags: string[] | undefined): string[] {
+  return Array.from(new Set((tags || []).map((tag) => tag.trim()).filter(Boolean))).sort();
+}
+
+function sameStringArray(a: string[], b: string[]) {
+  return JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+}
+
 type PendingAssigneeInsert = { task_id: string; user_id: string };
 type PendingTagInsert = { task_id: string; name: string };
 type PendingLogInsert = {
@@ -222,8 +230,8 @@ export function ImportReviewPage() {
           matchedAssignees,
           parsedStatus,
           reason: parsedStatus && parsedStatus !== matchedTask.status
-            ? `Subtask status: ${getStatusMeta(matchedTask.status).label} → ${getStatusMeta(parsedStatus).label}`
-            : 'Add new subtask log',
+            ? `Same ticket no. → cover existing subtask (${getStatusMeta(matchedTask.status).label} → ${getStatusMeta(parsedStatus).label})`
+            : 'Same ticket no. → cover existing subtask',
           logExists: false,
         };
       }
@@ -386,6 +394,36 @@ export function ImportReviewPage() {
         log_count: 0,
       } as TaskItem;
     };
+
+    const replaceTaskTags = async (task: TaskItem, nextTags: string[]) => {
+      const normalizedNextTags = normalizeTagList(nextTags);
+      const currentTags = normalizeTagList(task.tags);
+      if (sameStringArray(currentTags, normalizedNextTags)) return;
+
+      const { error: deleteError } = await supabase.from('tags').delete().eq('task_id', task.id);
+      if (deleteError) throw deleteError;
+      if (normalizedNextTags.length > 0) {
+        const { error: insertError } = await supabase
+          .from('tags')
+          .insert(normalizedNextTags.map((name) => ({ task_id: task.id, name })));
+        if (insertError) throw insertError;
+      }
+      task.tags = normalizedNextTags;
+    };
+
+    const syncCrceMainTask = async (task: TaskItem, row: ImportRow) => {
+      const nextTitle = (row.mainTaskTitle || row.title).trim();
+      const nextDescription = nextTitle;
+      const taskPatch: Parameters<typeof updateTask>[1] = {};
+      if (nextTitle && nextTitle !== task.title) taskPatch.title = nextTitle;
+      if (nextDescription !== (task.description || '')) taskPatch.description = nextDescription;
+      if (Object.keys(taskPatch).length > 0) {
+        await updateTask(task.id, taskPatch);
+        if (taskPatch.title) task.title = taskPatch.title;
+        if (taskPatch.description !== undefined) task.description = taskPatch.description ?? null;
+        updated++;
+      }
+    };
     
     for (const result of matchResults) {
       try {
@@ -413,6 +451,8 @@ export function ImportReviewPage() {
             created++;
           }
 
+          await syncCrceMainTask(mainTask, result.row);
+
           if (result.action === 'create') {
             const newSubtask = await createImportedTask({
               title: result.row.subtaskTitle || result.row.title,
@@ -435,13 +475,19 @@ export function ImportReviewPage() {
             const taskPatch: Parameters<typeof updateTask>[1] = {};
             if (result.parsedStatus && result.parsedStatus !== result.matchedTask.status) taskPatch.status = result.parsedStatus;
             if (result.row.dueDate && result.row.dueDate !== result.matchedTask.due_date) taskPatch.due_date = result.row.dueDate;
+            const nextDescription = result.row.description || result.row.subtaskTitle || result.row.title;
+            if (nextDescription !== (result.matchedTask.description || '')) taskPatch.description = nextDescription;
             if (Object.keys(taskPatch).length > 0) {
               await updateTask(result.matchedTask.id, taskPatch);
+              if (taskPatch.description !== undefined) result.matchedTask.description = taskPatch.description ?? null;
+              if (taskPatch.status) result.matchedTask.status = taskPatch.status;
+              if (taskPatch.due_date !== undefined) result.matchedTask.due_date = taskPatch.due_date ?? null;
               updated++;
             }
             if (result.matchedAssignees.length > 0) {
               await updateTaskAssignees(result.matchedTask.id, result.matchedAssignees.map((a) => a.id));
             }
+            await replaceTaskTags(result.matchedTask, result.row.tags || []);
             if (result.row.description && !result.logExists) {
               await createLog({
                 task_id: result.matchedTask.id,
