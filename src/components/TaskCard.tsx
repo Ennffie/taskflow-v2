@@ -226,9 +226,9 @@ export function TaskCard({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: progress >= 100 ? '#10b981' : '#7c3aed', background: progress >= 100 ? '#ecfdf5' : '#f3e8ff', padding: '3px 7px', borderRadius: '999px' }}>
-            {progress}%
-          </span>
+          <div style={{ width: '40px', height: '6px', borderRadius: '999px', background: '#e2e8f0', overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: progress >= 100 ? '#10b981' : '#7c3aed', borderRadius: '999px' }} />
+          </div>
           <span style={{ fontSize: '11px', color: '#475569', fontWeight: 600, background: '#f8fafc', padding: '3px 7px', borderRadius: '999px' }}>
             {task.log_count} log{task.log_count <= 1 ? '' : 's'}
           </span>

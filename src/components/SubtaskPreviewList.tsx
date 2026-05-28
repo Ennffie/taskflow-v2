@@ -133,7 +133,6 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
                   <div style={{ fontSize: '9px', color: isOverdue ? '#dc2626' : '#94a3b8', marginTop: '0px', lineHeight: 1.1 }}>{due === '—' ? 'No due date' : due}</div>
                 </div>
                 <div style={{ display: 'grid', gap: '2px', justifyItems: 'end', minWidth: '48px' }}>
-                  <div style={{ fontSize: '9px', fontWeight: 700, color: '#475569' }}>{progress}%</div>
                   <div style={{ width: '44px', height: '4px', borderRadius: '999px', background: '#e2e8f0', overflow: 'hidden' }}>
                     <div style={{ width: `${progress}%`, height: '100%', background: progress >= 100 ? '#10b981' : '#7c3aed', borderRadius: '999px' }} />
                   </div>
@@ -223,7 +222,6 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
               <div style={{ fontSize: '9px', color: isOverdue ? '#dc2626' : '#94a3b8', marginTop: '0px', lineHeight: 1.1 }}>{due === '—' ? 'No due date' : due}</div>
             </div>
             <div style={{ display: 'grid', gap: '2px', justifyItems: 'end', minWidth: '48px' }}>
-              <div style={{ fontSize: '9px', fontWeight: 700, color: '#475569' }}>{progress}%</div>
               <div style={{ width: '44px', height: '4px', borderRadius: '999px', background: '#e2e8f0', overflow: 'hidden' }}>
                 <div style={{ width: `${progress}%`, height: '100%', background: progress >= 100 ? '#10b981' : '#7c3aed', borderRadius: '999px' }} />
               </div>

@@ -158,7 +158,6 @@ export function SubtaskInlineEdit({ subtask, profiles, isExpanded, onToggle, onU
 
         {/* Progress */}
         <div style={{ display: 'grid', gap: 2, justifyItems: 'end', minWidth: '44px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#475569' }}>{progressPercent}%</div>
           <div style={{ width: 40, height: 4, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}>
             <div style={{
               width: `${progressPercent}%`,
