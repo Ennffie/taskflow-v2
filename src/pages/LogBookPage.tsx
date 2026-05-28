@@ -363,7 +363,7 @@ export function LogBookPage() {
   return (
     <AppShell>
       <div style={{ display: 'grid', gap: '16px' }}>
-        <BackButton to="/" label="Back to tasks" />
+        <BackButton to="/" label="Back to all tasks" />
 
         {parentTask && (
           <div style={{ padding: '12px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
