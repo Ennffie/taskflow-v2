@@ -202,19 +202,28 @@ export function TaskCard({
         {/* Middle: Title + Tags */}
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         {/* Task Title */}
-        <p style={{ 
-          fontSize: '15px', 
-          fontWeight: 700, 
-          color: '#111827', 
-          margin: 0, 
-          lineHeight: 1.3,
-          overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-        }}>
-          {task.title}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <p style={{ 
+            fontSize: '15px', 
+            fontWeight: 700, 
+            color: '#0f172a', 
+            margin: 0, 
+            lineHeight: 1.3,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            textDecoration: 'underline',
+            textDecorationThickness: '1.5px',
+            textUnderlineOffset: '3px',
+            textDecorationColor: 'rgba(15, 23, 42, 0.28)',
+          }}>
+            {task.title}
+          </p>
+          <span style={{ flexShrink: 0, marginTop: '1px', borderRadius: '999px', border: '1px solid #dbeafe', background: '#eff6ff', color: '#0369a1', fontSize: '10px', fontWeight: 800, letterSpacing: '0.04em', padding: '3px 7px' }}>
+            OPEN
+          </span>
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, color: progress >= 100 ? '#10b981' : '#7c3aed', background: progress >= 100 ? '#ecfdf5' : '#f3e8ff', padding: '3px 7px', borderRadius: '999px' }}>

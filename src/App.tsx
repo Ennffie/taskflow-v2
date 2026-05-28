@@ -46,6 +46,26 @@ function PageFallback() {
   return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '16px', background: '#f8fafc' }}>Loading…</div>;
 }
 
+function AdminRouteNotice() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '420px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '28px 24px', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)' }}>
+        <div style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.08em', color: '#7c3aed', textTransform: 'uppercase' }}>Admin Only</div>
+        <h1 style={{ margin: '12px 0 10px', fontSize: '24px', lineHeight: 1.2, color: '#111827' }}>This page is for admin only.</h1>
+        <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.6, color: '#64748b' }}>
+          Your account can use the normal task, attendance, and Canton AI pages, but this area needs admin permission.
+        </p>
+        <button
+          onClick={() => window.location.assign(`${window.location.origin}${window.location.pathname}#/`)}
+          style={{ marginTop: '20px', width: '100%', border: 'none', borderRadius: '999px', padding: '13px 16px', background: '#111827', color: '#fff', fontSize: '14px', fontWeight: 800, cursor: 'pointer' }}
+        >
+          Back to Home
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const { session, profile, loading } = useAuth();
   const location = useLocation();
@@ -73,14 +93,14 @@ function App() {
           <Route path="/tasks/:taskId" element={session ? <LogBookPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/my-log" element={session ? <MyLogPage /> : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="/attendance" element={session ? <AttendanceRecordPage /> : <Navigate to="/ai-parse-demo" replace />} />
-          <Route path="/attendance/admin" element={session && profile?.role === 'admin' ? <AdminAttendancePage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-          <Route path="/team-logs" element={session && profile?.role === 'admin' ? <AdminLogsPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-          <Route path="/tracker/member" element={session && profile?.role === 'admin' ? <TrackerByMemberPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-          <Route path="/tracker/task" element={session && profile?.role === 'admin' ? <TrackerByTaskPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-          <Route path="/review-export" element={session && profile?.role === 'admin' ? <ReviewBeforeExportPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-          <Route path="/import-review" element={session && profile?.role === 'admin' ? <ImportReviewPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-          <Route path="/import-history" element={session && profile?.role === 'admin' ? <ImportHistoryPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
-          <Route path="/settings" element={session && profile?.role === 'admin' ? <SettingsPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
+          <Route path="/attendance/admin" element={session ? (profile?.role === 'admin' ? <AdminAttendancePage /> : <AdminRouteNotice />) : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/team-logs" element={session ? (profile?.role === 'admin' ? <AdminLogsPage /> : <AdminRouteNotice />) : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/tracker/member" element={session ? (profile?.role === 'admin' ? <TrackerByMemberPage /> : <AdminRouteNotice />) : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/tracker/task" element={session ? (profile?.role === 'admin' ? <TrackerByTaskPage /> : <AdminRouteNotice />) : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/review-export" element={session ? (profile?.role === 'admin' ? <ReviewBeforeExportPage /> : <AdminRouteNotice />) : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/import-review" element={session ? (profile?.role === 'admin' ? <ImportReviewPage /> : <AdminRouteNotice />) : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/import-history" element={session ? (profile?.role === 'admin' ? <ImportHistoryPage /> : <AdminRouteNotice />) : <Navigate to="/ai-parse-demo" replace />} />
+          <Route path="/settings" element={session ? (profile?.role === 'admin' ? <SettingsPage /> : <AdminRouteNotice />) : <Navigate to="/ai-parse-demo" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

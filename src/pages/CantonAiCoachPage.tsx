@@ -2545,9 +2545,19 @@ export function CantonAiCoachPage() {
                         } else {
                           startTypingMessage('呢個 task 資料剛剛 refresh 咗，請再撳一次 task list。');
                         }
-                      }} style={isStreamingThisList ? animatedItemStyle : { textAlign: 'left', background: 'transparent', border: 'none', padding: 0, color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45 }}>
-                        <span style={{ textDecoration: 'underline', fontSize: 19, fontWeight: 400 }}>{task.title}</span>
-                        <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
+                      }} style={isStreamingThisList ? {
+                        ...animatedItemStyle,
+                        padding: '12px 14px',
+                        borderRadius: 16,
+                        border: '1px solid rgba(125, 211, 252, 0.65)',
+                        background: 'linear-gradient(135deg, rgba(240,249,255,0.96) 0%, rgba(255,255,255,0.98) 100%)',
+                        boxShadow: '0 10px 24px rgba(14, 116, 144, 0.08)',
+                      } : { textAlign: 'left', background: 'linear-gradient(135deg, rgba(240,249,255,0.96) 0%, rgba(255,255,255,0.98) 100%)', border: '1px solid rgba(125, 211, 252, 0.65)', borderRadius: 16, padding: '12px 14px', color: '#0369a1', fontSize: 16, fontWeight: 800, lineHeight: 1.45, boxShadow: '0 10px 24px rgba(14, 116, 144, 0.08)' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                          <span style={{ textDecoration: 'underline', textUnderlineOffset: 3, textDecorationThickness: '1.5px', fontSize: 19, fontWeight: 700, color: '#075985' }}>{task.title}</span>
+                          <span style={{ flexShrink: 0, borderRadius: 999, border: '1px solid #bae6fd', background: '#ffffff', color: '#0f766e', fontSize: 10, fontWeight: 900, letterSpacing: '0.05em', padding: '4px 8px' }}>OPEN</span>
+                        </div>
+                        <div style={{ color: '#64748b', textDecoration: 'none', fontSize: 13, fontWeight: 500, marginTop: 4 }}>
                           {task.status}｜{task.assignees?.join('、') || '未指派'}｜{task.due_date || '未設定'}
                         </div>
                       </button>
