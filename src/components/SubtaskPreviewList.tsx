@@ -48,12 +48,16 @@ function getSubtaskHighlightLabel(subtask: TaskItem): string {
   const features = getTagValues(subtask.tags, 'feature:');
 
   const resolvedPortal = portal === 'Others' && portalOther ? portalOther : portal;
-  const primaryFeature = features[0] || featureOther;
+  const moduleTypes = [...features, ...(featureOther ? [featureOther] : [])];
+  const visibleModuleTypes = moduleTypes.slice(0, 3);
+  const moduleSummary = visibleModuleTypes.length
+    ? `${visibleModuleTypes.join(', ')}${moduleTypes.length > 3 ? ', ...' : ''}`
+    : '';
   const base = [role, resolvedPortal].filter(Boolean).join(' ');
 
-  if (base && primaryFeature) return `${base} | ${primaryFeature}`;
+  if (base && moduleSummary) return `${base} | ${moduleSummary}`;
   if (base) return base;
-  if (primaryFeature) return primaryFeature;
+  if (moduleSummary) return moduleSummary;
   return subtask.title;
 }
 
@@ -69,8 +73,7 @@ interface SubtaskPreviewListProps {
 
 export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false, checkedTaskIds, onToggleSelect, embedded = true, compactSummary = false }: SubtaskPreviewListProps) {
   const navigate = useNavigate();
-  const compactLimit = 3;
-  const visible = subtasks.slice(0, compactSummary ? compactLimit : limit);
+  const visible = subtasks.slice(0, limit);
   const remaining = subtasks.length - visible.length;
 
   if (subtasks.length === 0) return null;
@@ -132,9 +135,6 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
               </div>
             );
           })}
-          {remaining > 0 && (
-            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, paddingLeft: '24px' }}>...</div>
-          )}
         </div>
       </div>
     );
@@ -149,7 +149,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
         const statusMeta = getStatusMeta(subtask.status);
         const isOverdue = !!subtask.due_date && new Date(subtask.due_date) < new Date(new Date().setHours(0,0,0,0));
         const isSelected = checkedTaskIds?.has(subtask.id) ?? false;
-        const previewTitle = getSubtaskPreviewTitle(subtask);
+        const previewTitle = compactSummary ? getSubtaskHighlightLabel(subtask) : getSubtaskPreviewTitle(subtask);
 
         return (
           <div
