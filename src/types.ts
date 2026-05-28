@@ -79,6 +79,34 @@ export interface AttendanceLog {
   updated_at: string;
 }
 
+export interface ImportedTaskRow {
+  rowIndex: number;
+  taskId: string | null;
+  title: string;
+  status: string;
+  assigneeNames: string[];
+  dueDate: string | null;
+  description: string;
+  fileLink?: string | null;
+  source?: 'generic' | 'crce_tracker';
+  importKind?: 'task' | 'subtask';
+  mainTaskId?: string | null;
+  mainTaskTitle?: string;
+  subtaskTitle?: string | null;
+  tags?: string[];
+}
+
+export interface ImportSnapshot {
+  id: string;
+  source_type: string;
+  source_label: string;
+  row_count: number;
+  payload: ImportedTaskRow[];
+  created_by: string;
+  expires_at: string;
+  created_at: string;
+}
+
 export const STATUS_META: Record<TaskStatus, { label: string; color: string; bg: string }> = {
   todo: { label: 'Todo', color: '#6b7280', bg: '#f3f4f6' },
   planning: { label: 'Planning', color: '#0f766e', bg: '#ccfbf1' },

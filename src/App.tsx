@@ -30,6 +30,7 @@ const LogBookPage = lazyWithReload(() => import('./pages/LogBookPage').then((mod
 const MyLogPage = lazyWithReload(() => import('./pages/MyLogPage').then((mod) => ({ default: mod.MyLogPage })));
 const SettingsPage = lazyWithReload(() => import('./pages/SettingsPage').then((mod) => ({ default: mod.SettingsPage })));
 const ImportReviewPage = lazyWithReload(() => import('./pages/ImportReviewPage').then((mod) => ({ default: mod.ImportReviewPage })));
+const ImportHistoryPage = lazyWithReload(() => import('./pages/ImportHistoryPage').then((mod) => ({ default: mod.ImportHistoryPage })));
 const TrackerByMemberPage = lazyWithReload(() => import('./pages/TrackerByMemberPage').then((mod) => ({ default: mod.TrackerByMemberPage })));
 const TrackerByTaskPage = lazyWithReload(() => import('./pages/TrackerByTaskPage').then((mod) => ({ default: mod.TrackerByTaskPage })));
 const ReviewBeforeExportPage = lazyWithReload(() => import('./pages/ReviewBeforeExportPage').then((mod) => ({ default: mod.ReviewBeforeExportPage })));
@@ -78,6 +79,7 @@ function App() {
           <Route path="/tracker/task" element={session && profile?.role === 'admin' ? <TrackerByTaskPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
           <Route path="/review-export" element={session && profile?.role === 'admin' ? <ReviewBeforeExportPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
           <Route path="/import-review" element={session && profile?.role === 'admin' ? <ImportReviewPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
+          <Route path="/import-history" element={session && profile?.role === 'admin' ? <ImportHistoryPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
           <Route path="/settings" element={session && profile?.role === 'admin' ? <SettingsPage /> : <Navigate to={isPublicRoute ? location.pathname : "/"} replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

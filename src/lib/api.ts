@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { getReportDate } from './date';
 import { getHongKongDateString } from './horoscope';
 import { buildEmbeddedLeaveNote, getAttendanceLeaveInfo, parseLeaveNote } from './attendanceLeave';
-import type { AttendanceLog, AttendanceStatus, LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
+import type { AttendanceLog, AttendanceStatus, ImportSnapshot, ImportedTaskRow, LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
 // Fetch bridge URL from Supabase app_config
 export async function fetchBridgeUrl(): Promise<string | null> {
@@ -214,6 +214,14 @@ function getMonthBounds(month: string): { start: string; end: string } {
     start: `${month}-01`,
     end: `${month}-${String(daysInMonth).padStart(2, '0')}`,
   };
+}
+
+const IMPORT_SNAPSHOT_RETENTION_DAYS = 14;
+
+function buildImportSnapshotExpiry(days = IMPORT_SNAPSHOT_RETENTION_DAYS): string {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + days);
+  return expiresAt.toISOString();
 }
 
 async function fetchAttendanceByDate(userId: string, date: string): Promise<AttendanceLog | null> {
@@ -1545,4 +1553,66 @@ export async function fetchAttendanceRecordsForDate(date: string): Promise<Atten
 
     return Array.from(deduped.values());
   });
+}
+
+export async function pruneExpiredImportSnapshots(nowIso = new Date().toISOString()) {
+  const { error } = await supabase
+    .from('import_snapshots')
+    .delete()
+    .lt('expires_at', nowIso);
+  if (error) throw error;
+}
+
+export async function saveImportSnapshot(params: {
+  sourceType: 'crce_tracker';
+  sourceLabel: string;
+  payload: ImportedTaskRow[];
+  retentionDays?: number;
+}) {
+  const createdBy = await getCurrentUserId();
+  if (!createdBy) throw new Error('User not authenticated');
+
+  await pruneExpiredImportSnapshots();
+
+  const expiresAt = buildImportSnapshotExpiry(params.retentionDays ?? IMPORT_SNAPSHOT_RETENTION_DAYS);
+  const { data, error } = await supabase
+    .from('import_snapshots')
+    .insert({
+      source_type: params.sourceType,
+      source_label: params.sourceLabel,
+      row_count: params.payload.length,
+      payload: params.payload,
+      created_by: createdBy,
+      expires_at: expiresAt,
+    })
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Failed to save import snapshot');
+  return data as ImportSnapshot;
+}
+
+export async function fetchImportSnapshots(sourceType: 'crce_tracker' | 'all' = 'all'): Promise<ImportSnapshot[]> {
+  await pruneExpiredImportSnapshots();
+
+  let query = supabase
+    .from('import_snapshots')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (sourceType !== 'all') {
+    query = query.eq('source_type', sourceType);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as ImportSnapshot[];
+}
+
+export async function deleteImportSnapshot(snapshotId: string) {
+  const { error } = await supabase
+    .from('import_snapshots')
+    .delete()
+    .eq('id', snapshotId);
+  if (error) throw error;
 }

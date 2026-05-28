@@ -3,26 +3,16 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Plus, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
-import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, updateTaskAssignees, createLog } from '../lib/api';
+import { fetchTasks, fetchProfiles, fetchAllLogs, updateTask, updateTaskAssignees, createLog, saveImportSnapshot } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import type { TaskItem, Profile, TaskStatus } from '../types';
+import type { ImportedTaskRow, TaskItem, Profile, TaskStatus } from '../types';
 import { getStatusMeta, parseTaskStatusInput } from '../types';
 
-interface ImportRow {
-  rowIndex: number;
-  taskId: string | null;
-  title: string;
-  status: string;
-  assigneeNames: string[];
-  dueDate: string | null;
-  description: string;
-  fileLink?: string | null;
-  source?: 'generic' | 'crce_tracker';
-  importKind?: 'task' | 'subtask';
-  mainTaskId?: string | null;
-  mainTaskTitle?: string;
-  subtaskTitle?: string | null;
-  tags?: string[];
+type ImportRow = ImportedTaskRow;
+
+interface ImportMeta {
+  sourceLabel?: string;
+  restoredFromSnapshotId?: string;
 }
 
 interface MatchResult {
@@ -112,6 +102,7 @@ export function ImportReviewPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const importData = useMemo<ImportRow[]>(() => location.state?.importData || [], [location.state]);
+  const importMeta = useMemo<ImportMeta>(() => location.state?.importMeta || {}, [location.state]);
   const isCrceImport = useMemo(
     () => importData.some((row) => row.source === 'crce_tracker' || row.importKind === 'subtask'),
     [importData],
@@ -317,6 +308,20 @@ export function ImportReviewPage() {
       if (!confirmed) {
         setProcessing(false);
         return;
+      }
+
+      if (!importMeta.restoredFromSnapshotId) {
+        try {
+          await saveImportSnapshot({
+            sourceType: 'crce_tracker',
+            sourceLabel: importMeta.sourceLabel || 'CRCE import',
+            payload: importData,
+          });
+        } catch (error) {
+          alert(`Import failed while saving snapshot: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          setProcessing(false);
+          return;
+        }
       }
 
       const clearSteps = [
@@ -714,7 +719,9 @@ export function ImportReviewPage() {
         {/* Stats Cards */}
         {isCrceImport && (
           <div style={{ marginBottom: '16px', padding: '14px 16px', borderRadius: '12px', background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', fontSize: '14px', fontWeight: 500 }}>
-            This CRCE import will replace current task data before importing the new spreadsheet.
+            {importMeta.restoredFromSnapshotId
+              ? `Restoring snapshot${importMeta.sourceLabel ? `: ${importMeta.sourceLabel}` : ''}. This will replace current task data.`
+              : `This CRCE import will replace current task data before importing the new spreadsheet${importMeta.sourceLabel ? `: ${importMeta.sourceLabel}` : ''}.`}
           </div>
         )}
 

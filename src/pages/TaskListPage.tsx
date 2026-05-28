@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download, X } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download, X, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { readWorkbookFromFile, sheetToJsonRows } from '../lib/xlsx';
-import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type TaskItem, type TaskStatus } from '../types';
+import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type ImportedTaskRow, type TaskItem, type TaskStatus } from '../types';
 import { AppShell, notifyModalOpen, notifyModalClose } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskCard } from '../components/TaskCard';
@@ -16,24 +16,7 @@ export const panelStyle = {
   padding: '20px',
 };
 
-interface ImportRow {
-  rowIndex: number;
-  taskId: string | null;
-  title: string;
-  status: string;
-  assigneeNames: string[];
-  dueDate: string | null;
-  description: string;
-  fileLink?: string | null;
-  source?: 'generic' | 'crce_tracker';
-  importKind?: 'task' | 'subtask';
-  mainTaskId?: string | null;
-  mainTaskTitle?: string;
-  subtaskTitle?: string | null;
-  tags?: string[];
-}
-
-
+type ImportRow = ImportedTaskRow;
 
 function isOverdue(dueDate: string | null): boolean {
   if (!dueDate) return false;
@@ -119,6 +102,7 @@ function isOpenOverdueTask(task: TaskItem): boolean {
 }
 
 export function TaskListPage() {
+  const navigate = useNavigate();
   const { profile, session, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -320,25 +304,46 @@ export function TaskListPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {/* Import Tasks Button - Admin only */}
             {isAdmin && (
-              <button
-                onClick={() => setShowImportModal(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  border: '1px solid #e2e8f0',
-                  background: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  color: '#475569',
-                }}
-              >
-                <Download size={16} />
-                Import Tasks
-              </button>
+              <>
+                <button
+                  onClick={() => navigate('/import-history')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#475569',
+                  }}
+                >
+                  <History size={16} />
+                  Import History
+                </button>
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#475569',
+                  }}
+                >
+                  <Download size={16} />
+                  Import Tasks
+                </button>
+              </>
             )}
             
             {/* User Profile */}
@@ -628,6 +633,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
   const [availableSheets, setAvailableSheets] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
   const [workbook, setWorkbook] = useState<any>(null);
+  const [sourceFileName, setSourceFileName] = useState<string>('');
   const [previewData, setPreviewData] = useState<ImportRow[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -682,6 +688,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
   const parseFile = async (file: File) => {
     setParsing(true);
     setError(null);
+    setSourceFileName(file.name);
     
     try {
       const wb = await readWorkbookFromFile(file);
@@ -1156,7 +1163,8 @@ function ImportModal({ onClose }: { onClose: () => void }) {
 
   const handleProceed = () => {
     if (previewData && previewData.length > 0) {
-      navigate('/import-review', { state: { importData: previewData } });
+      const sourceLabel = [sourceFileName, selectedSheet].filter(Boolean).join(' · ') || 'Imported spreadsheet';
+      navigate('/import-review', { state: { importData: previewData, importMeta: { sourceLabel } } });
       onClose();
     }
   };
