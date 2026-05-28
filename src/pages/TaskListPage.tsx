@@ -259,8 +259,8 @@ export function TaskListPage() {
 
   const groupedTasks = useMemo(() => {
     const rootTasks = filtered.filter(t => !t.parent_id);
-    const focusTasks = sortTasks(rootTasks.filter(t => t.is_focus), sortOption);
-    const overdueTasks = sortTasks(rootTasks.filter(t => overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
+    const overdueTasks = sortTasks(rootTasks.filter(t => overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived'), sortOption);
+    const focusTasks = sortTasks(rootTasks.filter(t => t.is_focus && !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived'), sortOption);
     const otherTasks = sortTasks(rootTasks.filter(t => !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
     const doneTasks = sortTasks(rootTasks.filter(t => t.status === 'finished'), sortOption);
     const archiveTasks = sortTasks(rootTasks.filter(t => t.status === 'archived'), sortOption);
@@ -285,8 +285,8 @@ export function TaskListPage() {
 
   // Stats for compact cards - use filtered tasks to match list
   const rootTasks = filtered.filter(t => !t.parent_id);
-  const focusCount = rootTasks.filter(t => t.is_focus).length;
-  const overdueCount = rootTasks.filter(t => overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
+  const focusCount = rootTasks.filter(t => t.is_focus && !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived').length;
+  const overdueCount = rootTasks.filter(t => overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived').length;
   const otherCount = rootTasks.filter(t => !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
   const allCount = rootTasks.length;
   const archiveCount = rootTasks.filter(t => t.status === 'archived').length;
