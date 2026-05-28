@@ -14,6 +14,12 @@ type AttendanceRecord = {
   note: string | null;
 };
 
+type AttendanceNotifyPayload = {
+  kind: 'status' | 'note' | 'clear' | 'time_edit';
+  record: AttendanceRecord;
+  previous?: Pick<AttendanceRecord, 'status' | 'note' | 'check_in_at'> | null;
+};
+
 function hkTimeLabel(iso: string | null) {
   if (!iso) return null;
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -42,24 +48,37 @@ function getLeaveLabel(status: AttendanceRecord['status']) {
   return '簽到';
 }
 
-function formatMessage(name: string, kind: 'status' | 'note' | 'clear', record: AttendanceRecord) {
+function formatMessage(params: {
+  actorName: string;
+  targetName: string;
+  kind: AttendanceNotifyPayload['kind'];
+  record: AttendanceRecord;
+  previous?: Pick<AttendanceRecord, 'status' | 'note' | 'check_in_at'> | null;
+}) {
+  const { actorName, targetName, kind, record, previous } = params;
   if (kind === 'clear') {
-    return `${name} 已取消今日${getLeaveLabel(record.status)}`;
+    return `${targetName} 已取消今日${getLeaveLabel(record.status)}`;
   }
 
   if (kind === 'note') {
-    return `${name} 更新 note：${record.note || '—'}`;
+    return `${targetName} 更新 note：${record.note || '—'}`;
+  }
+
+  if (kind === 'time_edit') {
+    const before = hkTimeLabel(previous?.check_in_at ?? null) ?? '--:--';
+    const after = hkTimeLabel(record.check_in_at) ?? '--:--';
+    return `⚠️ ${targetName} 改咗打咭時間\n日期：${record.date}\n原本：${before}\n現在：${after}\n操作者：${actorName}`;
   }
 
   if (record.status === 'present') {
     const time = hkTimeLabel(record.check_in_at) ?? '--:--';
     const late = isLate(record.check_in_at);
     const extras = [late ? 'Late' : null, record.note ? `note: ${record.note}` : null].filter(Boolean).join('｜');
-    return extras ? `${name} ${time} 已簽到｜${extras}` : `${name} ${time} 已簽到`;
+    return extras ? `${targetName} ${time} 已簽到｜${extras}` : `${targetName} ${time} 已簽到`;
   }
 
   const statusLabel = getLeaveLabel(record.status);
-  return record.note ? `${name} 今日${statusLabel}｜note: ${record.note}` : `${name} 今日${statusLabel}`;
+  return record.note ? `${targetName} 今日${statusLabel}｜note: ${record.note}` : `${targetName} 今日${statusLabel}`;
 }
 
 Deno.serve(async (req) => {
@@ -77,15 +96,40 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing secrets' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { kind, record } = await req.json() as { kind: 'status' | 'note' | 'clear'; record: AttendanceRecord };
+    const payload = await req.json() as AttendanceNotifyPayload;
+    const { kind, record, previous } = payload;
     if (!record?.user_id || !record?.status || !kind) {
       return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
-    const { data: profile } = await admin.from('profiles').select('name, email').eq('id', record.user_id).maybeSingle();
-    const name = profile?.name || profile?.email || 'Someone';
-    const text = formatMessage(name, kind, record);
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const actorClient = createClient(supabaseUrl, serviceRoleKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
+    const { data: actorData } = await actorClient.auth.getUser();
+    const actorId = actorData.user?.id ?? null;
+
+    const [{ data: targetProfile }, { data: actorProfile }] = await Promise.all([
+      admin.from('profiles').select('name, email, role').eq('id', record.user_id).maybeSingle(),
+      actorId
+        ? admin.from('profiles').select('name, email, role').eq('id', actorId).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const actorName = actorProfile?.name || actorProfile?.email || 'Someone';
+    const actorRole = actorProfile?.role || null;
+    const targetName = targetProfile?.name || targetProfile?.email || 'Someone';
+
+    if (kind === 'time_edit' && actorRole === 'admin') {
+      return new Response(JSON.stringify({ ok: true, skipped: 'admin_time_edit' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const text = formatMessage({ actorName, targetName, kind, record, previous });
 
     const telegramResp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',

@@ -245,18 +245,20 @@ async function fetchAttendanceByDate(userId: string, date: string): Promise<Atte
 }
 
 async function sendAttendanceNotification(params: {
-  kind: 'status' | 'note' | 'clear' | 'update' | 'add';
+  kind: 'status' | 'note' | 'clear' | 'update' | 'add' | 'time_edit';
   record: AttendanceLog;
   previous?: AttendanceLog | null;
 }) {
   if (!attendanceNotifyUrl) return;
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
     await fetch(attendanceNotifyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${accessToken ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({
         kind: params.kind,
@@ -1321,22 +1323,22 @@ export async function updateTodayAttendanceTime(timeHHMM: string): Promise<Atten
     .select('*')
     .single();
 
-  if (error || !data) {
-    if (isMissingAttendanceTableError(error)) {
-      const fallbackEntry = {
-        ...existing,
-        check_in_at: nextIso,
-        updated_at: new Date().toISOString(),
-      } as AttendanceLog;
-      writeAttendanceFallback(fallbackEntry);
-      void sendAttendanceNotification({ kind: 'status', record: fallbackEntry, previous: existing });
-      return fallbackEntry;
+    if (error || !data) {
+      if (isMissingAttendanceTableError(error)) {
+        const fallbackEntry = {
+          ...existing,
+          check_in_at: nextIso,
+          updated_at: new Date().toISOString(),
+        } as AttendanceLog;
+        writeAttendanceFallback(fallbackEntry);
+        void sendAttendanceNotification({ kind: 'time_edit', record: fallbackEntry, previous: existing });
+        return fallbackEntry;
+      }
+      throw error ?? new Error('Attendance time update failed');
     }
-    throw error ?? new Error('Attendance time update failed');
-  }
 
   const record = data as AttendanceLog;
-  void sendAttendanceNotification({ kind: 'status', record, previous: existing });
+  void sendAttendanceNotification({ kind: 'time_edit', record, previous: existing });
   return record;
 }
 
@@ -1375,14 +1377,14 @@ export async function updateAttendanceTime(date: string, timeHHMM: string): Prom
         updated_at: new Date().toISOString(),
       } as AttendanceLog;
       writeAttendanceFallback(fallbackEntry);
-      void sendAttendanceNotification({ kind: 'status', record: fallbackEntry, previous: existing });
+      void sendAttendanceNotification({ kind: 'time_edit', record: fallbackEntry, previous: existing });
       return fallbackEntry;
     }
     throw error ?? new Error('Attendance time update failed');
   }
 
   const record = data as AttendanceLog;
-  void sendAttendanceNotification({ kind: 'status', record, previous: existing });
+  void sendAttendanceNotification({ kind: 'time_edit', record, previous: existing });
   return record;
 }
 
