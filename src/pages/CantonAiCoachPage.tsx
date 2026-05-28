@@ -11,6 +11,7 @@ import { BackButton } from '../components/BackButton';
 import { generateLocalChatReply, type LocalModelId } from '../lib/localOllamaChat';
 import { tryBuildDeterministicSummary } from '../lib/cantonSummary';
 import { buildDecisionContext } from '../lib/cantonDecisionContext';
+import { getPreferredCallName } from '../lib/sillyTitles';
 import { getStatusMeta } from '../types';
 import { TASK_STATUS_OPTION_ITEMS } from '../types';
 import type { LogEntry, Profile, Role, TaskItem, TaskStatus } from '../types';
@@ -146,11 +147,12 @@ export function CantonAiCoachPage() {
     });
     supabase.auth.getUser().then(({ data }) => {
       const name = data.user?.user_metadata?.name || data.user?.email?.split('@')[0] || 'User';
+      const callName = getPreferredCallName(name);
       setCurrentUserId(data.user?.id ?? null);
       setCurrentUserName(name);
       // Initial welcome should render directly as bottom intro card, not normal chat message
       setTimeout(() => {
-        const welcome = `參見 ${name.split(' ')[0]} 大人~\n小人係Silly，有咩吩咐儘管開聲～`;
+        const welcome = `參見 ${callName}~\n小人係Silly，有咩吩咐儘管開聲～`;
         setIntroText(welcome);
         setIntroTypingIndex(0);
       }, 300);

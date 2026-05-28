@@ -12,6 +12,7 @@ import { formatHongKongDateLabel, formatHongKongTimeLabel, getDailyHoroscopeForP
 import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib/specialDays';
 import { isLateCheckIn } from '../lib/attendanceRules';
 import { getProfileColor, getProfileInitials } from '../lib/profileAppearance';
+import { getPreferredCallName } from '../lib/sillyTitles';
 import { type AttendanceLog, type AttendanceStatus, type Profile, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
@@ -21,12 +22,6 @@ const cardStyle: React.CSSProperties = {
   borderRadius: 28,
   boxShadow: '0 16px 45px rgba(148, 163, 184, 0.16)',
 };
-
-function getPreferredCallName(name?: string | null) {
-  const trimmed = (name || '').trim();
-  if (!trimmed) return '大人';
-  return trimmed.split(/\s+/)[0] || '大人';
-}
 
 function getGreeting(name?: string | null) {
   const hour = new Date().getHours();
