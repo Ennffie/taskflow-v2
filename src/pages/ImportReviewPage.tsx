@@ -459,10 +459,12 @@ export function ImportReviewPage() {
       const taskPatch: Parameters<typeof updateTask>[1] = {};
       if (nextTitle && nextTitle !== task.title) taskPatch.title = nextTitle;
       if (nextDescription !== (task.description || '')) taskPatch.description = nextDescription;
+      if (row.dueDate && row.dueDate !== task.due_date) taskPatch.due_date = row.dueDate;
       if (Object.keys(taskPatch).length > 0) {
         await updateTask(task.id, taskPatch);
         if (taskPatch.title) task.title = taskPatch.title;
         if (taskPatch.description !== undefined) task.description = taskPatch.description ?? null;
+        if (taskPatch.due_date !== undefined) task.due_date = taskPatch.due_date ?? null;
         updated++;
       }
     };
@@ -483,6 +485,7 @@ export function ImportReviewPage() {
               title: result.row.mainTaskTitle || result.row.title,
               description: result.row.mainTaskTitle || result.row.title,
               status: 'todo',
+              due_date: result.row.dueDate || undefined,
               row: { ...result.row, description: '' },
               assignee_ids: [],
               tags: ['import:crce'],

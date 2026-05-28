@@ -755,6 +755,20 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           .map(([label, value]) => `${label}: ${String(value).trim()}`)
           .join('\n');
       };
+      const resolveCrceDueDate = (params: {
+        targetCmDate: string | null;
+        targetDraft1: string | null;
+        targetDraft2: string | null;
+        targetDraft3: string | null;
+        devStartDate: string | null;
+      }) => {
+        const latestDraftDate =
+          params.targetDraft3 ||
+          params.targetDraft2 ||
+          params.targetDraft1;
+
+        return latestDraftDate || params.targetCmDate || params.devStartDate || null;
+      };
       const looksLikeCrceHeader = (row: any[]) => {
         const normalized = row.map((cell) => normalizeCell(cell).toLowerCase());
         return ['ticket no.', 'ticket no'].includes(normalized[1])
@@ -906,7 +920,13 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           subtaskTitle = buildCrceSubtaskTitle(role, portal === 'Others' ? `${portal}${portalOther ? ` (${portalOther})` : ''}` : portal, features);
           taskName = subtaskTitle;
           status = statusCell || 'Not Started';
-          date = targetCmDate || targetDraft1 || targetDraft2 || targetDraft3 || devStartDate || null;
+          date = resolveCrceDueDate({
+            targetCmDate,
+            targetDraft1,
+            targetDraft2,
+            targetDraft3,
+            devStartDate,
+          });
           importKind = 'subtask';
           tags = [
             role ? `role:${role}` : '',
