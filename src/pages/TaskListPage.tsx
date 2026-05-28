@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Filter, CheckCircle2, Clock, AlertCircle, Circle, AlertTriangle, Inbox, User, Download, X, History } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchTasks } from '../lib/api';
 import { readWorkbookFromFile, sheetToJsonRows } from '../lib/xlsx';
 import { STATUS_CONFIG, TASK_STATUS_OPTIONS, type ImportedTaskRow, type TaskItem, type TaskStatus } from '../types';
@@ -133,25 +133,48 @@ function getRootTaskId(task: TaskItem, taskMap: Map<string, TaskItem>): string {
 
 export function TaskListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile, session, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
-  const [sortOption, setSortOption] = useState<SortOption>('due_asc');
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>(() => {
+    const value = searchParams.get('status');
+    if (value === 'all') return 'all';
+    return TASK_STATUS_OPTIONS.includes(value as TaskStatus) ? (value as TaskStatus) : 'all';
+  });
+  const [sortOption, setSortOption] = useState<SortOption>(() => {
+    const value = searchParams.get('sort');
+    return value && value in SORT_OPTION_META ? (value as SortOption) : 'due_asc';
+  });
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
-  const [activeCompactCard, setActiveCompactCard] = useState<CompactCardKey>('Focus');
+  const [activeCompactCard, setActiveCompactCard] = useState<CompactCardKey>(() => {
+    const value = searchParams.get('section');
+    return value && COMPACT_CARD_ORDER.includes(value as CompactCardKey) ? (value as CompactCardKey) : 'Focus';
+  });
   
   // Section expand/collapse state - default: Only Tomorrow expanded
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    'Focus': true,
-    'Overdue': false,
-    'Other': false,
-    'Done': false,
-    'Archive': false,
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    const section = searchParams.get('section');
+    if (section === 'All') {
+      return {
+        'Focus': true,
+        'Overdue': true,
+        'Other': true,
+        'Done': true,
+        'Archive': true,
+      };
+    }
+    return {
+      'Focus': section === 'Focus' || !section,
+      'Overdue': section === 'Overdue',
+      'Other': section === 'Other',
+      'Done': false,
+      'Archive': section === 'Archive',
+    };
   });
   const showAllSections = () => {
     setExpandedSections({
@@ -230,6 +253,21 @@ export function TaskListPage() {
       showAllSections();
     }
   }, [query]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+    const trimmedQuery = query.trim();
+    if (trimmedQuery) nextParams.set('q', trimmedQuery);
+    if (statusFilter !== 'all') nextParams.set('status', statusFilter);
+    if (sortOption !== 'due_asc') nextParams.set('sort', sortOption);
+    if (activeCompactCard !== 'Focus') nextParams.set('section', activeCompactCard);
+
+    const current = searchParams.toString();
+    const next = nextParams.toString();
+    if (current !== next) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [activeCompactCard, query, searchParams, setSearchParams, sortOption, statusFilter]);
 
   useEffect(() => {
     if (isFilterSheetOpen) {

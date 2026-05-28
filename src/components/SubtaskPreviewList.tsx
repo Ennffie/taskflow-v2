@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { formatDate } from '../lib/date';
 import { getStatusMeta, type TaskItem } from '../types';
 
@@ -79,6 +79,7 @@ interface SubtaskPreviewListProps {
 
 export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false, checkedTaskIds, onToggleSelect, embedded = true, compactSummary = false }: SubtaskPreviewListProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const visible = subtasks.slice(0, limit);
   const remaining = subtasks.length - visible.length;
 
@@ -107,7 +108,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
             return (
               <div
                 key={subtask.id}
-                onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${subtask.id}`); }}
+                onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${subtask.id}`, { state: { from: `${location.pathname}${location.search}` } }); }}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '18px minmax(0,1fr) auto',
@@ -159,7 +160,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
         return (
           <div
             key={subtask.id}
-            onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${subtask.id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${subtask.id}`, { state: { from: `${location.pathname}${location.search}` } }); }}
             style={{
               display: 'grid',
               gridTemplateColumns: showCheckbox ? '28px 18px minmax(0,1fr) auto' : '18px minmax(0,1fr) auto',

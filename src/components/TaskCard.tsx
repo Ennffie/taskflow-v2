@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { formatDate } from '../lib/date';
 import { type TaskItem, type TaskStatus } from '../types';
 import { SubtaskPreviewList } from './SubtaskPreviewList';
@@ -61,6 +61,7 @@ export function TaskCard({
   subtasks = [],
 }: TaskCardProps) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isDueSoon = (dueDate: string | null): boolean => {
     if (!dueDate) return false;
@@ -127,7 +128,7 @@ export function TaskCard({
 
   return (
     <div 
-      onClick={() => navigate(`/tasks/${task.id}`)}
+      onClick={() => navigate(`/tasks/${task.id}`, { state: { from: `${location.pathname}${location.search}` } })}
       style={{ 
         display: 'grid', 
         gap: '6px', 

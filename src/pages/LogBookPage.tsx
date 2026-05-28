@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Calendar, Users, Tag, MoreVertical, Pencil, Trash2, User, FileText, GitBranch } from 'lucide-react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
 import { LogFormModal } from '../components/LogFormModal';
@@ -42,6 +42,7 @@ function getEffectiveRound(task: { round_number?: number | null; status?: TaskSt
 export function LogBookPage() {
   const { taskId = '' } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile } = useAuth();
   const [progressSaving, setProgressSaving] = useState(false);
   const [task, setTask] = useState<TaskItem | null>(null);
@@ -145,6 +146,7 @@ export function LogBookPage() {
 
   const canFinishParentTask = !task?.parent_id && (subtasks.length === 0 ? true : derivedParentState.progress >= 90);
   const canManuallyEditMainTaskProgress = !task?.parent_id && subtasks.length === 0 && canEditTask && !derivedParentState.isFinished;
+  const backToListTarget = typeof location.state?.from === 'string' ? location.state.from : '/all-tasks';
 
   const saveTaskProgress = async (nextProgress: number, nextFinished?: boolean) => {
     if (!task || !canEditTask) return;
@@ -363,13 +365,13 @@ export function LogBookPage() {
   return (
     <AppShell>
       <div style={{ display: 'grid', gap: '16px' }}>
-        <BackButton to="/all-tasks" label="Back to all tasks" />
+        <BackButton to={backToListTarget} label="Back to all tasks" />
 
         {parentTask && (
           <div style={{ padding: '12px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
             This is a sub-task under{' '}
             <button
-              onClick={() => navigate(`/tasks/${parentTask.id}`)}
+              onClick={() => navigate(`/tasks/${parentTask.id}`, { state: { from: backToListTarget } })}
               style={{ border: 'none', background: 'transparent', padding: 0, color: '#7c3aed', fontWeight: 700, cursor: 'pointer' }}
             >
               {parentTask.title}
