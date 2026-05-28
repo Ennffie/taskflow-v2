@@ -77,6 +77,7 @@ function sortByDueDate(a: TaskItem, b: TaskItem): number {
 }
 
 type SortOption = 'due_asc' | 'due_desc' | 'updated_desc' | 'title_asc';
+type CompactCardKey = 'Focus' | 'Overdue' | 'Other' | 'All' | 'Archive';
 
 const SORT_OPTION_META: Record<SortOption, string> = {
   due_asc: 'Due date · Nearest first',
@@ -84,6 +85,18 @@ const SORT_OPTION_META: Record<SortOption, string> = {
   updated_desc: 'Recently updated',
   title_asc: 'Task name · A-Z',
 };
+const COMPACT_CARD_ORDER: CompactCardKey[] = ['Focus', 'Overdue', 'Other', 'All', 'Archive'];
+
+function findFallbackCompactCard(startCard: CompactCardKey, counts: Record<CompactCardKey, number>): CompactCardKey | null {
+  const startIndex = COMPACT_CARD_ORDER.indexOf(startCard);
+  for (let index = startIndex; index < COMPACT_CARD_ORDER.length; index += 1) {
+    const candidate = COMPACT_CARD_ORDER[index];
+    if ((counts[candidate] ?? 0) > 0) {
+      return candidate;
+    }
+  }
+  return null;
+}
 
 function sortTasks(tasks: TaskItem[], sortOption: SortOption): TaskItem[] {
   const list = [...tasks];
@@ -112,7 +125,7 @@ export function TaskListPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
-  const [activeCompactCard, setActiveCompactCard] = useState<'Focus' | 'Overdue' | 'Other' | 'All' | 'Archive'>('Focus');
+  const [activeCompactCard, setActiveCompactCard] = useState<CompactCardKey>('Focus');
   
   // Section expand/collapse state - default: Only Tomorrow expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -155,7 +168,7 @@ export function TaskListPage() {
     setActiveCompactCard('All');
   };
 
-  const showSingleSection = (sectionName: 'Focus' | 'Overdue' | 'Other' | 'Archive') => {
+  const showSingleSection = (sectionName: Exclude<CompactCardKey, 'All'>) => {
     setExpandedSections({
       'Focus': sectionName === 'Focus',
       'Overdue': sectionName === 'Overdue',
@@ -164,6 +177,15 @@ export function TaskListPage() {
       'Archive': sectionName === 'Archive',
     });
     setActiveCompactCard(sectionName);
+  };
+
+  const activateCompactCard = (sectionName: CompactCardKey, counts: Record<CompactCardKey, number>) => {
+    const nextSection = findFallbackCompactCard(sectionName, counts) ?? sectionName;
+    if (nextSection === 'All') {
+      showAllSections();
+      return;
+    }
+    showSingleSection(nextSection);
   };
 
   const clearFilters = () => {
@@ -248,6 +270,25 @@ export function TaskListPage() {
   const otherCount = rootTasks.filter(t => !isOverdue(t.due_date) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
   const allCount = rootTasks.length;
   const archiveCount = rootTasks.filter(t => t.status === 'archived').length;
+  const compactCardCounts: Record<CompactCardKey, number> = {
+    Focus: focusCount,
+    Overdue: overdueCount,
+    Other: otherCount,
+    All: allCount,
+    Archive: archiveCount,
+  };
+
+  useEffect(() => {
+    if (loading) return;
+    if ((compactCardCounts[activeCompactCard] ?? 0) > 0) return;
+    const fallback = findFallbackCompactCard(activeCompactCard, compactCardCounts);
+    if (!fallback || fallback === activeCompactCard) return;
+    if (fallback === 'All') {
+      showAllSections();
+      return;
+    }
+    showSingleSection(fallback);
+  }, [activeCompactCard, compactCardCounts, loading]);
 
   return (
     <AppShell onAddTask={() => setShowModal(true)}>
@@ -307,7 +348,7 @@ export function TaskListPage() {
             bgColor="#ede9fe"
             iconBgColor="#ddd6fe"
             active={activeCompactCard === 'Focus'}
-            onToggle={() => showSingleSection('Focus')}
+            onToggle={() => activateCompactCard('Focus', compactCardCounts)}
           />
           <CompactCard 
             icon={<AlertTriangle size={20} color="#ef4444" />}
@@ -316,7 +357,7 @@ export function TaskListPage() {
             bgColor="#fef2f2"
             iconBgColor="#fee2e2"
             active={activeCompactCard === 'Overdue'}
-            onToggle={() => showSingleSection('Overdue')}
+            onToggle={() => activateCompactCard('Overdue', compactCardCounts)}
           />
           <CompactCard 
             icon={<Inbox size={20} color="#3b82f6" />}
@@ -325,7 +366,7 @@ export function TaskListPage() {
             bgColor="#eff6ff"
             iconBgColor="#dbeafe"
             active={activeCompactCard === 'Other'}
-            onToggle={() => showSingleSection('Other')}
+            onToggle={() => activateCompactCard('Other', compactCardCounts)}
           />
           <CompactCard 
             icon={<CheckCircle2 size={20} color="#0f172a" />}
@@ -343,7 +384,7 @@ export function TaskListPage() {
             bgColor="#f3f4f6"
             iconBgColor="#e5e7eb"
             active={activeCompactCard === 'Archive'}
-            onToggle={() => showSingleSection('Archive')}
+            onToggle={() => activateCompactCard('Archive', compactCardCounts)}
           />
         </div>
 
@@ -397,7 +438,16 @@ export function TaskListPage() {
           ) : filtered.length === 0 ? (
             <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
               <p style={{ fontSize: '16px', marginBottom: '8px' }}>{query || statusFilter !== 'all' ? 'No matching tasks found' : 'No tasks found'}</p>
-              <p style={{ fontSize: '14px', color: '#94a3b8' }}>{query || statusFilter !== 'all' ? 'Try clearing filters or search with another keyword' : 'Create your first task to get started'}</p>
+              {query || statusFilter !== 'all' ? (
+                <p style={{ fontSize: '14px', color: '#94a3b8' }}>Try clearing filters or search with another keyword</p>
+              ) : (
+                <button
+                  onClick={() => setShowModal(true)}
+                  style={{ border: 'none', background: 'transparent', padding: 0, fontSize: '14px', color: '#94a3b8', textDecoration: 'underline', cursor: 'pointer' }}
+                >
+                  Please add task here~
+                </button>
+              )}
             </div>
           ) : (
             Object.entries(groupedTasks).map(([groupName, groupTasks]) => {
