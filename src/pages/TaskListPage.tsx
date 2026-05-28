@@ -120,6 +120,17 @@ function buildTaskSearchText(task: TaskItem, allTasks: TaskItem[]): string {
     .toLowerCase();
 }
 
+function getRootTaskId(task: TaskItem, taskMap: Map<string, TaskItem>): string {
+  if (!task.parent_id) return task.id;
+
+  let current: TaskItem | undefined = task;
+  while (current?.parent_id) {
+    current = taskMap.get(current.parent_id);
+  }
+
+  return current?.id ?? task.id;
+}
+
 export function TaskListPage() {
   const navigate = useNavigate();
   const { profile, session, loading: authLoading } = useAuth();
@@ -235,17 +246,47 @@ export function TaskListPage() {
     }
   }, [isFilterSheetOpen, isFilterSheetVisible]);
 
-  const queryFilteredTasks = useMemo(() => {
+  const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+
+  const queryFilteredRootIds = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return tasks;
+    if (!normalizedQuery) {
+      return new Set(tasks.filter((task) => !task.parent_id).map((task) => task.id));
+    }
 
-    return tasks.filter((task) => buildTaskSearchText(task, tasks).includes(normalizedQuery));
-  }, [tasks, query]);
+    const matchedRootIds = new Set<string>();
+    tasks.forEach((task) => {
+      if (!buildTaskSearchText(task, tasks).includes(normalizedQuery)) return;
+      matchedRootIds.add(getRootTaskId(task, taskMap));
+    });
+    return matchedRootIds;
+  }, [tasks, query, taskMap]);
 
-  const filtered = useMemo(() => queryFilteredTasks.filter((task) => {
-    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-    return matchesStatus;
-  }), [queryFilteredTasks, statusFilter]);
+  const queryFilteredTasks = useMemo(() => {
+    return tasks.filter((task) => queryFilteredRootIds.has(getRootTaskId(task, taskMap)));
+  }, [tasks, queryFilteredRootIds, taskMap]);
+
+  const filteredRootTasks = useMemo(() => {
+    return queryFilteredTasks.filter((task) => {
+      if (task.parent_id) return false;
+      return statusFilter === 'all' || task.status === statusFilter;
+    });
+  }, [queryFilteredTasks, statusFilter]);
+
+  const filteredRootIds = useMemo(() => new Set(filteredRootTasks.map((task) => task.id)), [filteredRootTasks]);
+
+  const filtered = useMemo(() => {
+    return queryFilteredTasks.filter((task) => filteredRootIds.has(getRootTaskId(task, taskMap)));
+  }, [queryFilteredTasks, filteredRootIds, taskMap]);
+
+  const subtasksByParentId = useMemo(() => {
+    const grouped = new Map<string, TaskItem[]>();
+    tasks.forEach((task) => {
+      if (!task.parent_id) return;
+      grouped.set(task.parent_id, [...(grouped.get(task.parent_id) ?? []), task]);
+    });
+    return grouped;
+  }, [tasks]);
 
   const overdueRootIds = useMemo(() => {
     const openOverdueRootIds = new Set(
@@ -264,7 +305,7 @@ export function TaskListPage() {
   }, [filtered]);
 
   const groupedTasks = useMemo(() => {
-    const rootTasks = filtered.filter(t => !t.parent_id);
+    const rootTasks = filteredRootTasks;
     const overdueTasks = sortTasks(rootTasks.filter(t => overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived'), sortOption);
     const focusTasks = sortTasks(rootTasks.filter(t => t.is_focus && !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived'), sortOption);
     const otherTasks = sortTasks(rootTasks.filter(t => !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus), sortOption);
@@ -279,7 +320,7 @@ export function TaskListPage() {
     if (archiveTasks.length > 0) groups['Archive'] = archiveTasks;
     
     return groups;
-  }, [filtered, overdueRootIds, sortOption]);
+  }, [filteredRootTasks, overdueRootIds, sortOption]);
 
   const statusOptionBaseTasks = queryFilteredTasks.filter(t => !t.parent_id);
   const statusOptionCounts = (['all', ...TASK_STATUS_OPTIONS] as const).reduce<Record<string, number>>((acc, option) => {
@@ -290,7 +331,7 @@ export function TaskListPage() {
   }, {});
 
   // Stats for compact cards - use filtered tasks to match list
-  const rootTasks = filtered.filter(t => !t.parent_id);
+  const rootTasks = filteredRootTasks;
   const focusCount = rootTasks.filter(t => t.is_focus && !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived').length;
   const overdueCount = rootTasks.filter(t => overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived').length;
   const otherCount = rootTasks.filter(t => !overdueRootIds.has(t.id) && t.status !== 'finished' && t.status !== 'archived' && !t.is_focus).length;
@@ -467,7 +508,7 @@ export function TaskListPage() {
         {(query || statusFilter !== 'all' || sortOption !== 'due_asc') && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>
-              {filtered.length} result{filtered.length === 1 ? '' : 's'} found · {statusFilter === 'all' ? 'All Status' : STATUS_CONFIG[statusFilter].label} · {SORT_OPTION_META[sortOption]}
+              {filteredRootTasks.length} result{filteredRootTasks.length === 1 ? '' : 's'} found · {statusFilter === 'all' ? 'All Status' : STATUS_CONFIG[statusFilter].label} · {SORT_OPTION_META[sortOption]}
             </span>
             <button
               onClick={clearFilters}
@@ -482,7 +523,7 @@ export function TaskListPage() {
         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
           {loading ? (
             <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Loading tasks...</div>
-          ) : filtered.length === 0 ? (
+          ) : filteredRootTasks.length === 0 ? (
             <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
               <p style={{ fontSize: '16px', marginBottom: '8px' }}>{query || statusFilter !== 'all' ? 'No matching tasks found' : 'No tasks found'}</p>
               {query || statusFilter !== 'all' ? (
@@ -542,7 +583,7 @@ export function TaskListPage() {
                       showAssignees={true}
                       isFocusSection={isFocusSection}
                       isEvenIndex={taskIndex % 2 === 0}
-                      subtasks={filtered.filter(st => st.parent_id === task.id)}
+                      subtasks={subtasksByParentId.get(task.id) ?? []}
                     />
                   ))}
                 </div>
