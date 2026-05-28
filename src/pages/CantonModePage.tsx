@@ -22,11 +22,18 @@ const cardStyle: React.CSSProperties = {
   boxShadow: '0 16px 45px rgba(148, 163, 184, 0.16)',
 };
 
-function getGreeting() {
+function getPreferredCallName(name?: string | null) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return '大人';
+  return trimmed.split(/\s+/)[0] || '大人';
+}
+
+function getGreeting(name?: string | null) {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return { text: '早晨，Enfield~', icon: '🌅' };
-  if (hour >= 12 && hour < 18) return { text: '午安，Enfield~', icon: '☀️' };
-  return { text: '晚安，Enfield~', icon: '🌙' };
+  const callName = getPreferredCallName(name);
+  if (hour >= 5 && hour < 12) return { text: `早晨，${callName}~`, icon: '🌅' };
+  if (hour >= 12 && hour < 18) return { text: `午安，${callName}~`, icon: '☀️' };
+  return { text: `晚安，${callName}~`, icon: '🌙' };
 }
 
 function isRecoverableAttendanceLoadError(error: any) {
@@ -219,6 +226,8 @@ export function CantonModePage() {
     if (typeof window === 'undefined') return true;
     return window.matchMedia('(orientation: portrait)').matches;
   });
+  const currentProfileName = profile?.name || user?.user_metadata?.name || user?.email || '';
+  const greeting = getGreeting(currentProfileName);
 
   useEffect(() => {
     const mql = window.matchMedia('(orientation: portrait)');
@@ -332,7 +341,7 @@ export function CantonModePage() {
         <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gap: 18 }}>
           <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, paddingTop: 8 }}>
             <div>
-              <h1 style={{ margin: 0, color: '#0f172a', fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em' }}>{(() => { const g = getGreeting(); return `${g.icon} ${g.text}`; })()}</h1>
+              <h1 style={{ margin: 0, color: '#0f172a', fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em' }}>{`${greeting.icon} ${greeting.text}`}</h1>
               <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}></p>
             </div>
             <button onClick={() => void loadTasks()} style={{ width: 44, height: 44, border: '1px solid #e2e8f0', background: '#fff', borderRadius: 16, display: 'grid', placeItems: 'center', color: '#475569' }} aria-label="Refresh tasks">
@@ -345,7 +354,7 @@ export function CantonModePage() {
           ) : (
             <>
               <AttendanceCheckInCard
-                profileName={profile?.name || user?.user_metadata?.name || user?.email || 'Enfield'}
+                profileName={currentProfileName || 'Enfield'}
                 profileEmail={profile?.email || user?.email || ''}
                 attendance={attendance}
                 loading={attendanceLoading}
