@@ -95,6 +95,29 @@ type PendingLogInsert = {
   created_by: string;
 };
 
+function getImportedDefaultProgress(status: TaskStatus | null): { progress_percent: number; is_finished: boolean } | null {
+  if (!status) return null;
+
+  switch (status) {
+    case 'planning':
+      return { progress_percent: 10, is_finished: false };
+    case 'in_progress':
+    case 'internal_review':
+    case 'round_1_wip':
+    case 'round_1_review':
+    case 'round_2_wip':
+    case 'round_2_review':
+    case 'round_3_wip':
+    case 'round_3_review':
+    case 'pending_mpfa_pc_nfc':
+      return { progress_percent: 50, is_finished: false };
+    case 'finished':
+      return { progress_percent: 100, is_finished: true };
+    default:
+      return null;
+  }
+}
+
 export function ImportReviewPage() {
   "use no memo";
   const location = useLocation();
@@ -401,6 +424,8 @@ export function ImportReviewPage() {
       round_number?: number;
       assignee_ids: string[];
       tags: string[];
+      progress_percent?: number;
+      is_finished?: boolean;
       row: ImportRow;
     }) => {
       const { data: insertedTask, error: insertTaskError } = await supabase
@@ -413,9 +438,9 @@ export function ImportReviewPage() {
           due_date: payload.due_date ?? null,
           parent_id: payload.parent_id ?? null,
           is_focus: payload.is_focus ?? false,
-          progress_percent: 0,
+          progress_percent: payload.progress_percent ?? 0,
           round_number: payload.round_number ?? 1,
-          is_finished: false,
+          is_finished: payload.is_finished ?? false,
           created_by: userId,
           updated_by: userId,
         })
@@ -499,6 +524,7 @@ export function ImportReviewPage() {
           await syncCrceMainTask(mainTask, result.row);
 
           if (result.action === 'create') {
+            const derivedProgress = getImportedDefaultProgress(result.parsedStatus);
             const newSubtask = await createImportedTask({
               title: result.row.subtaskTitle || result.row.title,
               description: result.row.description || result.row.subtaskTitle || result.row.title,
@@ -509,6 +535,8 @@ export function ImportReviewPage() {
               tags: result.row.tags || [],
               parent_id: mainTask.id,
               round_number: 1,
+              progress_percent: derivedProgress?.progress_percent,
+              is_finished: derivedProgress?.is_finished,
             });
             created++;
             importedTaskIds.add(newSubtask.id);
@@ -599,8 +627,18 @@ export function ImportReviewPage() {
             if (result.isDay2 && !existingCreatedTask.is_focus) {
               taskPatch.is_focus = true;
             }
+            const derivedProgress = getImportedDefaultProgress(result.parsedStatus);
+            if (derivedProgress) {
+              taskPatch.progress_percent = derivedProgress.progress_percent;
+              taskPatch.is_finished = derivedProgress.is_finished;
+            }
             if (Object.keys(taskPatch).length > 0) {
               await updateTask(existingCreatedTask.id, taskPatch);
+              if (taskPatch.status) existingCreatedTask.status = taskPatch.status;
+              if (taskPatch.due_date !== undefined) existingCreatedTask.due_date = taskPatch.due_date ?? null;
+              if (taskPatch.is_focus !== undefined) existingCreatedTask.is_focus = taskPatch.is_focus;
+              if (taskPatch.progress_percent !== undefined) existingCreatedTask.progress_percent = taskPatch.progress_percent;
+              if (taskPatch.is_finished !== undefined) existingCreatedTask.is_finished = taskPatch.is_finished;
               updated++;
             }
 
@@ -624,6 +662,7 @@ export function ImportReviewPage() {
             const fullTitle = normalizedTaskId 
               ? `${normalizedTaskId} - ${result.row.title}` 
               : result.row.title;
+            const derivedProgress = getImportedDefaultProgress(result.parsedStatus);
             
             const newTask = await createImportedTask({
               title: fullTitle,
@@ -634,6 +673,8 @@ export function ImportReviewPage() {
               assignee_ids: result.matchedAssignees.map(a => a.id),
               tags: [],
               is_focus: result.isDay2 || false,
+              progress_percent: derivedProgress?.progress_percent,
+              is_finished: derivedProgress?.is_finished,
             });
             
             created++;
