@@ -61,6 +61,12 @@ function getSubtaskHighlightLabel(subtask: TaskItem): string {
   return subtask.title;
 }
 
+function isOpenOverdueTask(task: TaskItem): boolean {
+  if (!task.due_date) return false;
+  if (task.status === 'finished' || task.status === 'archived' || task.status === 'cancelled') return false;
+  return new Date(task.due_date) < new Date(new Date().setHours(0, 0, 0, 0));
+}
+
 interface SubtaskPreviewListProps {
   subtasks: TaskItem[];
   limit?: number;
@@ -95,7 +101,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
             const progress = subtask.is_finished ? 100 : (subtask.progress_percent ?? 0);
             const due = formatDate(subtask.due_date);
             const statusMeta = getStatusMeta(subtask.status);
-            const isOverdue = !!subtask.due_date && new Date(subtask.due_date) < new Date(new Date().setHours(0,0,0,0));
+            const isOverdue = isOpenOverdueTask(subtask);
             const previewTitle = getSubtaskHighlightLabel(subtask);
 
             return (
@@ -147,7 +153,7 @@ export function SubtaskPreviewList({ subtasks, limit = 99, showCheckbox = false,
         const progress = subtask.is_finished ? 100 : (subtask.progress_percent ?? 0);
         const due = formatDate(subtask.due_date);
         const statusMeta = getStatusMeta(subtask.status);
-        const isOverdue = !!subtask.due_date && new Date(subtask.due_date) < new Date(new Date().setHours(0,0,0,0));
+        const isOverdue = isOpenOverdueTask(subtask);
         const isSelected = checkedTaskIds?.has(subtask.id) ?? false;
         const previewTitle = compactSummary ? getSubtaskHighlightLabel(subtask) : getSubtaskPreviewTitle(subtask);
 

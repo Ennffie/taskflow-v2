@@ -115,7 +115,7 @@ function sortTasks(tasks: TaskItem[], sortOption: SortOption): TaskItem[] {
 }
 
 function isOpenOverdueTask(task: TaskItem): boolean {
-  return isOverdue(task.due_date) && task.status !== 'finished' && task.status !== 'archived';
+  return isOverdue(task.due_date) && task.status !== 'finished' && task.status !== 'archived' && task.status !== 'cancelled';
 }
 
 export function TaskListPage() {

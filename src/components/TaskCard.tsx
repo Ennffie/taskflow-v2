@@ -74,6 +74,7 @@ export function TaskCard({
 
   const isOverdue = (dueDate: string | null): boolean => {
     if (!dueDate) return false;
+    if (task.status === 'finished' || task.status === 'archived' || task.status === 'cancelled') return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const due = new Date(dueDate);
