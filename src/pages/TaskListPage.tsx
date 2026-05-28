@@ -131,6 +131,12 @@ function getRootTaskId(task: TaskItem, taskMap: Map<string, TaskItem>): string {
   return current?.id ?? task.id;
 }
 
+function rootTaskMatchesStatus(rootTask: TaskItem, subtasks: TaskItem[], statusFilter: TaskStatus | 'all'): boolean {
+  if (statusFilter === 'all') return true;
+  if (rootTask.status === statusFilter) return true;
+  return subtasks.some((subtask) => subtask.status === statusFilter);
+}
+
 export function TaskListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -304,19 +310,6 @@ export function TaskListPage() {
     return tasks.filter((task) => queryFilteredRootIds.has(getRootTaskId(task, taskMap)));
   }, [tasks, queryFilteredRootIds, taskMap]);
 
-  const filteredRootTasks = useMemo(() => {
-    return queryFilteredTasks.filter((task) => {
-      if (task.parent_id) return false;
-      return statusFilter === 'all' || task.status === statusFilter;
-    });
-  }, [queryFilteredTasks, statusFilter]);
-
-  const filteredRootIds = useMemo(() => new Set(filteredRootTasks.map((task) => task.id)), [filteredRootTasks]);
-
-  const filtered = useMemo(() => {
-    return queryFilteredTasks.filter((task) => filteredRootIds.has(getRootTaskId(task, taskMap)));
-  }, [queryFilteredTasks, filteredRootIds, taskMap]);
-
   const subtasksByParentId = useMemo(() => {
     const grouped = new Map<string, TaskItem[]>();
     tasks.forEach((task) => {
@@ -325,6 +318,19 @@ export function TaskListPage() {
     });
     return grouped;
   }, [tasks]);
+
+  const filteredRootTasks = useMemo(() => {
+    return queryFilteredTasks.filter((task) => {
+      if (task.parent_id) return false;
+      return rootTaskMatchesStatus(task, subtasksByParentId.get(task.id) ?? [], statusFilter);
+    });
+  }, [queryFilteredTasks, statusFilter, subtasksByParentId]);
+  
+  const filteredRootIds = useMemo(() => new Set(filteredRootTasks.map((task) => task.id)), [filteredRootTasks]);
+
+  const filtered = useMemo(() => {
+    return queryFilteredTasks.filter((task) => filteredRootIds.has(getRootTaskId(task, taskMap)));
+  }, [queryFilteredTasks, filteredRootIds, taskMap]);
 
   const overdueRootIds = useMemo(() => {
     const openOverdueRootIds = new Set(
@@ -364,7 +370,7 @@ export function TaskListPage() {
   const statusOptionCounts = (['all', ...TASK_STATUS_OPTIONS] as const).reduce<Record<string, number>>((acc, option) => {
     acc[option] = option === 'all'
       ? statusOptionBaseTasks.length
-      : statusOptionBaseTasks.filter((task) => task.status === option).length;
+      : statusOptionBaseTasks.filter((task) => rootTaskMatchesStatus(task, subtasksByParentId.get(task.id) ?? [], option)).length;
     return acc;
   }, {});
 
