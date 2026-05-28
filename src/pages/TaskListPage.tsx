@@ -101,6 +101,25 @@ function isOpenOverdueTask(task: TaskItem): boolean {
   return isOverdue(task.due_date) && task.status !== 'finished' && task.status !== 'archived' && task.status !== 'cancelled';
 }
 
+function buildTaskSearchText(task: TaskItem, allTasks: TaskItem[]): string {
+  const directSubtasks = allTasks.filter((candidate) => candidate.parent_id === task.id);
+
+  return [
+    task.title,
+    task.description ?? '',
+    task.assignees.map((assignee) => assignee.name).join(' '),
+    task.tags.join(' '),
+    ...directSubtasks.flatMap((subtask) => [
+      subtask.title,
+      subtask.description ?? '',
+      subtask.assignees.map((assignee) => assignee.name).join(' '),
+      subtask.tags.join(' '),
+    ]),
+  ]
+    .join(' ')
+    .toLowerCase();
+}
+
 export function TaskListPage() {
   const navigate = useNavigate();
   const { profile, session, loading: authLoading } = useAuth();
@@ -216,9 +235,12 @@ export function TaskListPage() {
     }
   }, [isFilterSheetOpen, isFilterSheetVisible]);
 
-  const queryFilteredTasks = useMemo(() => tasks.filter((task) => {
-    return `${task.title} ${task.description ?? ''}`.toLowerCase().includes(query.toLowerCase());
-  }), [tasks, query]);
+  const queryFilteredTasks = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return tasks;
+
+    return tasks.filter((task) => buildTaskSearchText(task, tasks).includes(normalizedQuery));
+  }, [tasks, query]);
 
   const filtered = useMemo(() => queryFilteredTasks.filter((task) => {
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
@@ -424,7 +446,7 @@ export function TaskListPage() {
                 setQuery(nextQuery);
                 if (nextQuery.trim()) showAllSections();
               }} 
-              placeholder="Search tasks by name..." 
+              placeholder="Search tasks or assignee..." 
               style={{ width: '100%', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '12px 14px 12px 42px', fontSize: '14px', outline: 'none', background: '#fff' }} 
             />
           </div>
