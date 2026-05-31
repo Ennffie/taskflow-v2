@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, Sparkles, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
-import { checkInToday, clearAttendanceByDate, clearTodayAttendance, fetchAttendanceRecords, fetchProfiles, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceNote, updateTodayAttendanceTime } from '../lib/api';
+import { checkInToday, clearAttendanceByDate, clearExternalLeaveRecord, clearTodayAttendance, fetchAttendanceRecords, fetchExternalLeavePeople, fetchExternalLeaveRecords, fetchProfiles, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceNote, updateTodayAttendanceTime, upsertExternalLeaveRecord } from '../lib/api';
 import { AppShell, notifyModalClose, notifyModalOpen } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,7 +13,7 @@ import { getFunDayInfo, getPublicHolidayInfo, isWeekendInHongKong } from '../lib
 import { isLateCheckIn } from '../lib/attendanceRules';
 import { getProfileColor, getProfileInitials } from '../lib/profileAppearance';
 import { getPreferredCallName } from '../lib/sillyTitles';
-import { type AttendanceLog, type AttendanceStatus, type Profile, type TaskItem } from '../types';
+import { type AttendanceLog, type AttendanceStatus, type ExternalLeavePerson, type ExternalLeaveRecord, type Profile, type TaskItem } from '../types';
 
 const pageBg = 'linear-gradient(180deg, #f7f2ff 0%, #eef6ff 52%, #f8fafc 100%)';
 const cardStyle: React.CSSProperties = {
@@ -164,10 +164,67 @@ function getLeaveDotColor(status: string) {
   }
 }
 
-function getTeamLeaveForDate(date: string, allRecords: AttendanceLog[], currentUserId?: string | null) {
-  return allRecords.filter(
-    (r) => r.date === date && r.status !== 'present' && r.user_id !== currentUserId
-  );
+type TeamLeaveEntry = {
+  key: string;
+  id: string;
+  date: string;
+  status: Exclude<AttendanceStatus, 'present'>;
+  note: string | null;
+  profileId?: string | null;
+  externalPersonId?: string | null;
+  personName: string;
+  avatarLabel: string;
+  color: string;
+  kind: 'profile' | 'external';
+};
+
+function getTeamLeaveForDate(params: {
+  date: string;
+  records: AttendanceLog[];
+  currentUserId?: string | null;
+  profilesMap: Map<string, Profile>;
+  externalRecords: ExternalLeaveRecord[];
+  externalPeopleMap: Map<string, ExternalLeavePerson>;
+}): TeamLeaveEntry[] {
+  const internalEntries = params.records
+    .filter((record) => record.date === params.date && record.status !== 'present' && record.user_id !== params.currentUserId)
+    .map((record) => {
+      const profile = params.profilesMap.get(record.user_id);
+      return {
+        key: `profile:${record.id}`,
+        id: record.id,
+        date: record.date,
+        status: record.status as Exclude<AttendanceStatus, 'present'>,
+        note: record.note,
+        profileId: record.user_id,
+        externalPersonId: null,
+        personName: profile?.name ?? 'Unknown',
+        avatarLabel: getProfileInitials(profile?.name ?? 'Unknown'),
+        color: profile ? getProfileColor(profile) : getLeaveDotColor(record.status),
+        kind: 'profile' as const,
+      };
+    });
+
+  const externalEntries = params.externalRecords
+    .filter((record) => record.date === params.date)
+    .map((record) => {
+      const person = params.externalPeopleMap.get(record.person_id);
+      return {
+        key: `external:${record.id}`,
+        id: record.id,
+        date: record.date,
+        status: record.status,
+        note: record.note,
+        profileId: person?.linked_user_id ?? null,
+        externalPersonId: record.person_id,
+        personName: person?.name ?? 'External',
+        avatarLabel: getProfileInitials(person?.name ?? 'External'),
+        color: getProfileColor(person ? { id: person.id, name: person.name } : null),
+        kind: 'external' as const,
+      };
+    });
+
+  return [...internalEntries, ...externalEntries].sort((a, b) => a.personName.localeCompare(b.personName));
 }
 
 function getLeaveTypeLabel(status: string) {
@@ -207,7 +264,12 @@ export function CantonModePage() {
   const [attendanceMonth, setAttendanceMonth] = useState(() => getHongKongDateString().slice(0, 7));
   const [calendarActionDate, setCalendarActionDate] = useState<string | null>(null);
   const [allMonthRecords, setAllMonthRecords] = useState<AttendanceLog[]>([]);
+  const [externalLeavePeople, setExternalLeavePeople] = useState<ExternalLeavePerson[]>([]);
+  const [externalMonthRecords, setExternalMonthRecords] = useState<ExternalLeaveRecord[]>([]);
   const [profilesMap, setProfilesMap] = useState<Map<string, Profile>>(new Map());
+  const [externalPeopleMap, setExternalPeopleMap] = useState<Map<string, ExternalLeavePerson>>(new Map());
+  const [showExternalLeaveEditor, setShowExternalLeaveEditor] = useState(false);
+  const [selectedExternalPersonId, setSelectedExternalPersonId] = useState<string | null>(null);
 
   useEffect(() => {
     if (calendarActionDate) {
@@ -245,21 +307,26 @@ export function CantonModePage() {
   const loadAttendance = async () => {
     setAttendanceLoading(true);
     try {
-      const [todayAttendance, monthlyRecords, allMonthlyRecords, profilesData] = await Promise.all([
+      const [todayAttendance, monthlyRecords, allMonthlyRecords, profilesData, externalPeopleData, externalRecordsData] = await Promise.all([
         fetchTodayAttendance(),
         fetchAttendanceRecords({ month: attendanceMonth, userId: profile?.id ?? user?.id ?? undefined }),
         fetchAttendanceRecords({ month: attendanceMonth, includeAllUsers: true }),
         fetchProfiles(),
+        fetchExternalLeavePeople(),
+        fetchExternalLeaveRecords({ month: attendanceMonth }),
       ]);
-      console.log('[Canton] allMonthRecords count:', allMonthlyRecords.length);
-      console.log('[Canton] profiles count:', profilesData.length);
-      console.log('[Canton] my records count:', monthlyRecords.length);
       setAttendance(todayAttendance);
       setMonthAttendanceRecords(monthlyRecords);
       setAllMonthRecords(allMonthlyRecords);
+      setExternalLeavePeople(externalPeopleData);
+      setExternalMonthRecords(externalRecordsData);
       const map = new Map<string, Profile>();
       profilesData.forEach((p) => map.set(p.id, p));
       setProfilesMap(map);
+      const externalMap = new Map<string, ExternalLeavePerson>();
+      externalPeopleData.forEach((person) => externalMap.set(person.id, person));
+      setExternalPeopleMap(externalMap);
+      setSelectedExternalPersonId((current) => current && externalMap.has(current) ? current : (externalPeopleData[0]?.id ?? null));
     } catch (error: any) {
       console.error('[Canton] loadAttendance error:', error);
       if (isRecoverableAttendanceLoadError(error)) return;
@@ -328,6 +395,27 @@ export function CantonModePage() {
   const calendarActionLeaveInfo = useMemo(
     () => getAttendanceLeaveInfo(calendarActionRecord?.status, calendarActionRecord?.note),
     [calendarActionRecord]
+  );
+  const calendarActionTeamLeave = useMemo(
+    () => calendarActionDate ? getTeamLeaveForDate({
+      date: calendarActionDate,
+      records: allMonthRecords,
+      currentUserId: profile?.id ?? user?.id ?? undefined,
+      profilesMap,
+      externalRecords: externalMonthRecords,
+      externalPeopleMap,
+    }) : [],
+    [allMonthRecords, calendarActionDate, externalMonthRecords, externalPeopleMap, profile?.id, profilesMap, user?.id]
+  );
+  const selectedExternalPerson = useMemo(
+    () => selectedExternalPersonId ? externalPeopleMap.get(selectedExternalPersonId) ?? null : null,
+    [externalPeopleMap, selectedExternalPersonId]
+  );
+  const selectedExternalLeaveRecord = useMemo(
+    () => calendarActionDate && selectedExternalPersonId
+      ? externalMonthRecords.find((record) => record.date === calendarActionDate && record.person_id === selectedExternalPersonId) ?? null
+      : null,
+    [calendarActionDate, externalMonthRecords, selectedExternalPersonId]
   );
 
   return (
@@ -508,25 +596,30 @@ export function CantonModePage() {
                           </div>
                           <div style={{ minHeight: 24, display: 'grid', alignContent: 'end', gap: 4 }}>
                             {(() => {
-                              const teamLeave = getTeamLeaveForDate(cell.date, allMonthRecords, profile?.id ?? user?.id ?? undefined);
+                              const teamLeave = getTeamLeaveForDate({
+                                date: cell.date,
+                                records: allMonthRecords,
+                                currentUserId: profile?.id ?? user?.id ?? undefined,
+                                profilesMap,
+                                externalRecords: externalMonthRecords,
+                                externalPeopleMap,
+                              });
                               const visibleDots = teamLeave.slice(0, 3);
                               const overflow = teamLeave.length - 3;
                               return (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
                                   {visibleDots.map((leave) => {
-                                    const p = profilesMap.get(leave.user_id);
-                                    const dotColor = p ? getProfileColor(p) : getLeaveDotColor(leave.status);
                                     return (
                                       <div
-                                        key={leave.id}
+                                        key={leave.key}
                                         style={{
                                           width: 6,
                                           height: 6,
                                           borderRadius: '50%',
-                                          background: dotColor,
+                                          background: leave.color,
                                           flexShrink: 0,
                                         }}
-                                        title={p ? `${p.name} · ${getLeaveTypeLabel(leave.status)}` : getLeaveTypeLabel(leave.status)}
+                                        title={`${leave.personName} · ${getLeaveTypeLabel(leave.status)}`}
                                       />
                                     );
                                   })}
@@ -638,25 +731,21 @@ export function CantonModePage() {
             </div>
             <div style={{ display: 'grid', gap: 10 }}>
               {calendarActionDate && (() => {
-                const teamLeave = getTeamLeaveForDate(calendarActionDate, allMonthRecords, profile?.id ?? user?.id ?? undefined);
-                if (teamLeave.length === 0) return null;
+                if (calendarActionTeamLeave.length === 0) return null;
                 return (
                   <div style={{ display: 'grid', gap: 8, padding: '12px 0', borderBottom: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>當日放假 · {teamLeave.length}人</div>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b' }}>當日放假 · {calendarActionTeamLeave.length}人</div>
                     <div style={{ display: 'grid', gap: 6 }}>
-                      {teamLeave.map((leave) => {
-                        const p = profilesMap.get(leave.user_id);
-                        const color = p ? getProfileColor(p) : '#94a3b8';
-                        const initials = p ? getProfileInitials(p.name) : '?';
+                      {calendarActionTeamLeave.map((leave) => {
                         const leaveInfo = getAttendanceLeaveInfo(leave.status, leave.note);
                         const periodText = leaveInfo ? getLeavePeriodLabel(leaveInfo.period) : '';
                         return (
-                          <div key={leave.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 8, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flexShrink: 0 }}>{initials}</div>
+                          <div key={leave.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 8, background: leave.color, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flexShrink: 0 }}>{leave.avatarLabel}</div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', lineHeight: 1.2 }}>{p?.name ?? 'Unknown'}</div>
+                              <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', lineHeight: 1.2 }}>{leave.personName}</div>
                               <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, marginTop: 2 }}>
-                                <span style={{ color: getLeaveDotColor(leave.status) }}>●</span> {getLeaveTypeLabel(leave.status)}{periodText ? ` · ${periodText}` : ''}
+                                <span style={{ color: getLeaveDotColor(leave.status) }}>●</span> {getLeaveTypeLabel(leave.status)}{periodText ? ` · ${periodText}` : ''}{leave.kind === 'external' ? ' · External' : ''}
                               </div>
                             </div>
                           </div>
@@ -666,6 +755,120 @@ export function CantonModePage() {
                   </div>
                 );
               })()}
+              {profile?.role === 'admin' && externalLeavePeople.length > 0 ? (
+                <div style={{ display: 'grid', gap: 10, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>代人加假</div>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, marginTop: 2 }}>未有 account 嘅人都可以直接記低假期</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowExternalLeaveEditor((current) => !current);
+                        if (!selectedExternalPersonId && externalLeavePeople[0]) {
+                          setSelectedExternalPersonId(externalLeavePeople[0].id);
+                        }
+                      }}
+                      style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: showExternalLeaveEditor ? '#0f172a' : '#fff', color: showExternalLeaveEditor ? '#fff' : '#334155', padding: '10px 12px', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}
+                    >
+                      {showExternalLeaveEditor ? '收起' : 'Add for others'}
+                    </button>
+                  </div>
+                  {showExternalLeaveEditor ? (
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+                        {externalLeavePeople.map((person) => {
+                          const active = person.id === selectedExternalPersonId;
+                          const color = getProfileColor({ id: person.id, name: person.name });
+                          return (
+                            <button
+                              key={person.id}
+                              onClick={() => setSelectedExternalPersonId(person.id)}
+                              style={{ flex: '0 0 auto', borderRadius: 999, border: active ? `1px solid ${color}` : '1px solid #e2e8f0', background: active ? color : '#fff', color: active ? '#fff' : '#334155', padding: '10px 12px', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}
+                            >
+                              {person.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {selectedExternalPerson ? (
+                        <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 16, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{selectedExternalPerson.name}</div>
+                              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, marginTop: 2 }}>
+                                {selectedExternalLeaveRecord
+                                  ? `目前：${getLeaveTypeLabel(selectedExternalLeaveRecord.status)} · ${getLeavePeriodLabel(getAttendanceLeaveInfo(selectedExternalLeaveRecord.status, selectedExternalLeaveRecord.note)?.period)}`
+                                  : '未有此日假期記錄'}
+                              </div>
+                            </div>
+                            {selectedExternalLeaveRecord ? (
+                              <button
+                                onClick={async () => {
+                                  if (!calendarActionDate || !selectedExternalPersonId) return;
+                                  setCheckInLoading(true);
+                                  try {
+                                    await clearExternalLeaveRecord(calendarActionDate, selectedExternalPersonId);
+                                    void loadAttendance();
+                                  } catch (error: any) {
+                                    alert(`Clear external leave failed: ${error?.message || 'Unknown error'}`);
+                                  } finally {
+                                    setCheckInLoading(false);
+                                  }
+                                }}
+                                disabled={checkInLoading}
+                                style={{ borderRadius: 10, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '8px 10px', fontSize: 11, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer' }}
+                              >
+                                清除
+                              </button>
+                            ) : null}
+                          </div>
+                          {(['al', 'sl', 'bl', 'other'] as const).map((status) => (
+                            <div key={`external-${status}`} style={{ display: 'grid', gap: 6 }}>
+                              <div style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>{status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}</div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                                {(['full_day', 'am', 'pm'] as const).map((period) => {
+                                  const active = selectedExternalLeaveRecord?.status === status
+                                    && (getAttendanceLeaveInfo(selectedExternalLeaveRecord.status, selectedExternalLeaveRecord.note)?.period ?? 'full_day') === period;
+                                  return (
+                                    <button
+                                      key={`external-${status}-${period}`}
+                                      onClick={async () => {
+                                        if (!calendarActionDate || !selectedExternalPersonId) return;
+                                        const detail = status === 'other' ? window.prompt('補充情況（optional）') ?? '' : '';
+                                        const note = buildLeaveNote(period, detail);
+                                        setCheckInLoading(true);
+                                        try {
+                                          await upsertExternalLeaveRecord({
+                                            personId: selectedExternalPersonId,
+                                            date: calendarActionDate,
+                                            status,
+                                            note,
+                                            source: 'canton_external_leave',
+                                          });
+                                          void loadAttendance();
+                                        } catch (error: any) {
+                                          alert(`Set external leave failed: ${error?.message || 'Unknown error'}`);
+                                        } finally {
+                                          setCheckInLoading(false);
+                                        }
+                                      }}
+                                      disabled={checkInLoading}
+                                      style={{ borderRadius: 12, border: active ? '1px solid #8b5cf6' : '1px solid #e2e8f0', background: active ? '#8b5cf6' : '#fff', color: active ? '#fff' : '#0f172a', padding: '10px 6px', fontSize: 12, fontWeight: 900, cursor: checkInLoading ? 'default' : 'pointer', opacity: checkInLoading ? 0.7 : 1 }}
+                                    >
+                                      {getLeavePeriodLabel(period)}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {(['al', 'sl', 'bl', 'other'] as const).map((status) => (
                 <div key={status} style={{ display: 'grid', gap: 6 }}>
                   <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}</div>

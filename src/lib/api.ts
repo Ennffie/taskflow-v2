@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { getReportDate } from './date';
 import { getHongKongDateString } from './horoscope';
 import { buildEmbeddedLeaveNote, getAttendanceLeaveInfo, parseLeaveNote } from './attendanceLeave';
-import type { AttendanceLog, AttendanceStatus, ImportSnapshot, ImportedTaskRow, LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
+import type { AttendanceLog, AttendanceStatus, ExternalLeavePerson, ExternalLeaveRecord, ImportSnapshot, ImportedTaskRow, LogEntry, Profile, Role, TaskItem, TaskPriority, TaskStatus } from '../types';
 
 // Fetch bridge URL from Supabase app_config
 export async function fetchBridgeUrl(): Promise<string | null> {
@@ -101,6 +101,11 @@ const ATTENDANCE_FALLBACK_STORAGE_KEY = 'taskflow_attendance_fallback_v1';
 function isMissingAttendanceTableError(error: any): boolean {
   const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
   return error?.code === '42P01' || message.includes('attendance_logs');
+}
+
+function isMissingExternalLeaveTableError(error: any): boolean {
+  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return error?.code === '42P01' || message.includes('external_leave_');
 }
 
 function readAttendanceFallback(userId: string, date: string): AttendanceLog | null {
@@ -459,6 +464,138 @@ export async function fetchProfiles(): Promise<Profile[]> {
     if (error) throw error;
     return (data ?? []) as Profile[];
   });
+}
+
+export async function fetchExternalLeavePeople(): Promise<ExternalLeavePerson[]> {
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('external_leave_people')
+      .select('id, name, linked_user_id, sort_order, active, created_at, updated_at')
+      .eq('active', true)
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (error) {
+      if (isMissingExternalLeaveTableError(error)) return [];
+      throw error;
+    }
+
+    return (data ?? []) as ExternalLeavePerson[];
+  });
+}
+
+export async function fetchExternalLeaveRecords(options?: {
+  month?: string;
+  date?: string;
+}): Promise<ExternalLeaveRecord[]> {
+  return withRetry(async () => {
+    let query = supabase
+      .from('external_leave_records')
+      .select('id, person_id, date, status, note, source, created_at, updated_at')
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (options?.month) {
+      const { start, end } = getMonthBounds(options.month);
+      query = query.gte('date', start).lte('date', end);
+    }
+
+    if (options?.date) {
+      query = query.eq('date', options.date);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      if (isMissingExternalLeaveTableError(error)) return [];
+      throw error;
+    }
+
+    const records = (data ?? []) as ExternalLeaveRecord[];
+    const deduped = new Map<string, ExternalLeaveRecord>();
+    for (const record of records) {
+      const key = `${record.person_id}:${record.date}`;
+      const existing = deduped.get(key);
+      if (!existing) {
+        deduped.set(key, record);
+        continue;
+      }
+      const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime();
+      const recordTime = new Date(record.updated_at ?? record.created_at).getTime();
+      if (recordTime > existingTime) deduped.set(key, record);
+    }
+    return Array.from(deduped.values());
+  });
+}
+
+export async function upsertExternalLeaveRecord(params: {
+  personId: string;
+  date: string;
+  status: Exclude<AttendanceStatus, 'present'>;
+  note?: string | null;
+  source?: string;
+}): Promise<ExternalLeaveRecord> {
+  const normalizedNote = normalizeAttendanceNote(params.note);
+
+  const existing = await withRetry(async () => {
+    const { data, error } = await supabase
+      .from('external_leave_records')
+      .select('id, person_id, date, status, note, source, created_at, updated_at')
+      .eq('person_id', params.personId)
+      .eq('date', params.date)
+      .maybeSingle();
+
+    if (error) {
+      if (isMissingExternalLeaveTableError(error)) return null;
+      throw error;
+    }
+    return (data as ExternalLeaveRecord | null) ?? null;
+  });
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from('external_leave_records')
+      .update({ status: params.status, note: normalizedNote, source: params.source ?? 'admin_external' })
+      .eq('id', existing.id)
+      .select('id, person_id, date, status, note, source, created_at, updated_at')
+      .single();
+
+    if (error || !data) {
+      if (isMissingExternalLeaveTableError(error)) throw new Error('External leave table is not ready yet');
+      throw error ?? new Error('External leave update failed');
+    }
+    return data as ExternalLeaveRecord;
+  }
+
+  const { data, error } = await supabase
+    .from('external_leave_records')
+    .insert({
+      person_id: params.personId,
+      date: params.date,
+      status: params.status,
+      note: normalizedNote,
+      source: params.source ?? 'admin_external',
+    })
+    .select('id, person_id, date, status, note, source, created_at, updated_at')
+    .single();
+
+  if (error || !data) {
+    if (isMissingExternalLeaveTableError(error)) throw new Error('External leave table is not ready yet');
+    throw error ?? new Error('External leave create failed');
+  }
+  return data as ExternalLeaveRecord;
+}
+
+export async function clearExternalLeaveRecord(date: string, personId: string): Promise<void> {
+  const { error } = await supabase
+    .from('external_leave_records')
+    .delete()
+    .eq('person_id', personId)
+    .eq('date', date);
+
+  if (error) {
+    if (isMissingExternalLeaveTableError(error)) return;
+    throw error;
+  }
 }
 
 function getEffectiveRound(task: { round_number?: number | null; status?: TaskStatus | null }): number {

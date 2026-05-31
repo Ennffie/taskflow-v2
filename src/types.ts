@@ -79,6 +79,27 @@ export interface AttendanceLog {
   updated_at: string;
 }
 
+export interface ExternalLeavePerson {
+  id: string;
+  name: string;
+  linked_user_id: string | null;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExternalLeaveRecord {
+  id: string;
+  person_id: string;
+  date: string;
+  status: Exclude<AttendanceStatus, 'present'>;
+  note: string | null;
+  source: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ImportedTaskRow {
   rowIndex: number;
   taskId: string | null;
