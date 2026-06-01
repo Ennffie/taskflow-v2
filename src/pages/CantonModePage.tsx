@@ -869,7 +869,7 @@ export function CantonModePage() {
                   ) : null}
                 </div>
               ) : null}
-              {(['al', 'sl', 'bl', 'other'] as const).map((status) => (
+              {!showExternalLeaveEditor ? (['al', 'sl', 'bl', 'other'] as const).map((status) => (
                 <div key={status} style={{ display: 'grid', gap: 6 }}>
                   <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{status === 'al' ? '年假' : status === 'sl' ? '病假' : status === 'bl' ? '生日假' : 'Others'}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
@@ -911,8 +911,8 @@ export function CantonModePage() {
                     })}
                   </div>
                 </div>
-              ))}
-              {calendarActionDate && calendarActionRecord ? (
+              )) : null}
+              {calendarActionDate && calendarActionRecord && !showExternalLeaveEditor ? (
                 <button
                   onClick={async () => {
                     if (!calendarActionDate) return;
