@@ -227,6 +227,121 @@ function getTeamLeaveForDate(params: {
   return [...internalEntries, ...externalEntries].sort((a, b) => a.personName.localeCompare(b.personName));
 }
 
+type PersonLeaveSpan = {
+  personKey: string;
+  personName: string;
+  avatarLabel: string;
+  color: string;
+  kind: 'profile' | 'external';
+  dates: string[];
+};
+
+function buildPersonLeaveSpans(params: {
+  records: AttendanceLog[];
+  currentUserId?: string | null;
+  profilesMap: Map<string, Profile>;
+  externalRecords: ExternalLeaveRecord[];
+  externalPeopleMap: Map<string, ExternalLeavePerson>;
+  month: string;
+}): PersonLeaveSpan[] {
+  const personMap = new Map<string, { dates: string[]; personName: string; avatarLabel: string; color: string; kind: 'profile' | 'external' }>();
+
+  const getKey = (kind: string, id: string) => `${kind}:${id}`;
+
+  // Internal records
+  for (const record of params.records) {
+    if (record.status === 'present') continue;
+    if (record.user_id === params.currentUserId) continue;
+    const key = getKey('profile', record.user_id);
+    if (!personMap.has(key)) {
+      const profile = params.profilesMap.get(record.user_id);
+      personMap.set(key, {
+        dates: [],
+        personName: profile?.name ?? 'Unknown',
+        avatarLabel: getProfileInitials(profile?.name ?? 'Unknown'),
+        color: profile ? getProfileColor(profile) : getLeaveDotColor(record.status),
+        kind: 'profile',
+      });
+    }
+    personMap.get(key)!.dates.push(record.date);
+  }
+
+  // External records
+  for (const record of params.externalRecords) {
+    const key = getKey('external', record.person_id);
+    if (!personMap.has(key)) {
+      const person = params.externalPeopleMap.get(record.person_id);
+      personMap.set(key, {
+        dates: [],
+        personName: person?.name ?? 'External',
+        avatarLabel: getProfileInitials(person?.name ?? 'External'),
+        color: getProfileColor(person ? { id: person.id, name: person.name } : null),
+        kind: 'external',
+      });
+    }
+    personMap.get(key)!.dates.push(record.date);
+  }
+
+  const spans: PersonLeaveSpan[] = [];
+  for (const [personKey, data] of personMap) {
+    const sorted = [...data.dates].sort();
+    // Group into consecutive date ranges
+    const ranges: string[][] = [];
+    let currentRange: string[] = [sorted[0]];
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = new Date(sorted[i - 1] + 'T00:00:00');
+      const curr = new Date(sorted[i] + 'T00:00:00');
+      const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        currentRange.push(sorted[i]);
+      } else {
+        ranges.push(currentRange);
+        currentRange = [sorted[i]];
+      }
+    }
+    ranges.push(currentRange);
+
+    // But we also need to split ranges that cross week boundaries (Sun-Sat)
+    // because the grid wraps — bars can't cross rows
+    for (const range of ranges) {
+      let subRange: string[] = [range[0]];
+      for (let i = 1; i < range.length; i++) {
+        const prevDate = new Date(range[i - 1] + 'T00:00:00');
+        // If prev is Sat (6), the next day is in a different week row
+        if (prevDate.getDay() === 6) {
+          spans.push({ personKey, personName: data.personName, avatarLabel: data.avatarLabel, color: data.color, kind: data.kind, dates: subRange });
+          subRange = [range[i]];
+        } else {
+          subRange.push(range[i]);
+        }
+      }
+      spans.push({ personKey, personName: data.personName, avatarLabel: data.avatarLabel, color: data.color, kind: data.kind, dates: subRange });
+    }
+  }
+
+  // Sort spans by personName for consistent row ordering
+  spans.sort((a, b) => a.personName.localeCompare(b.personName));
+  return spans;
+}
+
+function getPersonSpanPositionForDate(spans: PersonLeaveSpan[], date: string): Array<{ span: PersonLeaveSpan; position: 'single' | 'start' | 'middle' | 'end' }> {
+  const results: Array<{ span: PersonLeaveSpan; position: 'single' | 'start' | 'middle' | 'end' }> = [];
+  for (const span of spans) {
+    const idx = span.dates.indexOf(date);
+    if (idx === -1) continue;
+    if (span.dates.length === 1) {
+      results.push({ span, position: 'single' });
+    } else if (idx === 0) {
+      results.push({ span, position: 'start' });
+    } else if (idx === span.dates.length - 1) {
+      results.push({ span, position: 'end' });
+    } else {
+      results.push({ span, position: 'middle' });
+    }
+  }
+  return results;
+}
+
 function getLeaveTypeLabel(status: string) {
   switch (status) {
     case 'al': return '年假';
@@ -387,6 +502,14 @@ export function CantonModePage() {
 
   const attendanceRecordMap = useMemo(() => new Map(monthAttendanceRecords.map((record) => [record.date, record])), [monthAttendanceRecords]);
   const attendanceCalendarCells = useMemo(() => buildMonthCalendar(attendanceMonth), [attendanceMonth]);
+  const personLeaveSpans = useMemo(() => buildPersonLeaveSpans({
+    records: allMonthRecords,
+    currentUserId: profile?.id ?? user?.id ?? undefined,
+    profilesMap,
+    externalRecords: externalMonthRecords,
+    externalPeopleMap,
+    month: attendanceMonth,
+  }), [allMonthRecords, profile?.id, user?.id, profilesMap, externalMonthRecords, externalPeopleMap, attendanceMonth]);
   const todayDate = getHongKongDateString();
   const calendarActionRecord = useMemo(
     () => (calendarActionDate ? attendanceRecordMap.get(calendarActionDate) ?? null : null),
@@ -594,32 +717,34 @@ export function CantonModePage() {
                               );
                             })() : <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 800 }}>—</div>}
                           </div>
-                          <div style={{ minHeight: 24, display: 'grid', alignContent: 'end', gap: 4 }}>
+                          <div style={{ minHeight: 24, display: 'grid', alignContent: 'end', gap: 3, overflow: 'hidden' }}>
                             {(() => {
-                              const teamLeave = getTeamLeaveForDate({
-                                date: cell.date,
-                                records: allMonthRecords,
-                                currentUserId: profile?.id ?? user?.id ?? undefined,
-                                profilesMap,
-                                externalRecords: externalMonthRecords,
-                                externalPeopleMap,
-                              });
-                              const visibleDots = teamLeave.slice(0, 3);
-                              const overflow = teamLeave.length - 3;
+                              const positions = getPersonSpanPositionForDate(personLeaveSpans, cell.date!);
+                              const visible = positions.slice(0, 3);
+                              const overflow = positions.length - 3;
                               return (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-                                  {visibleDots.map((leave) => {
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                  {visible.map(({ span, position }) => {
+                                    const isSingle = position === 'single';
+                                    const isStart = position === 'start';
+                                    const isEnd = position === 'end';
                                     return (
                                       <div
-                                        key={leave.key}
+                                        key={span.personKey}
+                                        title={`${span.personName}`}
                                         style={{
-                                          width: 6,
                                           height: 6,
-                                          borderRadius: '50%',
-                                          background: leave.color,
+                                          borderRadius: isSingle ? '50%' : (isStart ? '3px 0 0 3px' : isEnd ? '0 3px 3px 0' : '0'),
+                                          background: span.color,
+                                          marginLeft: isSingle ? 0 : (isStart ? 0 : -10),
+                                          marginRight: isSingle ? 0 : (isEnd ? 0 : -10),
+                                          paddingLeft: isSingle ? 0 : (isStart ? 0 : 10),
+                                          paddingRight: isSingle ? 0 : (isEnd ? 0 : 10),
+                                          width: isSingle ? 6 : 'auto',
+                                          alignSelf: isSingle ? undefined : 'stretch',
                                           flexShrink: 0,
+                                          boxSizing: 'border-box',
                                         }}
-                                        title={`${leave.personName} · ${getLeaveTypeLabel(leave.status)}`}
                                       />
                                     );
                                   })}

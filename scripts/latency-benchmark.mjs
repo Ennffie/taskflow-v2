@@ -1,5 +1,8 @@
 import { performance } from 'node:perf_hooks';
 import { createClient } from '@supabase/supabase-js';
+import { loadLocalEnv } from './load-env.mjs';
+
+loadLocalEnv();
 
 const url = process.env.VITE_SUPABASE_URL;
 const key = process.env.VITE_SUPABASE_ANON_KEY;
@@ -15,7 +18,7 @@ function todayStr() {
 }
 
 function isOpenMain(task) {
-  return !task.parent_id && !task.is_finished && task.status !== 'done' && task.status !== 'cancelled';
+  return !task.parent_id && !task.is_finished && task.status !== 'finished' && task.status !== 'cancelled';
 }
 
 async function fetchAll() {

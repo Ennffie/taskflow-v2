@@ -1,4 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+import { loadLocalEnv } from './load-env.mjs';
+
+loadLocalEnv();
 
 const url = process.env.VITE_SUPABASE_URL;
 const key = process.env.VITE_SUPABASE_ANON_KEY;
@@ -19,7 +22,7 @@ function isMain(task) {
 }
 
 function isOpen(task) {
-  return !task.is_finished && task.status !== 'done' && task.status !== 'cancelled';
+  return !task.is_finished && task.status !== 'finished' && task.status !== 'cancelled';
 }
 
 function sortByDue(tasks) {

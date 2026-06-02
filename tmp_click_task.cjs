@@ -1,0 +1,30 @@
+const { chromium, devices } = require('playwright');
+(async()=>{
+  const browser = await chromium.launch({headless:true});
+  const context = await browser.newContext({ ...devices['iPhone 13'] });
+  const page = await context.newPage();
+  page.on('console', msg => console.log('console:', msg.type(), msg.text()));
+  page.on('pageerror', err => console.log('pageerror:', err.message));
+  page.on('requestfailed', req => console.log('requestfailed:', req.url(), req.failure()?.errorText));
+  const log = async (label) => {
+    const text = await page.locator('body').innerText().catch(()=>'');
+    console.log('---', label, '---');
+    console.log('url', page.url());
+    console.log(text.slice(0,1800));
+  };
+  await page.goto('https://ennffie.github.io/taskflow-v2/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForTimeout(2500);
+  const inputs = page.locator('input');
+  await inputs.nth(0).fill('Pamela.NW.Chau@pccw.com');
+  await inputs.nth(1).fill('x0GxD89wFvbgTV!A1');
+  await page.locator('button', { hasText: 'Sign in' }).click({ noWaitAfter: true });
+  await page.waitForTimeout(7000);
+  await page.goto('https://ennffie.github.io/taskflow-v2/#/all-tasks', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForTimeout(4000);
+  await log('all-tasks before click');
+  const card = page.getByText('CRCE-2567 - Trademark Phase 1 - Apply trademark up to Level 2').first();
+  await card.click({ timeout: 10000 });
+  await page.waitForTimeout(10000);
+  await log('after click task');
+  await browser.close();
+})();
