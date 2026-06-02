@@ -306,22 +306,63 @@ export function AttendanceRecordPage() {
             <div style={{ display: 'grid', gap: 10 }}>
               {workingDays.map((date) => {
                 const record = recordMap.get(date);
+                const canEdit = isAdmin || (isSelf && date === today);
+                const editingKey = record ? record.id : `empty-${date}`;
+                const isEditing = editingId === editingKey;
+
+                // No record row
                 if (!record) {
-                  // Working day with no record
                   return (
                     <div key={`empty-${date}`} style={{ display: 'grid', gap: 10, padding: '12px 14px', borderRadius: 18, background: '#f8fafc' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{formatDay(date)}</div>
                         </div>
-                        <div style={{ padding: '7px 10px', borderRadius: 999, background: '#f1f5f9', color: '#94a3b8', fontSize: 12, fontWeight: 900 }}>
-                          {date === today ? '未打咭' : '—'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {canEdit ? (
+                            <button
+                              onClick={() => setEditingId(editingKey)}
+                              style={{ borderRadius: 999, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                            >
+                              <Clock3 size={13} />改時間
+                            </button>
+                          ) : null}
+                          <div style={{ padding: '7px 10px', borderRadius: 999, background: '#f1f5f9', color: '#94a3b8', fontSize: 12, fontWeight: 900 }}>
+                            {date === today ? '未打咭' : '—'}
+                          </div>
                         </div>
                       </div>
+                      {isEditing ? (
+                        <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 16, background: '#fff', border: '1px solid #e2e8f0' }}>
+                          <input
+                            ref={timePickerRef}
+                            type="time"
+                            value={draftTime}
+                            onChange={(e) => setDraftTime(e.target.value)}
+                            placeholder="HH:MM"
+                            style={{ width: '100%', borderRadius: 14, border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: 16, fontWeight: 800, color: '#0f172a', background: '#fff' }}
+                          />
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={() => setEditingId(null)} style={{ flex: 1, borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '10px 12px', fontSize: 13, fontWeight: 900 }}>算啦</button>
+                            <button onClick={async () => {
+                              if (!draftTime) { setEditingId(null); return; }
+                              setSavingId(editingKey);
+                              try {
+                                const next = await updateAttendanceTime(date, draftTime);
+                                setRecords((cur) => [...cur, next]);
+                                setEditingId(null);
+                              } catch (err: any) {
+                                alert(`Create record failed: ${err?.message || 'Unknown error'}`);
+                              } finally { setSavingId(null); }
+                            }} disabled={savingId === editingKey} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#0f172a', color: '#fff', padding: '10px 12px', fontSize: 13, fontWeight: 900, opacity: savingId === editingKey ? 0.7 : 1 }}>儲存</button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 }
-                const canEditTime = isAdmin || (isSelf && record.date === today);
+
+                // Has record
                 const currentTime = statusLabel(record);
                 return (
                   <div key={record.id} style={{ display: 'grid', gap: 10, padding: '12px 14px', borderRadius: 18, background: '#f8fafc' }}>
@@ -331,25 +372,19 @@ export function AttendanceRecordPage() {
                       {formatAttendanceNote(record.status, record.note) ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{formatAttendanceNote(record.status, record.note)}</div> : null}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {canEditTime && record.status === 'present' ? (
+                      {canEdit ? (
                         <button
                           onClick={() => {
-                            setEditingId((current) => current === record.id ? null : record.id);
+                            setEditingId(editingKey);
                             setDraftTime(currentTime);
                           }}
-                          disabled={savingId === record.id}
-                          style={{ borderRadius: 999, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: savingId === record.id ? 'default' : 'pointer', opacity: savingId === record.id ? 0.6 : 1 }}
+                          disabled={savingId === editingKey}
+                          style={{ borderRadius: 999, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: savingId === editingKey ? 'default' : 'pointer', opacity: savingId === editingKey ? 0.6 : 1 }}
                         >
                           <Clock3 size={13} />改時間
                         </button>
                       ) : null}
                       <div
-                        onClick={() => {
-                          if (canEditTime) {
-                            setEditingId((current) => current === record.id ? null : record.id);
-                            setDraftTime(currentTime);
-                          }
-                        }}
                         style={{
                           padding: '7px 10px',
                           borderRadius: 999,
@@ -357,14 +392,14 @@ export function AttendanceRecordPage() {
                           color: record.status === 'present' ? color : '#475569',
                           fontSize: 12,
                           fontWeight: 900,
-                          cursor: canEditTime ? 'pointer' : 'default',
+                          cursor: canEdit ? 'pointer' : 'default',
                         }}
                       >
                         {statusLabel(record)}
                       </div>
                     </div>
                   </div>
-                  {editingId === record.id ? (
+                  {isEditing ? (
                     <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 16, background: '#fff', border: '1px solid #e2e8f0' }}>
                       <input
                         ref={timePickerRef}
@@ -378,7 +413,7 @@ export function AttendanceRecordPage() {
                         <button
                           onClick={async () => {
                             if (!window.confirm(`Delete ${formatDay(record.date)} attendance record?`)) return;
-                            setSavingId(record.id);
+                            setSavingId(editingKey);
                             try {
                               await deleteAttendanceRecord(record);
                               setRecords((current) => current.filter((item) => item.id !== record.id));
@@ -389,15 +424,15 @@ export function AttendanceRecordPage() {
                               setSavingId(null);
                             }
                           }}
-                          disabled={savingId === record.id}
-                          style={{ flex: 1, borderRadius: 14, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '10px 12px', fontSize: 13, fontWeight: 900, opacity: savingId === record.id ? 0.7 : 1 }}
+                          disabled={savingId === editingKey}
+                          style={{ flex: 1, borderRadius: 14, border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', padding: '10px 12px', fontSize: 13, fontWeight: 900, opacity: savingId === editingKey ? 0.7 : 1 }}
                         >删除</button>
                         <button onClick={async () => {
                           if (!draftTime || draftTime === currentTime) {
                             setEditingId(null);
                             return;
                           }
-                          setSavingId(record.id);
+                          setSavingId(editingKey);
                           try {
                             const next = isSelf && record.date === today
                               ? await updateTodayAttendanceTime(draftTime)
@@ -409,7 +444,7 @@ export function AttendanceRecordPage() {
                           } finally {
                             setSavingId(null);
                           }
-                        }} disabled={savingId === record.id} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#0f172a', color: '#fff', padding: '10px 12px', fontSize: 13, fontWeight: 900, opacity: savingId === record.id ? 0.7 : 1 }}>儲存</button>
+                        }} disabled={savingId === editingKey} style={{ flex: 1, borderRadius: 14, border: 'none', background: '#0f172a', color: '#fff', padding: '10px 12px', fontSize: 13, fontWeight: 900, opacity: savingId === editingKey ? 0.7 : 1 }}>儲存</button>
                       </div>
                     </div>
                   ) : null}
