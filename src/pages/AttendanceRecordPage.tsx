@@ -283,10 +283,45 @@ export function AttendanceRecordPage() {
               <button onClick={() => setViewMode('calendar')} style={{ borderRadius: 999, border: 'none', background: viewMode === 'calendar' ? '#0f172a' : 'transparent', color: viewMode === 'calendar' ? '#fff' : '#64748b', padding: '8px 12px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><CalendarDays size={13} /> Calendar</button>
             </div>
           </div>
-          {loading ? <div style={{ color: '#64748b', fontWeight: 700 }}>Loading…</div> : records.length === 0 && viewMode === 'list' ? <div style={{ color: '#94a3b8' }}>No attendance record yet.</div> : viewMode === 'list' ? (
+          {loading ? <div style={{ color: '#64748b', fontWeight: 700 }}>Loading…</div> : (() => {
+              // Build working days list (Mon-Fri up to today)
+              const [yr, mo] = month.split('-').map(Number);
+              const dim = new Date(yr, mo, 0).getDate();
+              const todayNum = today.startsWith(month) ? parseInt(today.slice(8, 10), 10) : dim;
+              const workingDays: string[] = [];
+              for (let d = 1; d <= Math.min(dim, todayNum); d++) {
+                const dt = new Date(yr, mo - 1, d);
+                const dow = dt.getDay();
+                if (dow !== 0 && dow !== 6) {
+                  workingDays.push(`${yr}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+                }
+              }
+              // Reverse so newest first
+              workingDays.reverse();
+
+              if (workingDays.length === 0 && viewMode === 'list') return <div style={{ color: '#94a3b8' }}>No working days yet.</div>;
+              if (viewMode !== 'list') return null; // calendar handled below
+
+              return (
             <div style={{ display: 'grid', gap: 10 }}>
-              {records.map((record) => {
-                const canEditTime = (isAdmin || (isSelf && record.date === today)) && record.status === 'present';
+              {workingDays.map((date) => {
+                const record = recordMap.get(date);
+                if (!record) {
+                  // Working day with no record
+                  return (
+                    <div key={`empty-${date}`} style={{ display: 'grid', gap: 10, padding: '12px 14px', borderRadius: 18, background: '#f8fafc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{formatDay(date)}</div>
+                        </div>
+                        <div style={{ padding: '7px 10px', borderRadius: 999, background: '#f1f5f9', color: '#94a3b8', fontSize: 12, fontWeight: 900 }}>
+                          {date === today ? '未打咭' : '—'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                const canEditTime = isAdmin || (isSelf && record.date === today);
                 const currentTime = statusLabel(record);
                 return (
                   <div key={record.id} style={{ display: 'grid', gap: 10, padding: '12px 14px', borderRadius: 18, background: '#f8fafc' }}>
@@ -296,7 +331,7 @@ export function AttendanceRecordPage() {
                       {formatAttendanceNote(record.status, record.note) ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{formatAttendanceNote(record.status, record.note)}</div> : null}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {canEditTime ? (
+                      {canEditTime && record.status === 'present' ? (
                         <button
                           onClick={() => {
                             setEditingId((current) => current === record.id ? null : record.id);
@@ -310,7 +345,7 @@ export function AttendanceRecordPage() {
                       ) : null}
                       <div
                         onClick={() => {
-                          if (isAdmin && record.status === 'present') {
+                          if (canEditTime) {
                             setEditingId((current) => current === record.id ? null : record.id);
                             setDraftTime(currentTime);
                           }
@@ -322,7 +357,7 @@ export function AttendanceRecordPage() {
                           color: record.status === 'present' ? color : '#475569',
                           fontSize: 12,
                           fontWeight: 900,
-                          cursor: isAdmin && record.status === 'present' ? 'pointer' : 'default',
+                          cursor: canEditTime ? 'pointer' : 'default',
                         }}
                       >
                         {statusLabel(record)}
@@ -382,7 +417,9 @@ export function AttendanceRecordPage() {
                 );
               })}
             </div>
-          ) : (
+              );
+            })()}
+          {viewMode === 'calendar' && !loading ? (
             <div style={{ display: 'grid', gap: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <button onClick={() => setMonth((current) => shiftMonth(current, -1))} style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Previous month">
@@ -440,7 +477,7 @@ export function AttendanceRecordPage() {
                 })}
               </div>
             </div>
-          )}
+          ) : null}
 
           {showDateSheet && selectedDate ? (
             <div
