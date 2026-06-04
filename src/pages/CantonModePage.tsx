@@ -236,6 +236,42 @@ type PersonLeaveSpan = {
   dates: string[];
 };
 
+type CalendarCell = { date: string | null; day: number | null };
+
+type TeamWeekLeaveSegment = {
+  key: string;
+  personKey: string;
+  personName: string;
+  avatarLabel: string;
+  color: string;
+  startCol: number;
+  endCol: number;
+  laneIndex: number;
+  isSingle: boolean;
+  dates: string[];
+};
+
+const TEAM_STREAK_COLOR_PALETTE = ['#2563EB', '#E11D48', '#059669', '#D97706', '#7C3AED', '#0F766E', '#DC2626', '#0891B2'];
+const TEAM_STREAK_VISIBLE_LANES = 4;
+
+function applyDistinctSpanColors(spans: PersonLeaveSpan[]) {
+  const colorByPerson = new Map<string, string>();
+  const orderedPeople = Array.from(new Map(
+    [...spans]
+      .sort((a, b) => a.personName.localeCompare(b.personName))
+      .map((span) => [span.personKey, { personName: span.personName }])
+  ).keys());
+
+  orderedPeople.forEach((personKey, index) => {
+    colorByPerson.set(personKey, TEAM_STREAK_COLOR_PALETTE[index % TEAM_STREAK_COLOR_PALETTE.length]);
+  });
+
+  return spans.map((span) => ({
+    ...span,
+    color: colorByPerson.get(span.personKey) ?? span.color,
+  }));
+}
+
 function buildPersonLeaveSpans(params: {
   records: AttendanceLog[];
   currentUserId?: string | null;
@@ -320,26 +356,7 @@ function buildPersonLeaveSpans(params: {
   }
 
   // Sort spans by personName for consistent row ordering
-  spans.sort((a, b) => a.personName.localeCompare(b.personName));
-  return spans;
-}
-
-function getPersonSpanPositionForDate(spans: PersonLeaveSpan[], date: string): Array<{ span: PersonLeaveSpan; position: 'single' | 'start' | 'middle' | 'end' }> {
-  const results: Array<{ span: PersonLeaveSpan; position: 'single' | 'start' | 'middle' | 'end' }> = [];
-  for (const span of spans) {
-    const idx = span.dates.indexOf(date);
-    if (idx === -1) continue;
-    if (span.dates.length === 1) {
-      results.push({ span, position: 'single' });
-    } else if (idx === 0) {
-      results.push({ span, position: 'start' });
-    } else if (idx === span.dates.length - 1) {
-      results.push({ span, position: 'end' });
-    } else {
-      results.push({ span, position: 'middle' });
-    }
-  }
-  return results;
+  return applyDistinctSpanColors(spans.sort((a, b) => a.personName.localeCompare(b.personName)));
 }
 
 function getLeaveTypeLabel(status: string) {
@@ -365,6 +382,63 @@ function buildMonthCalendar(month: string) {
   }
   while (cells.length % 7 !== 0) cells.push({ date: null, day: null });
   return cells;
+}
+
+function splitCalendarWeeks(cells: CalendarCell[]) {
+  const weeks: CalendarCell[][] = [];
+  for (let index = 0; index < cells.length; index += 7) {
+    weeks.push(cells.slice(index, index + 7));
+  }
+  return weeks;
+}
+
+function buildWeekLeaveSegments(week: CalendarCell[], spans: PersonLeaveSpan[]) {
+  const weekDates = new Set(week.map((cell) => cell.date).filter((date): date is string => !!date));
+  const matchingSpans = spans
+    .filter((span) => span.dates.some((date) => weekDates.has(date)))
+    .sort((a, b) => a.personName.localeCompare(b.personName));
+
+  const localLaneByPerson = new Map<string, number>();
+  matchingSpans.forEach((span) => {
+    if (!localLaneByPerson.has(span.personKey)) {
+      localLaneByPerson.set(span.personKey, localLaneByPerson.size);
+    }
+  });
+
+  const overflowByDate = new Map<string, number>();
+  const segments: TeamWeekLeaveSegment[] = matchingSpans.map((span) => {
+    const startCol = week.findIndex((cell) => cell.date === span.dates[0]);
+    const endCol = week.findIndex((cell) => cell.date === span.dates[span.dates.length - 1]);
+    const laneIndex = localLaneByPerson.get(span.personKey) ?? 0;
+
+    if (laneIndex >= TEAM_STREAK_VISIBLE_LANES) {
+      span.dates.forEach((date) => {
+        overflowByDate.set(date, (overflowByDate.get(date) ?? 0) + 1);
+      });
+    }
+
+    return {
+      key: `${span.personKey}:${span.dates[0]}`,
+      personKey: span.personKey,
+      personName: span.personName,
+      avatarLabel: span.avatarLabel,
+      color: span.color,
+      startCol,
+      endCol,
+      laneIndex,
+      isSingle: span.dates.length === 1,
+      dates: span.dates,
+    };
+  }).filter((segment) => segment.startCol >= 0 && segment.endCol >= 0);
+
+  return {
+    segments,
+    overflowByDate,
+    visibleLaneCount: Math.min(
+      TEAM_STREAK_VISIBLE_LANES,
+      Math.max(0, ...segments.map((segment) => segment.laneIndex + 1))
+    ),
+  };
 }
 
 export function CantonModePage() {
@@ -510,6 +584,19 @@ export function CantonModePage() {
     externalPeopleMap,
     month: attendanceMonth,
   }), [allMonthRecords, profile?.id, user?.id, profilesMap, externalMonthRecords, externalPeopleMap, attendanceMonth]);
+  const attendanceCalendarWeeks = useMemo(() => splitCalendarWeeks(attendanceCalendarCells), [attendanceCalendarCells]);
+  const calendarWeekSegments = useMemo(
+    () => attendanceCalendarWeeks.map((week) => buildWeekLeaveSegments(week, personLeaveSpans)),
+    [attendanceCalendarWeeks, personLeaveSpans]
+  );
+  const teamLeaveLegend = useMemo(() => {
+    const seen = new Set<string>();
+    return personLeaveSpans.filter((span) => {
+      if (seen.has(span.personKey)) return false;
+      seen.add(span.personKey);
+      return true;
+    });
+  }, [personLeaveSpans]);
   const todayDate = getHongKongDateString();
   const calendarActionRecord = useMemo(
     () => (calendarActionDate ? attendanceRecordMap.get(calendarActionDate) ?? null : null),
@@ -652,111 +739,152 @@ export function CantonModePage() {
                     <button onClick={() => setAttendanceMonth((current: string) => shiftMonth(current, 1))} style={{ width: 36, height: 36, borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', display: 'grid', placeItems: 'center', cursor: 'pointer' }} aria-label="Next month"><ChevronRight size={16} /></button>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {teamLeaveLegend.length ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {teamLeaveLegend.map((item) => (
+                        <div
+                          key={item.personKey}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 9px',
+                            borderRadius: 999,
+                            background: hexToRgba(item.color, 0.12),
+                            color: '#334155',
+                            fontSize: 11,
+                            fontWeight: 800,
+                          }}
+                        >
+                          <span style={{ width: 8, height: 8, borderRadius: 999, background: item.color, flex: '0 0 auto' }} />
+                          <span>{item.personName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
                       <div key={label} style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#94a3b8', padding: '4px 0' }}>{label}</div>
                     ))}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
-                    {attendanceCalendarCells.map((cell, index) => {
-                      if (!cell.date || !cell.day) return <div key={`empty-${index}`} style={{ minHeight: 88, borderRadius: 16, background: '#f8fafc' }} />;
-                      const record = attendanceRecordMap.get(cell.date);
-                      const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
-                      const isToday = cell.date === todayDate;
-                      const isSelected = cell.date === calendarActionDate;
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {attendanceCalendarWeeks.map((week, weekIndex) => {
+                      const weekSegments = calendarWeekSegments[weekIndex];
+                      const visibleSegments = weekSegments.segments.filter((segment) => segment.laneIndex < TEAM_STREAK_VISIBLE_LANES);
                       return (
-                        <button
-                          key={cell.date}
-                          onClick={() => setCalendarActionDate(cell.date)}
-                          style={{ minHeight: 88, borderRadius: 16, border: isSelected ? '1.5px solid #7c3aed' : isToday ? '1.5px solid #f97316' : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: 6, textAlign: 'left', cursor: 'pointer', boxShadow: isSelected ? '0 8px 18px rgba(124,58,237,0.10)' : 'none' }}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
-                          <div style={{ display: 'grid', placeItems: 'center', minHeight: 28, alignContent: 'center' }}>
-                            {record ? (() => {
-                              const leaveInfo = getAttendanceLeaveInfo(record.status, record.note);
-                              const halfDayIndicator = leaveInfo && (leaveInfo.period === 'am' || leaveInfo.period === 'pm')
-                                ? (leaveInfo.period === 'am' ? 'AM' : 'PM')
-                                : '';
-                              if (record.status === 'present' && isPortrait) {
-                                const d = record.check_in_at ? new Date(record.check_in_at) : null;
-                                const minutes = d ? d.getHours() * 60 + d.getMinutes() : 0;
-                                const late = isLateCheckIn(minutes, profile);
-                                return (
-                                  <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
-                                    <div style={{ fontSize: 20, fontWeight: 950, color: late ? '#ef4444' : '#22c55e' }}>
-                                      {late ? '✗' : '✓'}
-                                    </div>
-                                    {halfDayIndicator ? (
-                                      <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
-                                    ) : null}
-                                  </div>
-                                );
-                              }
-                              const label = getRecordDisplayLabel(record);
-                              if (record.status === 'present') {
-                                return (
-                                  <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
-                                    <div style={{ fontSize: 16, fontWeight: 950, color: '#f97316' }}>
-                                      {label}
-                                    </div>
-                                    {halfDayIndicator ? (
-                                      <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
-                                    ) : null}
-                                  </div>
-                                );
-                              }
-                              // Leave: AL/SL/BL/OFF with optional AM/PM
+                        <div key={`week-${weekIndex}`} style={{ position: 'relative' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 8 }}>
+                            {week.map((cell, index) => {
+                              if (!cell.date || !cell.day) return <div key={`empty-${weekIndex}-${index}`} style={{ minHeight: 92, borderRadius: 16, background: '#f8fafc' }} />;
+                              const record = attendanceRecordMap.get(cell.date);
+                              const holiday = getPublicHolidayInfo(new Date(`${cell.date}T00:00:00`));
+                              const isToday = cell.date === todayDate;
+                              const isSelected = cell.date === calendarActionDate;
+                              const overflow = weekSegments.overflowByDate.get(cell.date) ?? 0;
                               return (
-                                <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
-                                  <div style={{ fontSize: 14, fontWeight: 950, color: '#9a3412' }}>{label}</div>
-                                  {halfDayIndicator && (
-                                    <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
-                                  )}
-                                </div>
+                                <button
+                                  key={cell.date}
+                                  onClick={() => setCalendarActionDate(cell.date)}
+                                  style={{ minHeight: 92, borderRadius: 16, border: isSelected ? '1.5px solid #7c3aed' : isToday ? '1.5px solid #f97316' : '1px solid #e2e8f0', background: holiday ? '#fff7ed' : '#f8fafc', padding: 10, display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: 6, textAlign: 'left', cursor: 'pointer', boxShadow: isSelected ? '0 8px 18px rgba(124,58,237,0.10)' : 'none' }}
+                                >
+                                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{cell.day}</div>
+                                  <div style={{ display: 'grid', placeItems: 'center', minHeight: 28, alignContent: 'center' }}>
+                                    {record ? (() => {
+                                      const leaveInfo = getAttendanceLeaveInfo(record.status, record.note);
+                                      const halfDayIndicator = leaveInfo && (leaveInfo.period === 'am' || leaveInfo.period === 'pm')
+                                        ? (leaveInfo.period === 'am' ? 'AM' : 'PM')
+                                        : '';
+                                      if (record.status === 'present' && isPortrait) {
+                                        const d = record.check_in_at ? new Date(record.check_in_at) : null;
+                                        const minutes = d ? d.getHours() * 60 + d.getMinutes() : 0;
+                                        const late = isLateCheckIn(minutes, profile);
+                                        return (
+                                          <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
+                                            <div style={{ fontSize: 20, fontWeight: 950, color: late ? '#ef4444' : '#22c55e' }}>
+                                              {late ? '✗' : '✓'}
+                                            </div>
+                                            {halfDayIndicator ? (
+                                              <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
+                                            ) : null}
+                                          </div>
+                                        );
+                                      }
+                                      const label = getRecordDisplayLabel(record);
+                                      if (record.status === 'present') {
+                                        return (
+                                          <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
+                                            <div style={{ fontSize: 16, fontWeight: 950, color: '#f97316' }}>
+                                              {label}
+                                            </div>
+                                            {halfDayIndicator ? (
+                                              <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
+                                            ) : null}
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <div style={{ display: 'grid', gap: 2, placeItems: 'center', lineHeight: 1 }}>
+                                          <div style={{ fontSize: 14, fontWeight: 950, color: '#9a3412' }}>{label}</div>
+                                          {halfDayIndicator && (
+                                            <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', opacity: 0.85 }}>{halfDayIndicator}</div>
+                                          )}
+                                        </div>
+                                      );
+                                    })() : <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 800 }}>—</div>}
+                                  </div>
+                                  <div style={{ minHeight: 28, display: 'grid', alignContent: 'start', gap: 4 }}>
+                                    {overflow > 0 ? (
+                                      <span style={{ fontSize: 9, color: '#64748b', fontWeight: 800, lineHeight: 1.1 }}>+{overflow} more</span>
+                                    ) : <span style={{ minHeight: 10 }} />}
+                                    {holiday ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
+                                  </div>
+                                </button>
                               );
-                            })() : <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 800 }}>—</div>}
+                            })}
                           </div>
-                          <div style={{ minHeight: 24, display: 'grid', alignContent: 'end', gap: 3, overflow: 'hidden' }}>
-                            {(() => {
-                              const positions = getPersonSpanPositionForDate(personLeaveSpans, cell.date!);
-                              const visible = positions.slice(0, 3);
-                              const overflow = positions.length - 3;
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                  {visible.map(({ span, position }) => {
-                                    const isSingle = position === 'single';
-                                    const isStart = position === 'start';
-                                    const isEnd = position === 'end';
-                                    return (
-                                      <div
-                                        key={span.personKey}
-                                        title={`${span.personName}`}
-                                        style={{
-                                          height: 6,
-                                          borderRadius: isSingle ? '50%' : (isStart ? '3px 0 0 3px' : isEnd ? '0 3px 3px 0' : '0'),
-                                          background: span.color,
-                                          marginLeft: isSingle ? 0 : (isStart ? 0 : -10),
-                                          marginRight: isSingle ? 0 : (isEnd ? 0 : -10),
-                                          paddingLeft: isSingle ? 0 : (isStart ? 0 : 10),
-                                          paddingRight: isSingle ? 0 : (isEnd ? 0 : 10),
-                                          width: isSingle ? 6 : 'auto',
-                                          alignSelf: isSingle ? undefined : 'stretch',
-                                          flexShrink: 0,
-                                          boxSizing: 'border-box',
-                                        }}
-                                      />
-                                    );
-                                  })}
-                                  {overflow > 0 && (
-                                    <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, lineHeight: 1 }}>+{overflow}</span>
-                                  )}
+
+                          {visibleSegments.length ? (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                bottom: 10,
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                                gridTemplateRows: `repeat(${Math.max(1, weekSegments.visibleLaneCount)}, 8px)`,
+                                columnGap: 8,
+                                rowGap: 4,
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              {visibleSegments.map((segment) => (
+                                <div
+                                  key={segment.key}
+                                  title={segment.personName}
+                                  style={{
+                                    gridColumn: `${segment.startCol + 1} / ${segment.endCol + 2}`,
+                                    gridRow: `${segment.laneIndex + 1}`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: segment.isSingle ? 10 : '100%',
+                                      height: 8,
+                                      margin: segment.isSingle ? '0 auto' : 0,
+                                      borderRadius: 999,
+                                      background: segment.color,
+                                      boxShadow: `0 0 0 1px ${hexToRgba(segment.color, 0.18)}`,
+                                    }}
+                                  />
                                 </div>
-                              );
-                            })()}
-                            {holiday ? <div style={{ fontSize: 10, lineHeight: 1.2, color: '#c2410c', fontWeight: 800 }}>{holiday.name}</div> : null}
-                          </div>
-                        </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>
