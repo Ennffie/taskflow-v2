@@ -23,7 +23,7 @@ const cardStyle: React.CSSProperties = {
   boxShadow: '0 16px 45px rgba(148, 163, 184, 0.16)',
 };
 
-const ADMIN_PROXY_LEAVE_NAMES = ['Benne', 'Mandy', 'Jade', 'Samantha', 'Chelsy', 'Alice', 'Pamela', 'Silvie', 'Claire', 'Shani'] as const;
+const ADMIN_PROXY_LEAVE_NAMES = ['Benne', 'Alice', 'Pamela', 'Silvie', 'Mandy', 'Jade', 'Samantha', 'Chelsy', 'Claire', 'Shani'] as const;
 
 function normalizePersonName(name: string) {
   return name.trim().toLowerCase();
