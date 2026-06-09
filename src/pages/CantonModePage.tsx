@@ -437,6 +437,13 @@ function getLeaveTypeLabel(status: string) {
   }
 }
 
+function getLeaveSummaryText(record: Pick<AttendanceLog, 'status' | 'note'> | null) {
+  if (!record) return '未有此日假期記錄';
+  const leaveInfo = getAttendanceLeaveInfo(record.status, record.note);
+  const periodLabel = getLeavePeriodLabel(leaveInfo?.period);
+  return `目前：${getLeaveTypeLabel(record.status)} · ${periodLabel}`;
+}
+
 function buildMonthCalendar(month: string) {
   const [year, mm] = month.split('-').map(Number);
   const firstDay = new Date(year, mm - 1, 1);
@@ -697,6 +704,10 @@ export function CantonModePage() {
   const selectedExternalPerson = useMemo(
     () => selectedExternalPersonId ? externalPeopleMap.get(selectedExternalPersonId) ?? null : null,
     [externalPeopleMap, selectedExternalPersonId]
+  );
+  const selfCalendarActorName = useMemo(
+    () => profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || '你自己',
+    [profile?.name, user?.email, user?.user_metadata?.name]
   );
   const selectedExternalLeaveRecord = useMemo(
     () => {
@@ -1132,9 +1143,7 @@ export function CantonModePage() {
                             <div>
                               <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{selectedExternalPerson.name}</div>
                               <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, marginTop: 2 }}>
-                                {selectedExternalLeaveRecord
-                                  ? `目前：${getLeaveTypeLabel(selectedExternalLeaveRecord.status)} · ${getLeavePeriodLabel(getAttendanceLeaveInfo(selectedExternalLeaveRecord.status, selectedExternalLeaveRecord.note)?.period)}`
-                                  : '未有此日假期記錄'}
+                                {getLeaveSummaryText(selectedExternalLeaveRecord)}
                               </div>
                             </div>
                             {selectedExternalLeaveRecord ? (
@@ -1210,6 +1219,14 @@ export function CantonModePage() {
                       ) : null}
                     </div>
                   ) : null}
+                </div>
+              ) : null}
+              {!showExternalLeaveEditor ? (
+                <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 16, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{selfCalendarActorName}</div>
+                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>
+                    {getLeaveSummaryText(calendarActionRecord)}
+                  </div>
                 </div>
               ) : null}
               {!showExternalLeaveEditor ? (['al', 'sl', 'bl', 'other'] as const).map((status) => (
