@@ -123,8 +123,11 @@ values
   ('Jade', 30),
   ('Samantha', 40),
   ('Chelsy', 50),
-  ('Claire', 60),
-  ('Shani', 70)
+  ('Alice', 60),
+  ('Pamela', 70),
+  ('Silvie', 80),
+  ('Claire', 90),
+  ('Shani', 100)
 on conflict (name) do update
 set
   active = true,

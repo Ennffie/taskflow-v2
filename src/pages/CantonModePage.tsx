@@ -23,6 +23,62 @@ const cardStyle: React.CSSProperties = {
   boxShadow: '0 16px 45px rgba(148, 163, 184, 0.16)',
 };
 
+const ADMIN_PROXY_LEAVE_NAMES = ['Benne', 'Mandy', 'Jade', 'Samantha', 'Chelsy', 'Alice', 'Pamela', 'Silvie', 'Claire', 'Shani'] as const;
+
+function normalizePersonName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function mergeProxyLeavePeople(profiles: Profile[], externalPeople: ExternalLeavePerson[]) {
+  const profileByName = new Map<string, Profile>();
+  profiles.forEach((profile) => {
+    profileByName.set(normalizePersonName(profile.name), profile);
+  });
+
+  const externalByName = new Map<string, ExternalLeavePerson>();
+  externalPeople.forEach((person) => {
+    externalByName.set(normalizePersonName(person.name), person);
+  });
+
+  const ordered: ExternalLeavePerson[] = [];
+  const seen = new Set<string>();
+
+  ADMIN_PROXY_LEAVE_NAMES.forEach((name, index) => {
+    const key = normalizePersonName(name);
+    const externalPerson = externalByName.get(key);
+    if (externalPerson) {
+      ordered.push(
+        externalPerson.linked_user_id
+          ? externalPerson
+          : { ...externalPerson, linked_user_id: profileByName.get(key)?.id ?? externalPerson.linked_user_id }
+      );
+      seen.add(key);
+      return;
+    }
+
+    const linkedProfile = profileByName.get(key);
+    if (!linkedProfile) return;
+    ordered.push({
+      id: `linked-profile:${linkedProfile.id}`,
+      name: linkedProfile.name,
+      linked_user_id: linkedProfile.id,
+      sort_order: 100 + index,
+      active: true,
+      created_at: '',
+      updated_at: '',
+    });
+    seen.add(key);
+  });
+
+  externalPeople.forEach((person) => {
+    const key = normalizePersonName(person.name);
+    if (seen.has(key)) return;
+    ordered.push(person);
+  });
+
+  return ordered;
+}
+
 function getGreeting(name?: string | null) {
   const hour = new Date().getHours();
   const callName = getPreferredCallName(name);
@@ -507,15 +563,16 @@ export function CantonModePage() {
       setAttendance(todayAttendance);
       setMonthAttendanceRecords(monthlyRecords);
       setAllMonthRecords(allMonthlyRecords);
-      setExternalLeavePeople(externalPeopleData);
+      const mergedExternalPeople = mergeProxyLeavePeople(profilesData, externalPeopleData);
+      setExternalLeavePeople(mergedExternalPeople);
       setExternalMonthRecords(externalRecordsData);
       const map = new Map<string, Profile>();
       profilesData.forEach((p) => map.set(p.id, p));
       setProfilesMap(map);
       const externalMap = new Map<string, ExternalLeavePerson>();
-      externalPeopleData.forEach((person) => externalMap.set(person.id, person));
+      mergedExternalPeople.forEach((person) => externalMap.set(person.id, person));
       setExternalPeopleMap(externalMap);
-      setSelectedExternalPersonId((current) => current && externalMap.has(current) ? current : (externalPeopleData[0]?.id ?? null));
+      setSelectedExternalPersonId((current) => current && externalMap.has(current) ? current : (mergedExternalPeople[0]?.id ?? null));
     } catch (error: any) {
       console.error('[Canton] loadAttendance error:', error);
       if (isRecoverableAttendanceLoadError(error)) return;
@@ -622,10 +679,15 @@ export function CantonModePage() {
     [externalPeopleMap, selectedExternalPersonId]
   );
   const selectedExternalLeaveRecord = useMemo(
-    () => calendarActionDate && selectedExternalPersonId
-      ? externalMonthRecords.find((record) => record.date === calendarActionDate && record.person_id === selectedExternalPersonId) ?? null
-      : null,
-    [calendarActionDate, externalMonthRecords, selectedExternalPersonId]
+    () => {
+      if (!calendarActionDate || !selectedExternalPersonId) return null;
+      const selectedPerson = externalPeopleMap.get(selectedExternalPersonId);
+      if (selectedPerson?.linked_user_id) {
+        return allMonthRecords.find((record) => record.date === calendarActionDate && record.user_id === selectedPerson.linked_user_id) ?? null;
+      }
+      return externalMonthRecords.find((record) => record.date === calendarActionDate && record.person_id === selectedExternalPersonId) ?? null;
+    },
+    [allMonthRecords, calendarActionDate, externalMonthRecords, externalPeopleMap, selectedExternalPersonId]
   );
 
   return (
@@ -1061,7 +1123,11 @@ export function CantonModePage() {
                                   if (!calendarActionDate || !selectedExternalPersonId) return;
                                   setCheckInLoading(true);
                                   try {
-                                    await clearExternalLeaveRecord(calendarActionDate, selectedExternalPersonId);
+                                    if (selectedExternalPerson?.linked_user_id) {
+                                      await clearAttendanceByDate(calendarActionDate, selectedExternalPerson.linked_user_id);
+                                    } else {
+                                      await clearExternalLeaveRecord(calendarActionDate, selectedExternalPersonId);
+                                    }
                                     void loadAttendance();
                                   } catch (error: any) {
                                     alert(`Clear external leave failed: ${error?.message || 'Unknown error'}`);
@@ -1092,13 +1158,17 @@ export function CantonModePage() {
                                         const note = buildLeaveNote(period, detail);
                                         setCheckInLoading(true);
                                         try {
-                                          await upsertExternalLeaveRecord({
-                                            personId: selectedExternalPersonId,
-                                            date: calendarActionDate,
-                                            status,
-                                            note,
-                                            source: 'canton_external_leave',
-                                          });
+                                          if (selectedExternalPerson?.linked_user_id) {
+                                            await markOffDate(calendarActionDate, status, note, 'canton_proxy_leave', selectedExternalPerson.linked_user_id);
+                                          } else {
+                                            await upsertExternalLeaveRecord({
+                                              personId: selectedExternalPersonId,
+                                              date: calendarActionDate,
+                                              status,
+                                              note,
+                                              source: 'canton_external_leave',
+                                            });
+                                          }
                                           void loadAttendance();
                                         } catch (error: any) {
                                           alert(`Set external leave failed: ${error?.message || 'Unknown error'}`);
