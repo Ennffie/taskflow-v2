@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RefreshCw, Sparkles, Waves, X } from 'lucide-react';
 import attendanceMascotCute from '../assets/attendance-mascot-cute.jpg';
 import { useNavigate } from 'react-router-dom';
-import { checkInToday, clearAttendanceByDate, clearExternalLeaveRecord, clearTodayAttendance, fetchAttendanceRecords, fetchExternalLeavePeople, fetchExternalLeaveRecords, fetchProfiles, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceNote, updateTodayAttendanceTime, upsertExternalLeaveRecord } from '../lib/api';
+import { checkInToday, clearAttendanceByDate, clearExternalLeaveRecord, clearTodayAttendance, ensureExternalLeavePeople, fetchAttendanceRecords, fetchExternalLeavePeople, fetchExternalLeaveRecords, fetchProfiles, fetchTasks, fetchTodayAttendance, markOffDate, markOffToday, updateTodayAttendanceNote, updateTodayAttendanceTime, upsertExternalLeaveRecord } from '../lib/api';
 import { AppShell, notifyModalClose, notifyModalOpen } from '../components/AppShell';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -77,6 +77,19 @@ function mergeProxyLeavePeople(profiles: Profile[], externalPeople: ExternalLeav
   });
 
   return ordered;
+}
+
+function buildAdminProxySeedPeople(profiles: Profile[]) {
+  const profileByName = new Map<string, Profile>();
+  profiles.forEach((profile) => {
+    profileByName.set(normalizePersonName(profile.name), profile);
+  });
+
+  return ADMIN_PROXY_LEAVE_NAMES.map((name, index) => ({
+    name,
+    sortOrder: 10 + index * 10,
+    linkedUserId: profileByName.get(normalizePersonName(name))?.id ?? null,
+  }));
 }
 
 function getGreeting(name?: string | null) {
@@ -552,7 +565,7 @@ export function CantonModePage() {
   const loadAttendance = async () => {
     setAttendanceLoading(true);
     try {
-      const [todayAttendance, monthlyRecords, allMonthlyRecords, profilesData, externalPeopleData, externalRecordsData] = await Promise.all([
+      const [todayAttendance, monthlyRecords, allMonthlyRecords, profilesData, initialExternalPeopleData, externalRecordsData] = await Promise.all([
         fetchTodayAttendance(),
         fetchAttendanceRecords({ month: attendanceMonth, userId: profile?.id ?? user?.id ?? undefined }),
         fetchAttendanceRecords({ month: attendanceMonth, includeAllUsers: true }),
@@ -560,6 +573,13 @@ export function CantonModePage() {
         fetchExternalLeavePeople(),
         fetchExternalLeaveRecords({ month: attendanceMonth }),
       ]);
+
+      let externalPeopleData = initialExternalPeopleData;
+      if (profile?.role === 'admin') {
+        await ensureExternalLeavePeople(buildAdminProxySeedPeople(profilesData));
+        externalPeopleData = await fetchExternalLeavePeople();
+      }
+
       setAttendance(todayAttendance);
       setMonthAttendanceRecords(monthlyRecords);
       setAllMonthRecords(allMonthlyRecords);

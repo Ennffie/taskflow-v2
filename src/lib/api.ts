@@ -484,6 +484,35 @@ export async function fetchExternalLeavePeople(): Promise<ExternalLeavePerson[]>
   });
 }
 
+export async function ensureExternalLeavePeople(people: Array<{
+  name: string;
+  sortOrder: number;
+  linkedUserId?: string | null;
+}>): Promise<ExternalLeavePerson[]> {
+  if (!people.length) return [];
+
+  return withRetry(async () => {
+    const rows = people.map((person) => ({
+      name: person.name,
+      sort_order: person.sortOrder,
+      linked_user_id: person.linkedUserId ?? null,
+      active: true,
+    }));
+
+    const { data, error } = await supabase
+      .from('external_leave_people')
+      .upsert(rows, { onConflict: 'name' })
+      .select('id, name, linked_user_id, sort_order, active, created_at, updated_at');
+
+    if (error) {
+      if (isMissingExternalLeaveTableError(error)) return [];
+      throw error;
+    }
+
+    return (data ?? []) as ExternalLeavePerson[];
+  });
+}
+
 export async function fetchExternalLeaveRecords(options?: {
   month?: string;
   date?: string;
