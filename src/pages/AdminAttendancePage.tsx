@@ -4,7 +4,7 @@ import { BackButton } from '../components/BackButton';
 import { AdminAttendanceMultiTrendChart } from '../components/AdminAttendanceMultiTrendChart';
 import { fetchAttendanceRecords, fetchProfiles } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-import { getProfileBorderColor, getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
+import { getProfileBorderColor, getProfileColor, getProfileDisplayName, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
 import { getLateThresholdMinutes } from '../lib/attendanceRules';
 import type { AttendanceLog, Profile } from '../types';
 import { Users } from 'lucide-react';
@@ -110,6 +110,7 @@ export function AdminAttendancePage() {
                   const color = getProfileColor(item.member);
                   const soft = getProfileSoftColor(item.member);
                   const active = selectedUserId === item.member.id;
+                  const displayName = getProfileDisplayName(item.member.name);
                   return (
                     <button
                       key={item.member.id}
@@ -128,7 +129,7 @@ export function AdminAttendancePage() {
                         cursor: 'pointer',
                         boxShadow: active ? '0 8px 18px rgba(15,23,42,0.08)' : 'none',
                       }}
-                      title={item.member.name}
+                      title={displayName}
                     >
                       {getProfileInitials(item.member.name)}
                     </button>
@@ -141,12 +142,13 @@ export function AdminAttendancePage() {
               {visibleSummaries.map((item) => {
                 const color = getProfileColor(item.member);
                 const border = getProfileBorderColor(item.member);
+                const displayName = getProfileDisplayName(item.member.name);
                 return (
                   <div key={item.member.id} style={{ borderRadius: 22, border: `1px solid ${border}`, background: '#fff', padding: 16, display: 'grid', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 44, height: 44, borderRadius: 16, background: color, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900 }}>{getProfileInitials(item.member.name)}</div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 16, color: '#0f172a', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.member.name}</div>
+                        <div style={{ fontSize: 16, color: '#0f172a', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
                         <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>{item.member.role}</div>
                       </div>
                     </div>

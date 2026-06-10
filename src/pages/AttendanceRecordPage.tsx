@@ -6,7 +6,7 @@ import { deleteAttendanceRecord, fetchAttendanceRecords, fetchProfiles, updateAt
 import { formatAttendanceNote } from '../lib/attendanceLeave';
 import { useAuth } from '../contexts/AuthContext';
 import { getHongKongDateString } from '../lib/horoscope';
-import { getProfileColor, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
+import { getProfileColor, getProfileDisplayName, getProfileInitials, getProfileSoftColor } from '../lib/profileAppearance';
 import { getPublicHolidayInfo } from '../lib/specialDays';
 import type { AttendanceLog, AttendanceStatus, Profile } from '../types';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, List, Users } from 'lucide-react';
@@ -195,7 +195,7 @@ export function AttendanceRecordPage() {
   }, [flashDate]);
 
   const isSelf = targetUserId === (profile?.id ?? user?.id);
-  const pageTitle = isSelf ? '我的記錄' : (targetProfile?.name ?? 'User');
+  const pageTitle = isSelf ? '我的記錄' : getProfileDisplayName(targetProfile?.name);
 
   return (
     <AppShell>
@@ -224,7 +224,7 @@ export function AttendanceRecordPage() {
                           onClick={() => { setSelectedUserId(null); setShowUserPicker(false); }}
                           style={{ width: '100%', textAlign: 'left', borderRadius: 10, border: 'none', background: selectedUserId === null ? '#f1f5f9' : 'transparent', color: '#0f172a', padding: '8px 10px', fontSize: 13, fontWeight: 900, cursor: 'pointer' }}
                         >
-                          自己 ({profile?.name ?? 'Me'})
+                          自己 ({getProfileDisplayName(profile?.name) ?? 'Me'})
                         </button>
                         {profiles.filter((p) => p.id !== profile?.id).map((p) => (
                           <button
@@ -233,7 +233,7 @@ export function AttendanceRecordPage() {
                             style={{ width: '100%', textAlign: 'left', borderRadius: 10, border: 'none', background: selectedUserId === p.id ? '#f1f5f9' : 'transparent', color: '#0f172a', padding: '8px 10px', fontSize: 13, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                           >
                             <div style={{ width: 22, height: 22, borderRadius: 7, background: getProfileColor(p), color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flex: '0 0 auto' }}>{getProfileInitials(p.name)}</div>
-                            {p.name}
+                            {getProfileDisplayName(p.name)}
                           </button>
                         ))}
                       </div>
@@ -728,12 +728,13 @@ export function AttendanceRecordPage() {
                               const p = profiles.find((prof) => prof.id === r.user_id);
                               const pColor = getProfileColor(p);
                               const pInitials = getProfileInitials(p?.name ?? '??');
+                              const displayName = getProfileDisplayName(p?.name ?? 'Unknown');
                               return (
                                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderRadius: 14, background: '#f8fafc' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <div style={{ width: 28, height: 28, borderRadius: 10, background: pColor, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900, flex: '0 0 auto' }}>{pInitials}</div>
                                     <div>
-                                      <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{p?.name ?? 'Unknown'}</div>
+                                      <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{displayName}</div>
                                       <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{formatAttendanceNote(r.status, r.note) ?? '—'}</div>
                                     </div>
                                   </div>
