@@ -1508,13 +1508,9 @@ export async function updateTodayAttendanceTime(timeHHMM: string): Promise<Atten
   return record;
 }
 
-export async function updateAttendanceTime(date: string, timeHHMM: string): Promise<AttendanceLog> {
-  const userId = await getCurrentUserId();
+export async function updateAttendanceTime(date: string, timeHHMM: string, targetUserId?: string): Promise<AttendanceLog> {
+  const userId = targetUserId ?? await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
-
-  const existing = await fetchAttendanceByDate(userId, date);
-  if (!existing) throw new Error('No attendance record for this date');
-  if (existing.status !== 'present') throw new Error('Only present record can change time');
 
   const match = /^(\d{2}):(\d{2})$/.exec(timeHHMM.trim());
   if (!match) throw new Error('Invalid time format');
@@ -1523,6 +1519,17 @@ export async function updateAttendanceTime(date: string, timeHHMM: string): Prom
   if (hh > 23 || mm > 59) throw new Error('Invalid time');
 
   const nextIso = new Date(`${date}T${match[1]}:${match[2]}:00+08:00`).toISOString();
+  const existing = await fetchAttendanceByDate(userId, date);
+  if (!existing) {
+    return upsertAttendanceForDate({
+      date,
+      status: 'present',
+      checkInAt: nextIso,
+      source: 'manual',
+      userId,
+    });
+  }
+  if (existing.status !== 'present') throw new Error('Only present record can change time');
   if (existing.check_in_at === nextIso) return existing;
 
   const { data, error } = await supabase

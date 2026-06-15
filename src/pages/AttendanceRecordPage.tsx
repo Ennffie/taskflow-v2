@@ -306,7 +306,7 @@ export function AttendanceRecordPage() {
             <div style={{ display: 'grid', gap: 10 }}>
               {workingDays.map((date) => {
                 const record = recordMap.get(date);
-                const canEdit = isAdmin || (isSelf && date === today);
+                const canEditTime = (isAdmin || (isSelf && date === today)) && (!record || record.status === 'present');
                 const editingKey = record ? record.id : `empty-${date}`;
                 const isEditing = editingId === editingKey;
 
@@ -319,7 +319,7 @@ export function AttendanceRecordPage() {
                           <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a' }}>{formatDay(date)}</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {canEdit ? (
+                          {canEditTime ? (
                             <button
                               onClick={() => setEditingId(editingKey)}
                               style={{ borderRadius: 999, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
@@ -348,8 +348,11 @@ export function AttendanceRecordPage() {
                               if (!draftTime) { setEditingId(null); return; }
                               setSavingId(editingKey);
                               try {
-                                const next = await updateAttendanceTime(date, draftTime);
-                                setRecords((cur) => [...cur, next]);
+                                const next = await updateAttendanceTime(date, draftTime, targetUserId ?? undefined);
+                                setRecords((current) => {
+                                  const filtered = current.filter((item) => item.date !== next.date);
+                                  return [...filtered, next];
+                                });
                                 setEditingId(null);
                               } catch (err: any) {
                                 alert(`Create record failed: ${err?.message || 'Unknown error'}`);
@@ -372,7 +375,7 @@ export function AttendanceRecordPage() {
                       {formatAttendanceNote(record.status, record.note) ? <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{formatAttendanceNote(record.status, record.note)}</div> : null}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {canEdit ? (
+                      {canEditTime ? (
                         <button
                           onClick={() => {
                             setEditingId(editingKey);
@@ -392,7 +395,7 @@ export function AttendanceRecordPage() {
                           color: record.status === 'present' ? color : '#475569',
                           fontSize: 12,
                           fontWeight: 900,
-                          cursor: canEdit ? 'pointer' : 'default',
+                          cursor: canEditTime ? 'pointer' : 'default',
                         }}
                       >
                         {statusLabel(record)}
@@ -436,7 +439,7 @@ export function AttendanceRecordPage() {
                           try {
                             const next = isSelf && record.date === today
                               ? await updateTodayAttendanceTime(draftTime)
-                              : await updateAttendanceTime(record.date, draftTime);
+                              : await updateAttendanceTime(record.date, draftTime, targetUserId ?? undefined);
                             setRecords((current) => current.map((item) => item.id === record.id ? next : item));
                             setEditingId(null);
                           } catch (error: any) {
